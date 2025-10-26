@@ -17,7 +17,6 @@ CREATE TABLE "Quiz"(
     "time" BIGINT NOT NULL,
     "is_private" BOOLEAN NOT NULL,
     "is_static" BOOLEAN NOT NULL,
-    "private_code" CHAR(255) NOT NULL,
     "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
 );
 ALTER TABLE
