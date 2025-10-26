@@ -1,7 +1,12 @@
 package org.example.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
+@Getter
+@Setter
 public class Quiz {
     private Long id;
     private String name;
@@ -32,37 +37,4 @@ public class Quiz {
         this.isStatic = isStatic;
         this.createdAt = createdAt;
     }
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public String getPrompt() { return prompt; }
-    public void setPrompt(String prompt) { this.prompt = prompt; }
-
-    public Long getCreateBy() { return createBy; }
-    public void setCreateBy(Long createBy) { this.createBy = createBy; }
-
-    public Boolean getHasMaterial() { return hasMaterial; }
-    public void setHasMaterial(Boolean hasMaterial) { this.hasMaterial = hasMaterial; }
-
-    public String getMaterialUrl() { return materialUrl; }
-    public void setMaterialUrl(String materialUrl) { this.materialUrl = materialUrl; }
-
-    public Long getQuestionNumber() { return questionNumber; }
-    public void setQuestionNumber(Long questionNumber) { this.questionNumber = questionNumber; }
-
-    public Long getTime() { return time; }
-    public void setTime(Long time) { this.time = time; }
-
-    public Boolean getIsPrivate() { return isPrivate; }
-    public void setIsPrivate(Boolean isPrivate) { this.isPrivate = isPrivate; }
-
-    public Boolean getIsStatic() { return isStatic; }
-    public void setIsStatic(Boolean isStatic) { this.isStatic = isStatic; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
