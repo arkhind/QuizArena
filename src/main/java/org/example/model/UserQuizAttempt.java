@@ -12,12 +12,12 @@ public class UserQuizAttempt {
     private Long startTime;
     private Long finishTime;
     private Long score;
-    private Long isCompleted;
+    private boolean isCompleted;
 
     public UserQuizAttempt() {}
 
     public UserQuizAttempt(Long id, Long userId, Long quizId, Long startTime, 
-                          Long finishTime, Long score, Long isCompleted) {
+                          Long finishTime, Long score, boolean isCompleted) {
         this.id = id;
         this.userId = userId;
         this.quizId = quizId;
