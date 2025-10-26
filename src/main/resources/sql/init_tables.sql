@@ -1,18 +1,18 @@
 CREATE TABLE "User"(
     "id" BIGINT NOT NULL,
-    "login" CHAR(255) NOT NULL,
-    "password" CHAR(255) NOT NULL
+    "login" VARCHAR(32) NOT NULL,
+    "password" VARCHAR(64) NOT NULL
 );
 ALTER TABLE
     "User" ADD PRIMARY KEY("id");
 
 CREATE TABLE "Quiz"(
     "id" BIGINT NOT NULL,
-    "name" CHAR(255) NOT NULL,
-    "prompt" CHAR(255) NOT NULL,
+    "name" VARCHAR(64) NOT NULL,
+    "prompt" VARCHAR(500) NOT NULL,
     "create_by" BIGINT NOT NULL,
     "has_material" BOOLEAN NOT NULL,
-    "material_url" CHAR(255) NOT NULL,
+    "material_url" VARCHAR(255) NOT NULL,
     "question_number" BIGINT NOT NULL,
     "time" BIGINT NOT NULL,
     "is_private" BOOLEAN NOT NULL,
@@ -25,10 +25,10 @@ ALTER TABLE
 CREATE TABLE "Question"(
     "id" BIGINT NOT NULL,
     "quiz_id" BIGINT NOT NULL,
-    "text" CHAR(255) NOT NULL,
-    "type" CHAR(255) NOT NULL,
-    "explanation" CHAR(255) NOT NULL,
-    "image_url" CHAR(255) NOT NULL
+    "text" VARCHAR(300) NOT NULL,
+    "type" VARCHAR(32) NOT NULL,
+    "explanation" VARCHAR(255) NOT NULL,
+    "image_url" VARCHAR(255) NOT NULL
 );
 ALTER TABLE
     "Question" ADD PRIMARY KEY("id");
@@ -36,7 +36,7 @@ ALTER TABLE
 CREATE TABLE "AnswerOption"(
     "id" BIGINT NOT NULL,
     "question_id" BIGINT NOT NULL,
-    "text" CHAR(255) NOT NULL,
+    "text" VARCHAR(100) NOT NULL,
     "is_correct" BOOLEAN NOT NULL,
     "is_na_option" BOOLEAN NOT NULL
 );
@@ -50,7 +50,7 @@ CREATE TABLE "UserQuizAttempt"(
     "start_time" BIGINT NOT NULL,
     "finish_time" BIGINT NOT NULL,
     "score" BIGINT NOT NULL,
-    "is_completed" BIGINT NOT NULL
+    "is_completed" BOOLEAN NOT NULL
 );
 ALTER TABLE
     "UserQuizAttempt" ADD PRIMARY KEY("id");
