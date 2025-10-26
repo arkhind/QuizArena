@@ -13,14 +13,13 @@ public class Quiz {
     private Long time;
     private Boolean isPrivate;
     private Boolean isStatic;
-    private String privateCode;
     private LocalDateTime createdAt;
 
     public Quiz() {}
 
     public Quiz(Long id, String name, String prompt, Long createBy, Boolean hasMaterial, 
                 String materialUrl, Long questionNumber, Long time, Boolean isPrivate, 
-                Boolean isStatic, String privateCode, LocalDateTime createdAt) {
+                Boolean isStatic, LocalDateTime createdAt) {
         this.id = id;
         this.name = name;
         this.prompt = prompt;
@@ -31,7 +30,6 @@ public class Quiz {
         this.time = time;
         this.isPrivate = isPrivate;
         this.isStatic = isStatic;
-        this.privateCode = privateCode;
         this.createdAt = createdAt;
     }
 
@@ -64,9 +62,6 @@ public class Quiz {
 
     public Boolean getIsStatic() { return isStatic; }
     public void setIsStatic(Boolean isStatic) { this.isStatic = isStatic; }
-
-    public String getPrivateCode() { return privateCode; }
-    public void setPrivateCode(String privateCode) { this.privateCode = privateCode; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

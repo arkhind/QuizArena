@@ -60,7 +60,7 @@ public class DatabaseService {
     public List<Quiz> getAllQuizzes() {
         List<Quiz> quizzes = new ArrayList<>();
         String sql = "SELECT id, name, prompt, create_by, has_material, material_url, question_number, " +
-                    "time, is_private, is_static, private_code, created_at FROM \"Quiz\"";
+                    "time, is_private, is_static, created_at FROM \"Quiz\"";
         
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
@@ -78,7 +78,6 @@ public class DatabaseService {
                 quiz.setTime(resultSet.getLong("time"));
                 quiz.setIsPrivate(resultSet.getBoolean("is_private"));
                 quiz.setIsStatic(resultSet.getBoolean("is_static"));
-                quiz.setPrivateCode(resultSet.getString("private_code"));
                 quiz.setCreatedAt(resultSet.getTimestamp("created_at").toLocalDateTime());
                 quizzes.add(quiz);
             }
