@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Arena</title>
+    <style>
+        {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            padding: 20px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            height: 30vh;
+            left: 40px;
+            top: 40px;
+            border-radius: 10px;
+        }
+
+        .profile-section {
+            margin-bottom: 30px;
+        }
+
+        .profile-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 80%;
+            transition: transform 0.2s;
+            margin-bottom: 10px;
+        }
+
+        .profile-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 80%;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            text-align: center;
+            color: #333;
+            font-size: 2.5em;
+        }
+
+        .search-section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .public-quizzes {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            min-height: 300px;
+        }
+
+        .public-quizzes h2 {
+            color: #333;
+            margin-bottom: 40px;
+            font-size: 1.8em;
+            text-align: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            font-size: 20px;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <div class="profile-section">
+        <button class="profile-btn" onclick="goToProfile()">Профиль</button>
+        <a href="#" class="nav-btn" onclick="goToQuiz()">Quiz</a>
+        <a href="#" class="nav-btn" onclick="goToMyQuizzes()">Мои Квизы</a>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="container">
+        <!-- Шапка -->
+        <header class="header">
+            <h1>Главная страница</h1>
+        </header>
+
+        <section class="search-section">
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Поиск">
+                <button class="search-btn">Найти</button>
+            </div>
+        </section>
+
+        <section class="public-quizzes">
+            <h2>Публичные Квизы</h2>
+            <div class="empty-state">
+                Здесь будут отображаться публичные квизы
+            </div>
+        </section>
+    </div>
+</div>
+
+</body>
+</html>
