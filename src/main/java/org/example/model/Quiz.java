@@ -3,7 +3,10 @@ package org.example.model;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -11,30 +14,32 @@ public class Quiz {
     private Long id;
     private String name;
     private String prompt;
-    private Long createBy;
-    private Boolean hasMaterial;
+    private User createdBy;
+    private boolean hasMaterial;
     private String materialUrl;
-    private Long questionNumber;
-    private Long time;
-    private Boolean isPrivate;
-    private Boolean isStatic;
-    private LocalDateTime createdAt;
+    private Duration timePerQuestion; // время на вопрос (может быть null, если таймер не используется)
+    private boolean isPrivate;
+    private boolean isStatic;
+    private Instant createdAt;
+    private List<Question> questions;
 
-    public Quiz() {}
+    public Quiz() {
+        this.questions = new ArrayList<>();
+    }
 
-    public Quiz(Long id, String name, String prompt, Long createBy, Boolean hasMaterial, 
-                String materialUrl, Long questionNumber, Long time, Boolean isPrivate, 
-                Boolean isStatic, LocalDateTime createdAt) {
+    public Quiz(Long id, String name, String prompt, User createdBy, boolean hasMaterial, 
+                String materialUrl, Duration timePerQuestion, boolean isPrivate, 
+                boolean isStatic, Instant createdAt) {
         this.id = id;
         this.name = name;
         this.prompt = prompt;
-        this.createBy = createBy;
+        this.createdBy = createdBy;
         this.hasMaterial = hasMaterial;
         this.materialUrl = materialUrl;
-        this.questionNumber = questionNumber;
-        this.time = time;
+        this.timePerQuestion = timePerQuestion;
         this.isPrivate = isPrivate;
         this.isStatic = isStatic;
         this.createdAt = createdAt;
+        this.questions = new ArrayList<>();
     }
 }

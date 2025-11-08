@@ -7,16 +7,16 @@ import lombok.Setter;
 @Setter
 public class AnswerOption {
     private Long id;
-    private Long questionId;
+    private Question question;
     private String text;
-    private Boolean isCorrect;
-    private Boolean isNaOption;
+    private boolean isCorrect;
+    private boolean isNaOption;
 
     public AnswerOption() {}
 
-    public AnswerOption(Long id, Long questionId, String text, Boolean isCorrect, Boolean isNaOption) {
+    public AnswerOption(Long id, Question question, String text, boolean isCorrect, boolean isNaOption) {
         this.id = id;
-        this.questionId = questionId;
+        this.question = question;
         this.text = text;
         this.isCorrect = isCorrect;
         this.isNaOption = isNaOption;

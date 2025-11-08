@@ -3,24 +3,31 @@ package org.example.model;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Setter
 public class Question {
     private Long id;
-    private Long quizId;
+    private Quiz quiz;
     private String text;
-    private String type;
+    private QuestionType type;
     private String explanation;
-    private String imageUrl;
+    private byte[] image;
+    private List<AnswerOption> answerOptions;
 
-    public Question() {}
+    public Question() {
+        this.answerOptions = new ArrayList<>();
+    }
 
-    public Question(Long id, Long quizId, String text, String type, String explanation, String imageUrl) {
+    public Question(Long id, Quiz quiz, String text, QuestionType type, String explanation, byte[] image) {
         this.id = id;
-        this.quizId = quizId;
+        this.quiz = quiz;
         this.text = text;
         this.type = type;
         this.explanation = explanation;
-        this.imageUrl = imageUrl;
+        this.image = image;
+        this.answerOptions = new ArrayList<>();
     }
 }
