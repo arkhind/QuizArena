@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -54,6 +54,27 @@
 
         .profile-btn:hover {
             transform: translateY(-2px);
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 80%;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
         }
 
         .nav-btn {
@@ -151,9 +172,13 @@
 <body>
 <div class="sidebar">
     <div class="profile-section">
-        <button class="profile-btn" onclick="goToProfile()">Профиль</button>
-        <a href="#" class="nav-btn" onclick="goToQuiz()">Quiz</a>
-        <a href="#" class="nav-btn" onclick="goToMyQuizzes()">Мои Квизы</a>
+        <button class="profile-btn" onclick="goToProfile()">
+            <span>
+                Профиль: <span th:text="${users[0].login}">User</span>
+            </span>
+        </button>
+        <a href="@{/quiz}" class="nav-btn" onclick="goToQuiz()">Quiz</a>
+        <a href="#" class="nav-btn" onclick="goToHome()">Главная</a>
     </div>
 </div>
 
@@ -183,6 +208,10 @@
 
     function goToQuiz() {
         window.location.href = '/quiz';
+    }
+
+    function goToHome() {
+        window.location.href = '/home';
     }
 
     function goToMyQuizzes() {
