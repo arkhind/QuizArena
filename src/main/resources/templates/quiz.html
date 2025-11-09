@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Страница квиза</title>
+    <style>
+        {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+
+
+        .actions, .leaderboard {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .actions h2, .leaderboard h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #f0f2f5;
+            padding-bottom: 10px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f2f5;
+            color: #2c3e50;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .leaderboard-list {
+            list-style: none;
+        }
+
+        .leaderboard-item {
+            padding: 15px;
+            border-bottom: 1px solid #f0f2f5;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .leaderboard-item:last-child {
+            border-bottom: none;
+        }
+
+        .leaderboard-item.you {
+            background-color: #e8f4ff;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #2575fc;
+        }
+
+        .rank {
+            width: 30px;
+            height: 30px;
+            background: #f0f2f5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .leaderboard-item.you .rank {
+            background: #2575fc;
+            color: white;
+        }
+
+        .player-info {
+            flex-grow: 1;
+        }
+
+        .player-name {
+            font-weight: 600;
+        }
+
+        .player-score {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .info-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .info-section h2 {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #f0f2f5;
+            padding-bottom: 10px;
+        }
+
+        .info-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .info-item {
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>"${quiz.name}"</h1>
+    </header>
+
+    <div class="main-content">
+        <div class="actions">
+            <h2>Действия</h2>
+            <div class="action-buttons">
+                <button class="btn btn-primary">Начать квиз</button>
+                <button class="btn btn-secondary">Начать совместный квиз</button>
+                <button class="btn btn-secondary">Скопировать квиз</button>
+            </div>
+        </div>
+
+        <div class="leaderboard">
+            <h2>Таблица лидеров</h2>
+            <ul class="leaderboard-list">
+                <li class="leaderboard-item">
+                    <div class="rank">1</div>
+                    <div class="player-info">
+                        <div class="player-name">User</div>
+                        <div class="player-score">- очков</div>
+                    </div>
+                </li>
+                <li class="leaderboard-item">
+                    <div class="rank">2</div>
+                    <div class="player-info">
+                        <div class="player-name">User</div>
+                        <div class="player-score">- очков</div>
+                    </div>
+                </li>
+                <li class="leaderboard-item">
+                    <div class="rank">3</div>
+                    <div class="player-info">
+                        <div class="player-name">User</div>
+                        <div class="player-score">- очков</div>
+                    </div>
+                </li>
+                <li class="leaderboard-item">
+                    <div class="rank">4</div>
+                    <div class="player-info">
+                        <div class="player-name">User</div>
+                        <div class="player-score">- очков</div>
+                    </div>
+                </li>
+                <li class="leaderboard-item you">
+                    <div class="rank">5</div>
+                    <div class="player-info">
+                        <div class="player-name">${user.name}</div>
+                        <div class="player-score">- очков</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <h2>Информация о квизе</h2>
+        <div class="info-content">
+            <div class="info-item">
+                <div class="info-label">Количество вопросов</div>
+                <div class="info-value">-</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Время на прохождение</div>
+                <div class="info-value">- минут</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Сложность</div>
+                <div class="info-value">-</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Тема</div>
+                <div class="info-value">-</div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
