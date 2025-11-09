@@ -1,68 +1,71 @@
 package org.example.model;
 
-import java.time.LocalDateTime;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "quizzes")
+@Getter
+@Setter
 public class Quiz {
-    private Long id;
-    private String name;
-    private String prompt;
-    private Long createBy;
-    private Boolean hasMaterial;
-    private String materialUrl;
-    private Long questionNumber;
-    private Long time;
-    private Boolean isPrivate;
-    private Boolean isStatic;
-    private LocalDateTime createdAt;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    public Quiz() {}
+  @Column(nullable = false)
+  private String name;
 
-    public Quiz(Long id, String name, String prompt, Long createBy, Boolean hasMaterial, 
-                String materialUrl, Long questionNumber, Long time, Boolean isPrivate, 
-                Boolean isStatic, LocalDateTime createdAt) {
-        this.id = id;
-        this.name = name;
-        this.prompt = prompt;
-        this.createBy = createBy;
-        this.hasMaterial = hasMaterial;
-        this.materialUrl = materialUrl;
-        this.questionNumber = questionNumber;
-        this.time = time;
-        this.isPrivate = isPrivate;
-        this.isStatic = isStatic;
-        this.createdAt = createdAt;
-    }
+  @Column(columnDefinition = "TEXT")
+  private String prompt;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "created_by", nullable = false)
+  private User createdBy;
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+  @Column(name = "has_material")
+  private boolean hasMaterial;
 
-    public String getPrompt() { return prompt; }
-    public void setPrompt(String prompt) { this.prompt = prompt; }
+  @Column(name = "material_url")
+  private String materialUrl;
 
-    public Long getCreateBy() { return createBy; }
-    public void setCreateBy(Long createBy) { this.createBy = createBy; }
+  @Column(name = "time_per_question")
+  private Duration timePerQuestion;
 
-    public Boolean getHasMaterial() { return hasMaterial; }
-    public void setHasMaterial(Boolean hasMaterial) { this.hasMaterial = hasMaterial; }
+  @Column(name = "is_private")
+  private boolean isPrivate;
 
-    public String getMaterialUrl() { return materialUrl; }
-    public void setMaterialUrl(String materialUrl) { this.materialUrl = materialUrl; }
+  @Column(name = "is_static")
+  private boolean isStatic;
 
-    public Long getQuestionNumber() { return questionNumber; }
-    public void setQuestionNumber(Long questionNumber) { this.questionNumber = questionNumber; }
+  @Column(name = "created_at")
+  private Instant createdAt;
 
-    public Long getTime() { return time; }
-    public void setTime(Long time) { this.time = time; }
+  @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<Question> questions = new ArrayList<>();
 
-    public Boolean getIsPrivate() { return isPrivate; }
-    public void setIsPrivate(Boolean isPrivate) { this.isPrivate = isPrivate; }
+  public Quiz() {
+    this.questions = new ArrayList<>();
+  }
 
-    public Boolean getIsStatic() { return isStatic; }
-    public void setIsStatic(Boolean isStatic) { this.isStatic = isStatic; }
-
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+  public Quiz(Long id, String name, String prompt, User createdBy, boolean hasMaterial,
+              String materialUrl, Duration timePerQuestion, boolean isPrivate,
+              boolean isStatic, Instant createdAt) {
+    this.id = id;
+    this.name = name;
+    this.prompt = prompt;
+    this.createdBy = createdBy;
+    this.hasMaterial = hasMaterial;
+    this.materialUrl = materialUrl;
+    this.timePerQuestion = timePerQuestion;
+    this.isPrivate = isPrivate;
+    this.isStatic = isStatic;
+    this.createdAt = createdAt;
+    this.questions = new ArrayList<>();
+  }
 }

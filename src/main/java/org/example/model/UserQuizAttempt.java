@@ -1,45 +1,48 @@
 package org.example.model;
 
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import java.time.Instant;
+
+@Entity
+@Table(name = "user_quiz_attempts")
+@Getter
+@Setter
 public class UserQuizAttempt {
-    private Long id;
-    private Long userId;
-    private Long quizId;
-    private Long startTime;
-    private Long finishTime;
-    private Long score;
-    private Long isCompleted;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    public UserQuizAttempt() {}
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "user_id", nullable = false)
+  private User user;
 
-    public UserQuizAttempt(Long id, Long userId, Long quizId, Long startTime, 
-                          Long finishTime, Long score, Long isCompleted) {
-        this.id = id;
-        this.userId = userId;
-        this.quizId = quizId;
-        this.startTime = startTime;
-        this.finishTime = finishTime;
-        this.score = score;
-        this.isCompleted = isCompleted;
-    }
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "quiz_id", nullable = false)
+  private Quiz quiz;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+  @Column(name = "start_time")
+  private Instant startTime;
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
+  @Column(name = "finish_time")
+  private Instant finishTime;
 
-    public Long getQuizId() { return quizId; }
-    public void setQuizId(Long quizId) { this.quizId = quizId; }
+  private Long score;
 
-    public Long getStartTime() { return startTime; }
-    public void setStartTime(Long startTime) { this.startTime = startTime; }
+  @Column(name = "is_completed")
+  private boolean isCompleted;
 
-    public Long getFinishTime() { return finishTime; }
-    public void setFinishTime(Long finishTime) { this.finishTime = finishTime; }
+  public UserQuizAttempt() {}
 
-    public Long getScore() { return score; }
-    public void setScore(Long score) { this.score = score; }
-
-    public Long getIsCompleted() { return isCompleted; }
-    public void setIsCompleted(Long isCompleted) { this.isCompleted = isCompleted; }
+  public UserQuizAttempt(Long id, User user, Quiz quiz, Instant startTime,
+                         Instant finishTime, Long score, boolean isCompleted) {
+    this.id = id;
+    this.user = user;
+    this.quiz = quiz;
+    this.startTime = startTime;
+    this.finishTime = finishTime;
+    this.score = score;
+    this.isCompleted = isCompleted;
+  }
 }
