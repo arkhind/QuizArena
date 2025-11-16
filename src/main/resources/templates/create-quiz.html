@@ -410,7 +410,6 @@
 
     fileUploadSection.addEventListener('drop', (e) => {
         e.preventDefault();
-    });
         if (e.dataTransfer.files.length > 0) {
             fileInput.files = e.dataTransfer.files;
             updateFileLabel(e.dataTransfer.files[0].name);
