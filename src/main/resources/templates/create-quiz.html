@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создание квиза</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .form-container {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 700px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea,
+        input[type="file"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        input[type="file"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .file-upload-section {
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 1px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .file-upload-section:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .file-upload-label {
+            display: block;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .file-upload-icon {
+            font-size: 40px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .quiz-type-section {
+            margin-top: 20px;
+        }
+
+        .type-category {
+            margin-bottom: 20px;
+        }
+
+        .type-category-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .radio-option label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+
+        .number-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 600px) {
+            .number-inputs {
+                grid-template-columns: 1fr;
+            }
+
+            .radio-group {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 35px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .cancel-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .cancel-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        input:invalid ~ .error-message {
+            display: block;
+        }
+
+    </style>
+</head>
+<body>
+<div class="form-container">
+    <h1>Страница создания квиза</h1>
+
+    <form id="createQuizForm" onsubmit="handleSubmit(event)">
+        <!-- Название квиза -->
+        <div class="form-group">
+            <label>
+                <span class="required">*</span> Введите название:
+            </label>
+            <input type="text"
+                   id="quizName"
+                   name="name"
+                   required>
+        </div>
+
+        <!-- Описание/Промт -->
+        <div class="form-group">
+            <label>
+                <span class="required">*</span> Описание (промт для ИИ):
+            </label>
+            <textarea id="quizPrompt"
+                      name="prompt"
+                      required></textarea>
+        </div>
+
+        <!-- Загрузка файла -->
+        <div class="form-group">
+            <div class="file-upload-section">
+                <span class="file-upload-label">
+                        Добавьте материал (.pdf, .txt, .doc, .docx)
+                    </span>
+                <input type="file"
+                       id="quizMaterial"
+                       name="material"
+                       accept=".pdf,.txt,.doc,.docx">
+            </div>
+        </div>
+
+        <!-- Числовые параметры -->
+        <div class="number-inputs">
+            <div class="form-group">
+                <label>
+                    <span class="required">*</span> Количество вопросов:
+                </label>
+                <input type="number"
+                       id="questionNumber"
+                       name="questionNumber"
+                       value="10"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <span class="required">*</span> Время на ответ (сек):
+                </label>
+                <input type="number"
+                       id="timeLimit"
+                       name="timeLimit"
+                       value="30"
+                       required>
+            </div>
+        </div>
+
+        <!-- Тип квиза -->
+        <div class="form-group quiz-type-section">
+            <label>
+                <span class="required">*</span> Выберите тип квиза:
+            </label>
+
+            <!-- Публичность -->
+            <div class="type-category">
+                <span class="type-category-label">1. Видимость:</span>
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio"
+                               id="public"
+                               name="visibility"
+                               value="public"
+                               checked>
+                        <label for="public">Публичный</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio"
+                               id="private"
+                               name="visibility"
+                               value="private">
+                        <label for="private">Приватный</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Статичность -->
+            <div class="type-category">
+                <span class="type-category-label">2. Тип содержимого:</span>
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio"
+                               id="static"
+                               name="contentType"
+                               value="static"
+                               checked>
+                        <label for="static">Статичный</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio"
+                               id="updatable"
+                               name="contentType"
+                               value="updatable">
+                        <label for="updatable">Обновляемый</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопки -->
+        <div class="button-group">
+            <button type="button" class="cancel-btn" onclick="goBack()">
+                Отмена
+            </button>
+            <button type="submit" class="submit-btn">
+                Создать квиз
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function goBack() {
+        window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
+    }
+
+    function getCurrentUserId() {
+        return localStorage.getItem('userId') || '1';
+    }
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+
+        const form = document.getElementById('createQuizForm');
+        const formData = new FormData(form);
+
+        // Собираем данные формы
+        const quizData = {
+            name: formData.get('name'),
+            prompt: formData.get('prompt'),
+            createdBy: parseInt(getCurrentUserId()),
+            hasMaterial: formData.get('material') !== null && formData.get('material').size > 0,
+            materials: [], // TODO: обработка загруженного файла
+            questionNumber: parseInt(formData.get('questionNumber')),
+            timeLimit: parseInt(formData.get('timeLimit')),
+            isPrivate: formData.get('visibility') === 'private',
+            isStatic: formData.get('contentType') === 'static'
+        };
+
+        try {
+            const response = await fetch('/api/quiz/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                body: JSON.stringify(quizData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                alert('Квиз успешно создан!');
+                window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
+            } else {
+                const error = await response.json();
+                alert('Ошибка при создании квиза: ' + (error.message || 'Неизвестная ошибка'));
+            }
+        } catch (error) {
+            alert('Ошибка сети. Проверьте подключение.');
+            console.error('Error:', error);
+        }
+    }
+
+    // Drag and drop для файла
+    const fileUploadSection = document.querySelector('.file-upload-section');
+    const fileInput = document.getElementById('quizMaterial');
+
+    fileUploadSection.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUploadSection.style.borderColor = '#667eea';
+        fileUploadSection.style.background = '#f0f4ff';
+    });
+
+    fileUploadSection.addEventListener('dragleave', () => {
+        fileUploadSection.style.borderColor = '#dee2e6';
+        fileUploadSection.style.background = '#f8f9fa';
+    });
+
+    fileUploadSection.addEventListener('drop', (e) => {
+        e.preventDefault();
+    });
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            updateFileLabel(e.dataTransfer.files[0].name);
+        }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            updateFileLabel(e.target.files[0].name);
+        }
+    });
+
+    function updateFileLabel(fileName) {
+        const label = document.querySelector('.file-upload-label');
+        label.textContent = 'Файл загружен: ' + fileName;
+        label.style.color = '#28a745';
+    }
+</script>
+</body>
+</html>
