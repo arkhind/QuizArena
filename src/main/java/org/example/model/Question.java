@@ -1,33 +1,51 @@
 package org.example.model;
 
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-
 import java.util.ArrayList;
 import java.util.List;
 
+@Entity
+@Table(name = "questions")
 @Getter
 @Setter
 public class Question {
-    private Long id;
-    private Quiz quiz;
-    private String text;
-    private QuestionType type;
-    private String explanation;
-    private byte[] image;
-    private List<AnswerOption> answerOptions;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    public Question() {
-        this.answerOptions = new ArrayList<>();
-    }
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "quiz_id", nullable = false)
+  private Quiz quiz;
 
-    public Question(Long id, Quiz quiz, String text, QuestionType type, String explanation, byte[] image) {
-        this.id = id;
-        this.quiz = quiz;
-        this.text = text;
-        this.type = type;
-        this.explanation = explanation;
-        this.image = image;
-        this.answerOptions = new ArrayList<>();
-    }
+  @Column(columnDefinition = "TEXT")
+  private String text;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private QuestionType type;
+
+  @Column(columnDefinition = "TEXT")
+  private String explanation;
+
+  @Lob
+  private byte[] image;
+
+  @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<AnswerOption> answerOptions = new ArrayList<>();
+
+  public Question() {
+    this.answerOptions = new ArrayList<>();
+  }
+
+  public Question(Long id, Quiz quiz, String text, QuestionType type, String explanation, byte[] image) {
+    this.id = id;
+    this.quiz = quiz;
+    this.text = text;
+    this.type = type;
+    this.explanation = explanation;
+    this.image = image;
+    this.answerOptions = new ArrayList<>();
+  }
 }
