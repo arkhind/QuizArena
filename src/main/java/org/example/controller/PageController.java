@@ -1,0 +1,98 @@
+package org.example.controller;
+
+import org.example.dto.request.auth.*;
+import org.example.dto.request.quiz.*;
+import org.example.dto.request.attempt.*;
+import org.example.dto.request.multiplayer.*;
+import org.example.dto.request.generation.*;
+
+import org.example.dto.response.auth.*;
+import org.example.dto.response.quiz.*;
+import org.example.dto.response.attempt.*;
+import org.example.dto.response.multiplayer.*;
+import org.example.dto.response.history.*;
+import org.example.dto.response.generation.*;
+
+import org.example.dto.common.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
+
+@Controller
+public class PageController {
+
+    private final ApiController apiController;
+    
+    @Autowired
+    public PageController(ApiController apiController) {
+        this.apiController = apiController;
+    }
+    
+    @GetMapping("/")
+    public String index() {
+        return "redirect:/login";
+    }
+    
+    @GetMapping("/login")
+    public String login() {
+        return "login";
+    }
+
+    @GetMapping("/register")
+    public String register() {
+        return "register";
+    }
+
+    @GetMapping("/home")
+    public String home(Model model) {
+        QuizSearchRequest request = new QuizSearchRequest("", "popularity", true, 0, 20);
+        QuizSearchResponse response = apiController.searchPublicQuizzes(request);
+        model.addAttribute("quizzes", response.content());
+        model.addAttribute("totalPages", response.totalPages());
+        model.addAttribute("currentPage", response.currentPage());
+        return "home";
+    }
+
+    @GetMapping("/profile")
+    public String profile(@RequestParam Long userId, Model model) {
+        UserProfileDTO userProfile = apiController.getUserProfile(userId);
+        UserHistoryDTO userHistory = apiController.getUserHistory(userId);
+        java.util.List<QuizDTO> createdQuizzes = apiController.getCreatedQuizzes(userId);
+        
+        model.addAttribute("userProfile", userProfile);
+        model.addAttribute("userHistory", userHistory);
+        model.addAttribute("createdQuizzes", createdQuizzes);
+        return "profile";
+    }
+
+    @GetMapping("/quiz")
+    public String quizList(@RequestParam(required = false, defaultValue = "") String search, Model model) {
+        QuizSearchRequest request = new QuizSearchRequest(search, "name", true, 0, 20);
+        QuizSearchResponse response = apiController.searchPublicQuizzes(request);
+        model.addAttribute("quizzes", response.content());
+        model.addAttribute("search", search);
+        return "quiz";
+    }
+
+    @GetMapping("/quiz/{quizId}")
+    public String quizDetails(@PathVariable Long quizId, Model model) {
+        QuizDetailsDTO quiz = apiController.getQuiz(quizId);
+        model.addAttribute("quiz", quiz);
+        return "quiz-details";
+    }
+
+    @GetMapping("/my-quizzes")
+    public String myQuizzes(@RequestParam Long userId, Model model) {
+        java.util.List<QuizDTO> createdQuizzes = apiController.getCreatedQuizzes(userId);
+        model.addAttribute("createdQuizzes", createdQuizzes);
+        return "my-quizzes";
+    }
+
+    @GetMapping("/quiz/create")
+    public String createQuizPage(@RequestParam(required = false) Long userId, Model model) {
+        return "create-quiz";
+    }
+}
