@@ -23,9 +23,6 @@ import java.util.List;
  * Основной интерфейс API для системы управления квизами.
  * Предоставляет методы для аутентификации, управления квизами,
  * прохождения тестов и совместных сессий.
- *
- * @author System Architect
- * @version 1.0
  */
 public interface ApiController {
 
