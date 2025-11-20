@@ -53,23 +53,77 @@
 <body>
     <div class="auth-box">
         <h2>Авторизация</h2>
-        <form>
+        <form id="loginForm">
             <div class="form-group">
-               <input type="text" placeholder="Логин" required>
+               <input type="text" name="username" id="username" placeholder="Логин" required>
             </div>
             <div class="form-group">
-                <input type="password" placeholder="Пароль" required>
+                <input type="password" name="password" id="password" placeholder="Пароль" required>
             </div>
             <button type="submit">Войти</button>
             <button type="button" class="register-btn" onclick="goToRegister()">Зарегистрироваться</button>
         </form>
+        <div id="errorMessage" style="color: red; text-align: center; margin-top: 10px; display: none;"></div>
     </div>
     <script>
         function goToRegister() {
             window.location.href = '/register';
         }
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            const form = e.target;
+            const formData = new FormData(form);
+            const username = formData.get('username');
+            const password = formData.get('password');
+            
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+            
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Вход...';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                if (response.ok) {
+                    const authResponse = await response.json();
+                    
+                    if (authResponse.token) {
+                        localStorage.setItem('token', authResponse.token);
+                        window.location.href = '/home';
+                    } else {
+                        errorDiv.textContent = 'Ошибка: токен не получен';
+                        errorDiv.style.display = 'block';
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Войти';
+                    }
+                } else {
+                    const error = await response.json().catch(() => ({}));
+                    errorDiv.textContent = error.message || 'Неверный логин или пароль';
+                    errorDiv.style.display = 'block';
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Войти';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorDiv.textContent = 'Ошибка сети. Попробуйте позже.';
+                errorDiv.style.display = 'block';
+                submitButton.disabled = false;
+                submitButton.textContent = 'Войти';
+            }
         });
     </script>
 </body>

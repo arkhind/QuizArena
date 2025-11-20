@@ -71,7 +71,6 @@
         textarea:focus,
         input[type="file"]:focus {
             outline: none;
-            border-color: #667eea;
         }
 
         textarea {
@@ -83,26 +82,32 @@
             background: #f8f9fa;
             border: 2px dashed #dee2e6;
             border-radius: 8px;
-            padding: 1px;
+            padding: 25px;
             text-align: center;
             transition: all 0.3s;
+            cursor: pointer;
         }
 
-        .file-upload-section:hover {
-            border-color: #667eea;
-            background: #f0f4ff;
-        }
 
         .file-upload-label {
             display: block;
             color: #666;
             margin-bottom: 15px;
+            font-size: 14px;
         }
 
         .file-upload-icon {
             font-size: 40px;
             color: #667eea;
             margin-bottom: 10px;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
         }
 
         .quiz-type-section {
@@ -242,14 +247,21 @@
 
         <!-- Загрузка файла -->
         <div class="form-group">
-            <div class="file-upload-section">
-                <span class="file-upload-label">
-                        Добавьте материал (.pdf, .txt, .doc, .docx)
-                    </span>
-                <input type="file"
-                       id="quizMaterial"
-                       name="material"
-                       accept=".pdf,.txt,.doc,.docx">
+            <div class="file-upload-section" onclick="document.getElementById('quizMaterial').click()">
+                <div class="file-upload-icon">📄</div>
+                <span class="file-upload-label" id="fileLabel">
+                    Добавьте материал (.pdf, .txt, .doc, .docx)
+                </span>
+                <small style="color: #999; display: block; margin-top: 10px;">
+                    Необязательно. Материал будет использован для генерации вопросов
+                </small>
+                <div class="file-input-wrapper">
+                    <input type="file"
+                           id="quizMaterial"
+                           name="material"
+                           accept=".pdf,.txt,.doc,.docx"
+                           style="display: none;">
+                </div>
             </div>
         </div>
 
@@ -393,40 +405,38 @@
         }
     }
 
-    // Drag and drop для файла
-    const fileUploadSection = document.querySelector('.file-upload-section');
+    /**
+     * Обновление текста метки после выбора файла.
+     * Показывает имя загруженного файла вместо стандартного текста.
+     * 
+     * @param {string} fileName - имя выбранного файла
+     */
+    function updateFileLabel(fileName) {
+        const label = document.getElementById('fileLabel');
+        label.textContent = '✓ Файл загружен: ' + fileName;
+        label.style.color = '#28a745';
+        label.style.fontWeight = 'bold';
+    }
+
+    // ============ ОБРАБОТКА ЗАГРУЗКИ ФАЙЛОВ ============
+
     const fileInput = document.getElementById('quizMaterial');
 
-    fileUploadSection.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        fileUploadSection.style.borderColor = '#667eea';
-        fileUploadSection.style.background = '#f0f4ff';
-    });
-
-    fileUploadSection.addEventListener('dragleave', () => {
-        fileUploadSection.style.borderColor = '#dee2e6';
-        fileUploadSection.style.background = '#f8f9fa';
-    });
-
-    fileUploadSection.addEventListener('drop', (e) => {
-        e.preventDefault();
-        if (e.dataTransfer.files.length > 0) {
-            fileInput.files = e.dataTransfer.files;
-            updateFileLabel(e.dataTransfer.files[0].name);
-        }
-    });
-
+    /**
+     * Обработчик изменения файла через стандартный выбор.
+     * Срабатывает при клике на "Выбрать файл" в диалоге.
+     */
     fileInput.addEventListener('change', (e) => {
         if (e.target.files.length > 0) {
             updateFileLabel(e.target.files[0].name);
+        } else {
+            // Если файл удален, возвращаем исходный текст
+            const label = document.getElementById('fileLabel');
+            label.textContent = 'Добавьте материал (.pdf, .txt, .doc, .docx)';
+            label.style.color = '#666';
+            label.style.fontWeight = 'normal';
         }
     });
-
-    function updateFileLabel(fileName) {
-        const label = document.querySelector('.file-upload-label');
-        label.textContent = 'Файл загружен: ' + fileName;
-        label.style.color = '#28a745';
-    }
 </script>
 </body>
 </html>

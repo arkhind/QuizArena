@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Совместное прохождение</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+            padding: 30px;
+        }
+
+        .session-card {
+            background: white;
+            width: 420px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 32px 36px;
+            text-align: center;
+        }
+
+        .session-card h2 {
+            font-size: 1.4rem;
+            color: #555;
+            margin-bottom: 12px;
+        }
+
+        .quiz-title {
+            font-size: 1.9rem;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .session-link {
+            display: inline-block;
+            margin: 12px 0 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .session-link:hover {
+            text-decoration: underline;
+        }
+
+        .participants-box {
+            border: 2px solid #e9ecef;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 28px;
+            background: #f8f9fa;
+        }
+
+        .participants-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .participants-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+
+        .participant {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #e0e7ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4c51bf;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .empty-seat {
+            background: #f1f5f9;
+            color: #94a3b8;
+            font-weight: normal;
+        }
+
+        .primary-btn {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35);
+        }
+
+        .cancel-link {
+            display: inline-block;
+            margin-top: 18px;
+            color: #9ca3af;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+
+        .cancel-link:hover {
+            text-decoration: underline;
+            color: #6b7280;
+        }
+
+        .status {
+            margin-top: 18px;
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        .copy-feedback {
+            margin-top: 8px;
+            color: #16a34a;
+            font-size: 0.9rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="session-card">
+    <h2>Совместное прохождение</h2>
+    <div class="quiz-title" id="quizName" th:text="${quizName != null ? quizName : 'Название Квиза'}">Название Квиза</div>
+    <a class="session-link" id="sessionLink" th:href="${joinLink != null ? joinLink : '#'}" onclick="copySessionLink()">Скопировать ссылку на сессию</a>
+    <div class="copy-feedback" id="copyFeedback">Ссылка скопирована!</div>
+
+    <div class="participants-box">
+        <div class="participants-header">
+            <span>Участники</span>
+            <span id="participantCount">0/10</span>
+        </div>
+        <div class="participants-grid" id="participantsGrid">
+            <!-- Заполняется скриптом -->
+        </div>
+    </div>
+
+    <button class="primary-btn" onclick="startSession()">
+        ▶ Начать
+    </button>
+
+    <a class="cancel-link" onclick="cancelSession()">Отменить</a>
+
+    <div class="status" id="sessionStatus">
+        Ожидание подключения участников...
+    </div>
+</div>
+
+<script>
+
+    const SESSION_ID = /*[[${sessionId}]]*/ 'abc123xyz';
+    const HOST_USER_ID = /*[[${hostUserId}]]*/ Number(localStorage.getItem('userId')) || 1; // кто ведёт сессию
+    const MAX_PARTICIPANTS = 10;
+    const API_BASE = '/api/multiplayer';
+
+     // Заголовок, если нужно поменять динамически
+     // document.getElementById('quizName').textContent = `Квиз: ${window.initialQuizTitle}`;
+
+    function renderParticipants(participants) {
+        const grid = document.getElementById('participantsGrid');
+        grid.innerHTML = '';
+        const totalSpots = MAX_PARTICIPANTS;
+
+        for (let i = 0; i < totalSpots; i++) {
+            const slot = document.createElement('div');
+            if (participants[i]) {
+                const initials = participants[i].username
+                    .split(' ')
+                    .map(word => word[0]?.toUpperCase())
+                    .join('');
+                slot.textContent = initials || 'U';
+                slot.title = participants[i].username;
+                slot.className = 'participant';
+            } else {
+                slot.textContent = '+';
+                slot.className = 'participant empty-seat';
+                slot.title = 'Свободное место';
+            }
+            grid.appendChild(slot);
+        }
+
+        document.getElementById('participantCount').textContent =
+           `${participants.length}/${MAX_PARTICIPANTS}`;
+    }
+
+    async function fetchSession() {
+        try {
+            const response = await fetch(`${API_BASE}/sessions/${SESSION_ID}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Сервер вернул ${response.status}`);
+            }
+
+            const session = await response.json();
+            document.getElementById('quizName').textContent = session.quizName;
+            renderParticipants(session.participants || []);
+            document.getElementById('sessionStatus').textContent =
+                `Статус: ${translateStatus(session.status)}`;
+        } catch (error) {
+            document.getElementById('sessionStatus').textContent =
+                `Не удалось загрузить данные сессии: ${error.message}`;
+        }
+     }
+    async function startSession() {
+        try {
+            const response = await fetch(`${API_BASE}/sessions/start`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    sessionId: SESSION_ID,
+                    hostUserId: HOST_USER_ID
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Сервер вернул ${response.status}`);
+            }
+
+            document.getElementById('sessionStatus').textContent =
+                'Сессия запущена';
+        } catch (error) {
+            document.getElementById('sessionStatus').textContent =
+                `Не удалось запустить сессию: ${error.message}`;
+        }
+    }
+    async function cancelSession() {
+        try {
+            const response = await fetch(`${API_BASE}/sessions/cancel`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    sessionId: SESSION_ID,
+                    hostUserId: HOST_USER_ID
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Сервер вернул ${response.status}`);
+            }
+
+            document.getElementById('sessionStatus').textContent =
+                'Сессия отменена.';
+        } catch (error) {
+            document.getElementById('sessionStatus').textContent =
+                `Не удалось отменить сессию: ${error.message}`;
+        }
+    }
+    function translateStatus(status) {
+        switch (status) {
+            case 'WAITING': return 'ожидание участников';
+            case 'STARTED': return 'идёт прохождение';
+            case 'FINISHED': return 'завершена';
+            case 'CANCELLED': return 'отменена';
+            default: return status;
+        }
+    }
+    
+    function copySessionLink() {
+        const linkElement = document.getElementById('sessionLink');
+        const linkText = linkElement.href || linkElement.textContent;
+        
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(linkText).then(() => {
+                const feedback = document.getElementById('copyFeedback');
+                feedback.style.display = 'block';
+                setTimeout(() => {
+                    feedback.style.display = 'none';
+                }, 2000);
+            });
+        } else {
+            alert('Ссылка: ' + linkText);
+        }
+    }
+
+    fetchSession();
+
+</script>
+</body>
+</html>
