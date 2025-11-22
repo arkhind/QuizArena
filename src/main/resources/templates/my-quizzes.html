@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои Квизы</title>
+    <title>Мои Квизы - QuizArena</title>
     <style>
         * {
             margin: 0;
@@ -95,7 +95,7 @@
 
         .empty-state {
             text-align: center;
-            padding: 10px 10px;
+            padding: 40px 10px;
             color: #999;
         }
 
@@ -120,10 +120,6 @@
             transition: transform 0.2s;
         }
 
-        .create-quiz-btn:hover {
-            transform: translateY(-3px);
-        }
-
         .quiz-list {
             list-style: none;
         }
@@ -132,22 +128,17 @@
             background: #f8f9fa;
             border: 2px solid #e9ecef;
             border-radius: 15px;
-            padding: 25px 15px;
+            padding: 25px;
             margin-bottom: 20px;
-            cursor: pointer;
             transition: all 0.3s;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .quiz-item:hover {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-color: #667eea;
-        }
-
         .quiz-info {
             flex: 1;
+            cursor: pointer;
         }
 
         .quiz-name {
@@ -160,19 +151,47 @@
             font-size: 14px;
             opacity: 0.8;
             display: flex;
+            gap: 15px;
+        }
+
+        .quiz-actions {
+            display: flex;
             gap: 10px;
         }
 
+        .quiz-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
 
+        .quiz-btn.edit {
+            background: #28a745;
+            color: white;
+        }
 
+        .quiz-btn.edit:hover {
+            background: #218838;
+        }
 
+        .quiz-btn.delete {
+            background: #dc3545;
+            color: white;
+        }
+
+        .quiz-btn.delete:hover {
+            background: #c82333;
+        }
     </style>
 </head>
 <body>
 <div class="sidebar">
     <div class="profile-section">
-        <a href="/profile" class="nav-btn">Назад</a>
-        <a href="/home" class="nav-btn">Главная</a>
+        <a th:href="@{/profile(userId=${#httpServletRequest.getParameter('userId')})}" class="nav-btn">Назад</a>
+        <a th:href="@{/home}" class="nav-btn">Главная</a>
     </div>
 </div>
 
@@ -183,25 +202,26 @@
         </header>
 
         <section class="quizzes-section-main">
-            <div class="empty-state" >
-                <p>Создайте свой квиз, чтобы начать!</p>
+            <div class="empty-state" th:if="${createdQuizzes == null or createdQuizzes.isEmpty()}">
+                <h3>У вас пока нет квизов</h3>
                 <button class="create-quiz-btn" onclick="goToCreateQuiz()">Создать квиз</button>
             </div>
 
             <ul class="quiz-list" th:if="${createdQuizzes != null and !createdQuizzes.isEmpty()}">
-                <li class="quiz-item" th:each="quiz : ${createdQuizzes}"
-                    th:onclick="'goToQuizDetails(' + ${quiz.id} + ')'">
-                    <div class="quiz-info">
+                <li class="quiz-item" th:each="quiz : ${createdQuizzes}">
+                    <div class="quiz-info" th:onclick="'goToQuizDetails(' + ${quiz.id} + ')'">
                         <div class="quiz-name" th:text="${quiz.name}">Название квиза</div>
                         <div class="quiz-meta">
                             <span th:text="'Вопросов: ' + ${quiz.questionCount}">Вопросов: -</span>
                             <span th:text="'Время: ' + ${quiz.timeLimit} + ' мин'">Время: -</span>
                             <span th:text="${quiz.isPublic ? 'Публичный' : 'Приватный'}">Публичный</span>
+                            <span th:if="${quiz.createdAt != null}"
+                                  th:text="'Создан: ' + ${#temporals.format(quiz.createdAt, 'dd.MM.yyyy')}">Дата</span>
                         </div>
                     </div>
                     <div class="quiz-actions" onclick="event.stopPropagation()">
-                        <button class="quiz-btn" th:onclick="'editQuiz(' + ${quiz.id} + ')'">Редактировать</button>
-                        <button class="quiz-btn" th:onclick="'deleteQuiz(' + ${quiz.id} + ')'">Удалить</button>
+                        <button class="quiz-btn edit" th:onclick="'editQuiz(' + ${quiz.id} + ')'">Редактировать</button>
+                        <button class="quiz-btn delete" th:onclick="'deleteQuiz(' + ${quiz.id} + ')'">Удалить</button>
                     </div>
                 </li>
             </ul>
@@ -210,16 +230,13 @@
 </div>
 
 <script>
-    function goToProfile() {
-        window.location.href = '/profile?userId=' + getCurrentUserId();
-    }
-
-    function goToHome() {
-        window.location.href = '/home';
+    function getCurrentUserId() {
+        return localStorage.getItem('userId') || new URLSearchParams(window.location.search).get('userId');
     }
 
     function goToCreateQuiz() {
-        window.location.href = '/quiz/create';
+        const userId = getCurrentUserId();
+        window.location.href = '/quiz/create' + (userId ? '?userId=' + userId : '');
     }
 
     function goToQuizDetails(quizId) {
@@ -230,20 +247,41 @@
         window.location.href = '/quiz/' + quizId + '/edit';
     }
 
-    function deleteQuiz(quizId) {
-        if (confirm('Вы уверены, что хотите удалить этот квиз?')) {
-            fetch('/api/quiz/' + quizId, {
-                method: 'DELETE',
-            })
-            .then(response => {
-                    alert('Квиз успешно удалён');
-                    window.location.reload();
-            })
+    async function deleteQuiz(quizId) {
+        if (!confirm('Вы уверены, что хотите удалить этот квиз?')) {
+            return;
         }
-    }
 
-    function getCurrentUserId() {
-        return localStorage.getItem('userId');
+        const userId = getCurrentUserId();
+        if (!userId) {
+            alert('Ошибка: пользователь не найден');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/quiz/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                body: JSON.stringify({
+                    quizId: quizId,
+                    userId: parseInt(userId)
+                })
+            });
+
+            if (response.ok) {
+                alert('Квиз успешно удалён');
+                window.location.reload();
+            } else {
+                const error = await response.json();
+                alert('Ошибка при удалении: ' + (error.message || 'Неизвестная ошибка'));
+            }
+        } catch (error) {
+            alert('Ошибка сети. Проверьте подключение.');
+            console.error('Error:', error);
+        }
     }
 </script>
 </body>
