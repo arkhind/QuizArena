@@ -23,13 +23,11 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class MultiplayerService {
-  private final DatabaseService databaseService;
   private final AttemptService attemptService;
 
   private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
 
-  public MultiplayerService(DatabaseService databaseService, AttemptService attemptService) {
-    this.databaseService = databaseService;
+  public MultiplayerService(AttemptService attemptService) {
     this.attemptService = attemptService;
   }
 
@@ -364,7 +362,7 @@ public class MultiplayerService {
   // Операции с базой данных
 
   private User getUserById(Long userId) {
-    String sql = "SELECT id, login, password FROM \"User\" WHERE id = ?";
+    String sql = "SELECT id, login, password FROM users WHERE id = ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setLong(1, userId);
@@ -384,11 +382,11 @@ public class MultiplayerService {
   }
 
   private Quiz getQuizById(Long quizId) {
-    String sql = "SELECT q.id, q.name, q.prompt, q.create_by, q.has_material, q.material_url, " +
-      "q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
+    String sql = "SELECT q.id, q.name, q.prompt, q.created_by, q.has_material, q.material_url, " +
+      "q.question_number, q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
       "u.id as user_id, u.login " +
-      "FROM \"Quiz\" q " +
-      "LEFT JOIN \"User\" u ON q.create_by = u.id " +
+      "FROM quizzes q " +
+      "LEFT JOIN users u ON q.created_by = u.id " +
       "WHERE q.id = ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -405,6 +403,7 @@ public class MultiplayerService {
           quiz.setCreatedBy(creator);
           quiz.setHasMaterial(rs.getBoolean("has_material"));
           quiz.setMaterialUrl(rs.getString("material_url"));
+          quiz.setQuestionNumber(rs.getObject("question_number", Integer.class));
 
           Integer seconds = rs.getObject("time_per_question_seconds", Integer.class);
           if (seconds != null) {
@@ -452,7 +451,7 @@ public class MultiplayerService {
 
   private UserQuizAttempt getAttemptById(Long attemptId) {
     String sql = "SELECT id, user_id, quiz_id, start_time, finish_time, score, is_completed " +
-      "FROM \"UserQuizAttempt\" WHERE id = ?";
+      "FROM user_quiz_attempts WHERE id = ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setLong(1, attemptId);
