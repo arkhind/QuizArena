@@ -39,7 +39,7 @@ public class DatabaseService {
 
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
-        String sql = "SELECT id, login, password FROM \"User\"";
+        String sql = "SELECT id, login, password FROM users";
         
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
@@ -61,11 +61,11 @@ public class DatabaseService {
 
     public List<Quiz> getAllQuizzes() {
         List<Quiz> quizzes = new ArrayList<>();
-        String sql = "SELECT q.id, q.name, q.prompt, q.create_by, q.has_material, q.material_url, " +
-                    "q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
+        String sql = "SELECT q.id, q.name, q.prompt, q.created_by, q.has_material, q.material_url, " +
+                    "q.question_number, q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
                     "u.id as user_id, u.login " +
-                    "FROM \"Quiz\" q " +
-                    "LEFT JOIN \"User\" u ON q.create_by = u.id";
+                    "FROM quizzes q " +
+                    "LEFT JOIN users u ON q.created_by = u.id";
         
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
@@ -82,13 +82,10 @@ public class DatabaseService {
                 quiz.setCreatedBy(creator);
                 quiz.setHasMaterial(resultSet.getBoolean("has_material"));
                 quiz.setMaterialUrl(resultSet.getString("material_url"));
+                quiz.setQuestionNumber(resultSet.getObject("question_number", Integer.class));
 
                 Integer seconds = resultSet.getObject("time_per_question_seconds", Integer.class);
-                if (seconds != null) {
-                    quiz.setTimePerQuestion(Duration.ofSeconds(seconds));
-                } else {
-                    quiz.setTimePerQuestion(null);
-                }
+                quiz.setTimePerQuestion(seconds != null ? Duration.ofSeconds(seconds) : null);
                 
                 quiz.setPrivate(resultSet.getBoolean("is_private"));
                 quiz.setStatic(resultSet.getBoolean("is_static"));
