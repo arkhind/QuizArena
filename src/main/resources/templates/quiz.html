@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Страница квиза</title>
     <style>
-        {
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -157,50 +157,12 @@
             color: #7f8c8d;
             font-size: 0.9rem;
         }
-
-        .info-section {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        .info-section h2 {
-            margin-bottom: 20px;
-            color: #2c3e50;
-            font-size: 1.5rem;
-            border-bottom: 2px solid #f0f2f5;
-            padding-bottom: 10px;
-        }
-
-        .info-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .info-item {
-            padding: 15px;
-            background: #f8fafc;
-            border-radius: 8px;
-        }
-
-        .info-label {
-            font-size: 0.9rem;
-            color: #7f8c8d;
-            margin-bottom: 5px;
-        }
-
-        .info-value {
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
     </style>
 </head>
 <body>
 <div class="container">
     <header>
-        <h1 th:text="${quizzes != null and !quizzes.isEmpty() ? quizzes[0].name : 'Квизы'}">Квизы</h1>
+        <h1 th:text="${quizzes != null and !quizzes.isEmpty() ? quizzes[0].name : 'Квиз'}">Название квиза</h1>
     </header>
 
     <div class="main-content">
@@ -208,52 +170,59 @@
             <h2>Действия</h2>
             <div class="action-buttons">
                 <button class="btn btn-primary">Начать квиз</button>
-                <button class="btn btn-secondary">Начать совместный квиз</button>
+                <button class="btn btn-secondary" th:if="${quizzes != null and !quizzes.isEmpty()}"
+                        th:onclick="'goToQuizDetails(' + ${quizzes[0].id} + ')'">Подробнее о квизе</button>
                 <button class="btn btn-secondary">Скопировать квиз</button>
             </div>
         </div>
 
         <div class="leaderboard">
             <h2>Таблица лидеров</h2>
-            <ul class="leaderboard-list" th:if="${quizzes != null and !quizzes.isEmpty()}">
-                <li class="leaderboard-item" th:each="quiz, iterStat : ${quizzes}" th:if="${iterStat.index < 5}">
-                    <div class="rank" th:text="${iterStat.index + 1}"></div>
+            <ul class="leaderboard-list">
+                <li class="leaderboard-item">
+                    <div class="rank">1</div>
                     <div class="player-info">
-                        <div class="player-name" th:text="${quiz.name}"></div>
-                        <div class="player-score" th:text="'Вопросов: ' + ${quiz.questionCount}"> очков</div>
+                        <div class="player-name">User</div>
+                        <div class="player-score">- очков</div>
+                    </div>
+                </li>
+                <li class="leaderboard-item">
+                    <div class="rank">2</div>
+                    <div class="player-info">
+                        <div class="player-name">User</div>
+                        <div class="player-score">- очков</div>
+                    </div>
+                </li>
+                <li class="leaderboard-item">
+                    <div class="rank">3</div>
+                    <div class="player-info">
+                        <div class="player-name">User</div>
+                        <div class="player-score">- очков</div>
+                    </div>
+                </li>
+                <li class="leaderboard-item">
+                    <div class="rank">4</div>
+                    <div class="player-info">
+                        <div class="player-name">User</div>
+                        <div class="player-score">- очков</div>
+                    </div>
+                </li>
+                <li class="leaderboard-item you">
+                    <div class="rank">5</div>
+                    <div class="player-info">
+                        <div class="player-name">User</div>
+                        <div class="player-score">- очков</div>
                     </div>
                 </li>
             </ul>
-            <div th:if="${quizzes == null or quizzes.isEmpty()}" style="text-align: center; padding: 20px; color: #999;">
-                Квизы не найдены
-            </div>
-        </div>
-    </div>
-
-    <div class="info-section">
-        <h2>Информация о квизе</h2>
-        <div class="info-content" th:if="${quizzes != null and !quizzes.isEmpty()}" th:with="firstQuiz=${quizzes[0]}">
-            <div class="info-item">
-                <div class="info-label">Количество вопросов</div>
-                <div class="info-value" th:text="${firstQuiz.questionCount != null ? firstQuiz.questionCount : '-'}">-</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Время на прохождение</div>
-                <div class="info-value" th:text="${firstQuiz.timeLimit != null ? firstQuiz.timeLimit + ' сек' : '-'}">-</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Тип</div>
-                <div class="info-value" th:text="${firstQuiz.isStatic != null ? (firstQuiz.isStatic ? 'Статичный' : 'Обновляемый') : '-'}">-</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Видимость</div>
-                <div class="info-value" th:text="${firstQuiz.isPublic != null ? (firstQuiz.isPublic ? 'Публичный' : 'Приватный') : '-'}">-</div>
-            </div>
-        </div>
-        <div th:if="${quizzes == null or quizzes.isEmpty()}" style="text-align: center; padding: 20px; color: #999;">
-            Информация о квизах отсутствует
         </div>
     </div>
 </div>
+
+<script>
+    function goToQuizDetails(quizId) {
+        window.location.href = '/quiz/' + quizId;
+    }
+</script>
 </body>
 </html>

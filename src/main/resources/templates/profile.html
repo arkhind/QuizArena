@@ -177,8 +177,8 @@
                 Профиль: <span th:text="${userProfile != null ? userProfile.username : 'User'}">User</span>
             </span>
         </button>
-        <a href="@{/quiz}" class="nav-btn" onclick="goToQuiz()">Quiz</a>
-        <a href="#" class="nav-btn" onclick="goToHome()">Главная</a>
+        <a th:href="@{/quiz}" class="nav-btn">Quiz</a>
+        <a th:href="@{/home}" class="nav-btn">Главная</a>
     </div>
 </div>
 
@@ -212,25 +212,26 @@
 
 <script>
     function goToProfile() {
-        const userId = getCurrentUserId();
-        window.location.href = '/profile?userId=' + userId;
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          window.location.href = '/profile?userId=' + userId;
+        } else {
+           window.location.href = '/login';
+        }
     }
-    
+
     function getCurrentUserId() {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('userId') || localStorage.getItem('userId') || '1';
     }
 
-    function goToQuiz() {
-        window.location.href = '/quiz';
-    }
-
-    function goToHome() {
-        window.location.href = '/home';
-    }
-
     function goToMyQuizzes() {
-        window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+            window.location.href = '/my-quizzes?userId=' + userId;
+        } else {
+            window.location.href = '/login';
+        }
     }
 
     function goToProfileSettings() {
@@ -238,8 +239,14 @@
     }
 
     function goToHistory() {
-        window.location.href = '/profile?userId=' + getCurrentUserId();
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+            window.location.href = '/history?userId=' + userId;
+        } else {
+            window.location.href = '/login';
+        }
     }
+
 </script>
 </body>
 </html>
