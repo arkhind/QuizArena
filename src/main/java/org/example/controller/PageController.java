@@ -1,26 +1,18 @@
 package org.example.controller;
 
-import org.example.dto.request.auth.*;
-import org.example.dto.request.quiz.*;
-import org.example.dto.request.attempt.*;
-import org.example.dto.request.multiplayer.*;
-import org.example.dto.request.generation.*;
-
-import org.example.dto.response.auth.*;
-import org.example.dto.response.quiz.*;
-import org.example.dto.response.attempt.*;
-import org.example.dto.response.multiplayer.*;
-import org.example.dto.response.history.*;
-import org.example.dto.response.generation.*;
-
-import org.example.dto.common.*;
+import org.example.dto.request.quiz.QuizSearchRequest;
+import org.example.dto.response.quiz.QuizDTO;
+import org.example.dto.response.quiz.QuizDetailsDTO;
+import org.example.dto.response.quiz.QuizSearchResponse;
+import org.example.dto.response.auth.UserProfileDTO;
+import org.example.dto.response.history.UserHistoryDTO;
+import org.example.service.ApiService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.example.service.ApiService;
 
 @Controller
 public class PageController {

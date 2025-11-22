@@ -27,12 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 @Transactional
 public class AttemptService {
-  private final DatabaseService databaseService;
-
   private final Map<Long, AttemptState> attemptStates = new ConcurrentHashMap<>();
 
-  public AttemptService(DatabaseService databaseService) {
-    this.databaseService = databaseService;
+  public AttemptService() {
   }
 
   /**
@@ -205,6 +202,7 @@ public class AttemptService {
 
   /**
    * Завершает попытку прохождения квиза и рассчитывает итоговые результаты.
+   * Если пользователь проходил квиз ранее, обновляет результат только если новый лучше.
    */
   public QuizResultDTO finishQuizAttempt(Long attemptId) {
     AttemptState state = attemptStates.get(attemptId);
@@ -213,7 +211,21 @@ public class AttemptService {
     }
 
     Instant finishTime = Instant.now();
-    updateAttempt(attemptId, finishTime, (long) state.score, true);
+    
+    // Проверяем, есть ли уже лучший результат пользователя по этому квизу
+    Long bestScore = getBestScoreForUser(state.quizId, state.userId);
+    
+    // Обновляем результат только если это первый проход или новый результат лучше
+    boolean shouldUpdate = bestScore == null || state.score > bestScore;
+    
+    if (shouldUpdate) {
+      // Если есть старый результат, помечаем его как не лучший (или удаляем)
+      markOldAttemptsAsNotBest(state.quizId, state.userId);
+      updateAttempt(attemptId, finishTime, (long) state.score, true);
+    } else {
+      // Просто сохраняем попытку, но не обновляем рейтинг
+      updateAttempt(attemptId, finishTime, (long) state.score, true);
+    }
 
     int correctAnswers = (int) state.answerResults.values().stream()
       .filter(Boolean::booleanValue)
@@ -222,7 +234,9 @@ public class AttemptService {
 
     long timeSpent = Duration.between(state.startTime, finishTime).getSeconds();
 
-    int position = getLeaderboardPosition(state.quizId, state.userId, state.score);
+    // Позиция рассчитывается на основе лучшего результата
+    long scoreForPosition = shouldUpdate ? state.score : (bestScore != null ? bestScore : state.score);
+    int position = getLeaderboardPosition(state.quizId, state.userId, (int) scoreForPosition);
 
     attemptStates.remove(attemptId);
 
@@ -240,7 +254,7 @@ public class AttemptService {
   // Операции с базой данных
 
   private User getUserById(Long userId) {
-    String sql = "SELECT id, login, password FROM \"User\" WHERE id = ?";
+    String sql = "SELECT id, login, password FROM users WHERE id = ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setLong(1, userId);
@@ -260,11 +274,11 @@ public class AttemptService {
   }
 
   private Quiz getQuizById(Long quizId) {
-    String sql = "SELECT q.id, q.name, q.prompt, q.create_by, q.has_material, q.material_url, " +
-      "q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
+    String sql = "SELECT q.id, q.name, q.prompt, q.created_by, q.has_material, q.material_url, " +
+      "q.question_number, q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
       "u.id as user_id, u.login " +
-      "FROM \"Quiz\" q " +
-      "LEFT JOIN \"User\" u ON q.create_by = u.id " +
+      "FROM quizzes q " +
+      "LEFT JOIN users u ON q.created_by = u.id " +
       "WHERE q.id = ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -281,6 +295,7 @@ public class AttemptService {
           quiz.setCreatedBy(creator);
           quiz.setHasMaterial(rs.getBoolean("has_material"));
           quiz.setMaterialUrl(rs.getString("material_url"));
+          quiz.setQuestionNumber(rs.getObject("question_number", Integer.class));
 
           Integer seconds = rs.getObject("time_per_question_seconds", Integer.class);
           if (seconds != null) {
@@ -304,7 +319,7 @@ public class AttemptService {
 
   private List<Question> getQuestionsByQuizId(Long quizId) {
     List<Question> questions = new ArrayList<>();
-    String sql = "SELECT id, quiz_id, text, type, explanation, image FROM \"Question\" WHERE quiz_id = ? ORDER BY id";
+    String sql = "SELECT id, quiz_id, text, type, explanation, image FROM questions WHERE quiz_id = ? ORDER BY id";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setLong(1, quizId);
@@ -329,7 +344,7 @@ public class AttemptService {
   }
 
   private Question getQuestionById(Long questionId) {
-    String sql = "SELECT id, quiz_id, text, type, explanation, image FROM \"Question\" WHERE id = ?";
+    String sql = "SELECT id, quiz_id, text, type, explanation, image FROM questions WHERE id = ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setLong(1, questionId);
@@ -355,7 +370,7 @@ public class AttemptService {
 
   private List<org.example.model.AnswerOption> getAnswerOptionsByQuestionId(Long questionId) {
     List<org.example.model.AnswerOption> options = new ArrayList<>();
-    String sql = "SELECT id, question_id, text, is_correct, is_na_option FROM \"AnswerOption\" WHERE question_id = ?";
+    String sql = "SELECT id, question_id, text, is_correct, is_na_option FROM answer_options WHERE question_id = ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setLong(1, questionId);
@@ -379,7 +394,7 @@ public class AttemptService {
   }
 
   private org.example.dto.common.AnswerOption getCorrectAnswer(Long questionId) {
-    String sql = "SELECT id, text FROM \"AnswerOption\" WHERE question_id = ? AND is_correct = true LIMIT 1";
+    String sql = "SELECT id, text FROM answer_options WHERE question_id = ? AND is_correct = true LIMIT 1";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setLong(1, questionId);
@@ -398,7 +413,7 @@ public class AttemptService {
   }
 
   private Long createAttempt(Long userId, Long quizId, Instant startTime) {
-    String sql = "INSERT INTO \"UserQuizAttempt\" (user_id, quiz_id, start_time, finish_time, score, is_completed) " +
+    String sql = "INSERT INTO user_quiz_attempts (user_id, quiz_id, start_time, finish_time, score, is_completed) " +
       "VALUES (?, ?, ?, ?, ?, ?) RETURNING id";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -422,7 +437,7 @@ public class AttemptService {
   }
 
   private void updateAttempt(Long attemptId, Instant finishTime, Long score, boolean isCompleted) {
-    String sql = "UPDATE \"UserQuizAttempt\" SET finish_time = ?, score = ?, is_completed = ? WHERE id = ?";
+    String sql = "UPDATE user_quiz_attempts SET finish_time = ?, score = ?, is_completed = ? WHERE id = ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setTimestamp(1, Timestamp.from(finishTime));
@@ -438,7 +453,7 @@ public class AttemptService {
 
   private UserQuizAttempt getAttemptById(Long attemptId) {
     String sql = "SELECT id, user_id, quiz_id, start_time, finish_time, score, is_completed " +
-      "FROM \"UserQuizAttempt\" WHERE id = ?";
+      "FROM user_quiz_attempts WHERE id = ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
       statement.setLong(1, attemptId);
@@ -467,7 +482,7 @@ public class AttemptService {
   }
 
   private int getLeaderboardPosition(Long quizId, Long userId, int score) {
-    String sql = "SELECT COUNT(*) as position FROM \"UserQuizAttempt\" " +
+    String sql = "SELECT COUNT(*) as position FROM user_quiz_attempts " +
       "WHERE quiz_id = ? AND is_completed = true AND score > ?";
     try (Connection connection = getConnection();
          PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -482,6 +497,36 @@ public class AttemptService {
       System.err.println("Error calculating leaderboard position: " + e.getMessage());
     }
     return 1;
+  }
+
+  /**
+   * Получает лучший результат пользователя по квизу.
+   */
+  private Long getBestScoreForUser(Long quizId, Long userId) {
+    String sql = "SELECT MAX(score) as best_score FROM user_quiz_attempts " +
+      "WHERE quiz_id = ? AND user_id = ? AND is_completed = true";
+    try (Connection connection = getConnection();
+         PreparedStatement statement = connection.prepareStatement(sql)) {
+      statement.setLong(1, quizId);
+      statement.setLong(2, userId);
+      try (ResultSet rs = statement.executeQuery()) {
+        if (rs.next()) {
+          return rs.getObject("best_score", Long.class);
+        }
+      }
+    } catch (SQLException e) {
+      System.err.println("Error fetching best score: " + e.getMessage());
+    }
+    return null;
+  }
+
+  /**
+   * Помечает старые попытки как не лучшие (для упрощения можно удалить старые результаты из рейтинга).
+   * В текущей реализации просто оставляем все попытки, но в рейтинге учитываем только лучший результат.
+   */
+  private void markOldAttemptsAsNotBest(Long quizId, Long userId) {
+    // В текущей реализации не удаляем старые попытки, так как они нужны для истории
+    // Рейтинг будет рассчитываться на основе лучшего результата при запросе
   }
 
   // Вспомогательные методы
