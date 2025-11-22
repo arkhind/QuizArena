@@ -23,42 +23,71 @@ public class UserController {
     }
 
     @GetMapping("/{userId}/profile")
-    public ResponseEntity<UserProfileDTO> getUserProfile(@PathVariable Long userId) {
+    public ResponseEntity<?> getUserProfile(@PathVariable Long userId) {
         try {
+            if (userId == null || userId <= 0) {
+                return ResponseEntity.badRequest().body("Некорректный ID пользователя");
+            }
+            
             UserProfileDTO profile = userService.getUserProfile(userId);
             return ResponseEntity.ok(profile);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Внутренняя ошибка сервера");
         }
     }
 
     @PutMapping("/profile")
-    public ResponseEntity<UserProfileDTO> updateUserProfile(@RequestBody UpdateProfileRequest request) {
+    public ResponseEntity<?> updateUserProfile(@RequestBody UpdateProfileRequest request) {
         try {
+            // Валидация входных данных
+            if (request.userId() == null) {
+                return ResponseEntity.badRequest().body("ID пользователя обязателен");
+            }
+            
             UserProfileDTO profile = userService.updateUserProfile(request);
             return ResponseEntity.ok(profile);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Внутренняя ошибка сервера");
         }
     }
 
     @GetMapping("/{userId}/history")
-    public ResponseEntity<UserHistoryDTO> getUserHistory(@PathVariable Long userId) {
+    public ResponseEntity<?> getUserHistory(@PathVariable Long userId) {
         try {
+            if (userId == null || userId <= 0) {
+                return ResponseEntity.badRequest().body("Некорректный ID пользователя");
+            }
+            
             UserHistoryDTO history = userService.getUserHistory(userId);
             return ResponseEntity.ok(history);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Внутренняя ошибка сервера");
         }
     }
 
     @GetMapping("/{userId}/quizzes")
-    public ResponseEntity<List<QuizDTO>> getCreatedQuizzes(@PathVariable Long userId) {
+    public ResponseEntity<?> getCreatedQuizzes(@PathVariable Long userId) {
         try {
+            if (userId == null || userId <= 0) {
+                return ResponseEntity.badRequest().body("Некорректный ID пользователя");
+            }
+            
             List<QuizDTO> quizzes = userService.getCreatedQuizzes(userId);
             return ResponseEntity.ok(quizzes);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Внутренняя ошибка сервера");
         }
     }
 }

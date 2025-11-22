@@ -34,6 +34,9 @@ public class Quiz {
   @Column(name = "material_url")
   private String materialUrl;
 
+  @Column(name = "question_number")
+  private Integer questionNumber;
+
   @Column(name = "time_per_question_seconds")
   @Convert(converter = DurationSecondsConverter.class)
   private Duration timePerQuestion;

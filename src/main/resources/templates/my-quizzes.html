@@ -163,8 +163,35 @@
             gap: 10px;
         }
 
+        .quiz-actions {
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
 
+        .quiz-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
 
+        .quiz-btn:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .quiz-btn:last-child {
+            background: #dc3545;
+        }
+
+        .quiz-btn:last-child:hover {
+            background: #c82333;
+        }
 
     </style>
 </head>
@@ -230,20 +257,31 @@
         window.location.href = '/quiz/' + quizId + '/edit';
     }
 
-    function deleteQuiz(quizId) {
+    async function deleteQuiz(quizId) {
         if (confirm('Вы уверены, что хотите удалить этот квиз?')) {
-            fetch('/api/quiz/' + quizId, {
-                method: 'DELETE',
-            })
-            .then(response => {
+            try {
+                const userId = getCurrentUserId();
+                const response = await fetch('/api/quizzes/' + quizId + '?userId=' + userId, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
                     alert('Квиз успешно удалён');
                     window.location.reload();
-            })
+                } else {
+                    const errorText = await response.text().catch(() => 'Неизвестная ошибка');
+                    alert('Ошибка при удалении квиза: ' + errorText);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ошибка сети. Попробуйте позже.');
+            }
         }
     }
 
     function getCurrentUserId() {
-        return localStorage.getItem('userId');
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('userId') || localStorage.getItem('userId') || '1';
     }
 </script>
 </body>

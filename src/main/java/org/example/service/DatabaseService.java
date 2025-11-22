@@ -62,7 +62,7 @@ public class DatabaseService {
     public List<Quiz> getAllQuizzes() {
         List<Quiz> quizzes = new ArrayList<>();
         String sql = "SELECT q.id, q.name, q.prompt, q.created_by, q.has_material, q.material_url, " +
-                    "q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
+                    "q.question_number, q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
                     "u.id as user_id, u.login " +
                     "FROM quizzes q " +
                     "LEFT JOIN users u ON q.created_by = u.id";
@@ -82,6 +82,7 @@ public class DatabaseService {
                 quiz.setCreatedBy(creator);
                 quiz.setHasMaterial(resultSet.getBoolean("has_material"));
                 quiz.setMaterialUrl(resultSet.getString("material_url"));
+                quiz.setQuestionNumber(resultSet.getObject("question_number", Integer.class));
 
                 Integer seconds = resultSet.getObject("time_per_question_seconds", Integer.class);
                 quiz.setTimePerQuestion(seconds != null ? Duration.ofSeconds(seconds) : null);
