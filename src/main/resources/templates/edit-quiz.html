@@ -519,13 +519,13 @@
                 // Получаем токен авторизации из localStorage
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    alert('Вы не авторизованы. Пожалуйста, войдите в систему.');
+                    alert('Вы не авторизованы');
                     window.location.href = '/login';
                     return;
                 }
 
-                // Отправляем данные на сервер через REST API
-                const response = await fetch('/api/quizzes/update', {
+
+                const response = await fetch('/api/quizzes/${getQuizId()}', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -534,50 +534,41 @@
                     body: JSON.stringify(quizData)
                 });
 
-                // Обработка ответа от сервера
+
                 if (response.ok) {
                     const result = await response.json();
                     alert('Квиз успешно обновлен!');
-                    // Перенаправляем на страницу "Мои квизы"
                     window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
                 } else {
-                    // Обработка ошибок от сервера
+
                     const error = await response.json().catch(() => ({}));
                     const errorMessage = error.message || error.error || 
                                        `Ошибка ${response.status}: ${response.statusText}`;
                     alert('Ошибка при обновлении квиза: ' + errorMessage);
                 }
             } catch (error) {
-                // Обработка сетевых ошибок
+
                 console.error('Error:', error);
-                alert('Ошибка сети. Проверьте подключение к интернету.');
+                alert('Ошибка сети');
             }
         }
 
-        /**
-         * Удаление всего квиза.
-         * Отправляет запрос на сервер для удаления квиза.
-         */
-        async function deleteQuiz() {
-            // Подтверждение удаления
-            if (!confirm('Вы уверены, что хотите удалить этот квиз? Это действие нельзя отменить.')) {
-                return;
-            }
 
-            // Двойное подтверждение
-            if (!confirm('Это действие удалит квиз навсегда. Продолжить?')) {
+        async function deleteQuiz() {
+
+            if (!confirm('Вы уверены, что хотите удалить этот квиз? Это действие нельзя отменить.')) {
                 return;
             }
 
             try {
                 const token = localStorage.getItem('token');
                 if (!token) {
-                    alert('Вы не авторизованы. Пожалуйста, войдите в систему.');
+                    alert('Вы не авторизованы');
                     return;
                 }
 
-                // Отправляем запрос на удаление квиза
-                const response = await fetch('/api/quizzes/delete', {
+
+                const response = await fetch('/api/quizzes/${getQuizId()}?userId=${getCurrentUserId()}', {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -613,11 +604,7 @@
         function updateFileLabel(fileName) {
             const label = document.getElementById('fileLabel');
             label.textContent = 'Файл загружен: ' + fileName;
-            label.style.color = '#28a745';
-            label.style.fontWeight = 'bold';
         }
-
-        const fileUploadSection = document.querySelector('.file-upload-section');
         const fileInput = document.getElementById('quizMaterial');
 
 

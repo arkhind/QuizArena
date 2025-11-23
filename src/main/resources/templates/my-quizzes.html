@@ -244,7 +244,8 @@
     }
 
     function editQuiz(quizId) {
-        window.location.href = '/quiz/' + quizId + '/edit';
+    const userId = getCurrentUserId();
+    window.location.href = '/quiz/' + quizId + '/edit?userId=' + userId;
     }
 
     async function deleteQuiz(quizId) {
@@ -279,7 +280,7 @@
                 alert('Ошибка при удалении: ' + (error.message || 'Неизвестная ошибка'));
             }
         } catch (error) {
-            alert('Ошибка сети. Проверьте подключение.');
+            alert('Ошибка сети');
             console.error('Error:', error);
         }
     }

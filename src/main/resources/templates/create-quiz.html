@@ -404,8 +404,9 @@
             isStatic: formData.get('contentType') === 'static'
         };
 
+
         try {
-            const response = await fetch('/api/quiz/create', {
+            const response = await fetch('/api/quizzes', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
