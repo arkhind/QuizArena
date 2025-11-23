@@ -122,12 +122,19 @@ public class QuizService {
         );
     }
 
-    public QuizDetailsDTO getQuiz(Long quizId) {
+    public QuizDetailsDTO getQuiz(Long quizId, Long userId) {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
 
+        // Если квиз приватный, проверяем доступ: разрешаем доступ создателю или если пользователь знает ID
         if (quiz.isPrivate()) {
-            throw new SecurityException("Доступ к приватному квизу запрещен");
+            // Разрешаем доступ создателю квиза
+            if (userId != null && quiz.getCreatedBy().getId().equals(userId)) {
+                // Создатель имеет доступ к своему приватному квизу
+            } else {
+                // Для других пользователей доступ к приватному квизу запрещен
+                throw new SecurityException("Доступ к приватному квизу запрещен");
+            }
         }
 
         List<QuestionDTO> questions = questionRepository.findByQuizId(quizId).stream()
@@ -332,7 +339,12 @@ public class QuizService {
 
     // Вспомогательные методы
     private QuizDTO toQuizDTO(Quiz quiz) {
-        int questionCount = (int) questionRepository.countByQuizId(quiz.getId());
+        // Считаем реальное количество вопросов в БД
+        int actualQuestionCount = (int) questionRepository.countByQuizId(quiz.getId());
+        // Если вопросов еще нет, но есть запланированное количество, показываем его
+        // Иначе показываем реальное количество
+        int questionCount = actualQuestionCount > 0 ? actualQuestionCount : 
+                           (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
         return new QuizDTO(
                 quiz.getId(),
                 quiz.getName(),

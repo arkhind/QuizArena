@@ -4,11 +4,13 @@ import org.example.dto.request.quiz.*;
 import org.example.dto.response.quiz.*;
 import org.example.service.FileStorageService;
 import org.example.service.QuizService;
+import org.example.util.TokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.IOException;
 import java.util.List;
@@ -87,13 +89,15 @@ public class QuizController {
     }
 
     @GetMapping("/{quizId}")
-    public ResponseEntity<?> getQuiz(@PathVariable Long quizId) {
+    public ResponseEntity<?> getQuiz(@PathVariable Long quizId, HttpServletRequest request) {
         try {
             if (quizId == null || quizId <= 0) {
                 return ResponseEntity.badRequest().body("Некорректный ID квиза");
             }
             
-            QuizDetailsDTO quiz = quizService.getQuiz(quizId);
+            // Извлекаем userId из токена для проверки доступа к приватным квизам
+            Long userId = TokenUtil.extractUserIdFromRequest(request);
+            QuizDetailsDTO quiz = quizService.getQuiz(quizId, userId);
             return ResponseEntity.ok(quiz);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
