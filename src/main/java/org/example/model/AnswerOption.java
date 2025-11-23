@@ -1,34 +1,38 @@
 package org.example.model;
 
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "answer_options")
+@Getter
+@Setter
 public class AnswerOption {
-    private Long id;
-    private Long questionId;
-    private String text;
-    private Boolean isCorrect;
-    private Boolean isNaOption;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    public AnswerOption() {}
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "question_id", nullable = false)
+  private Question question;
 
-    public AnswerOption(Long id, Long questionId, String text, Boolean isCorrect, Boolean isNaOption) {
-        this.id = id;
-        this.questionId = questionId;
-        this.text = text;
-        this.isCorrect = isCorrect;
-        this.isNaOption = isNaOption;
-    }
+  @Column(columnDefinition = "TEXT")
+  private String text;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+  @Column(name = "is_correct")
+  private boolean isCorrect;
 
-    public Long getQuestionId() { return questionId; }
-    public void setQuestionId(Long questionId) { this.questionId = questionId; }
+  @Column(name = "is_na_option")
+  private boolean isNaOption;
 
-    public String getText() { return text; }
-    public void setText(String text) { this.text = text; }
+  public AnswerOption() {}
 
-    public Boolean getIsCorrect() { return isCorrect; }
-    public void setIsCorrect(Boolean isCorrect) { this.isCorrect = isCorrect; }
-
-    public Boolean getIsNaOption() { return isNaOption; }
-    public void setIsNaOption(Boolean isNaOption) { this.isNaOption = isNaOption; }
+  public AnswerOption(Long id, Question question, String text, boolean isCorrect, boolean isNaOption) {
+    this.id = id;
+    this.question = question;
+    this.text = text;
+    this.isCorrect = isCorrect;
+    this.isNaOption = isNaOption;
+  }
 }

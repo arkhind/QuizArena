@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Детали квиза</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            padding: 25px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            height: 200px;
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 80%;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            margin-left: 340px;
+            max-width: calc(100vw - 360px);
+        }
+
+        .container {
+            max-width: none;
+            width: 80%;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            text-align: center;
+            margin: 0 0 10px 0;
+        }
+
+        .header .quiz-meta {
+            text-align: center;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .content-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .quiz-description {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .quiz-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+        }
+
+        .info-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .question-preview {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .question-text {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .question-options {
+            list-style: none;
+            padding-left: 20px;
+        }
+
+        .question-options li {
+            padding: 5px 0;
+            color: #555;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .start-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .leaderboard-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+            }
+
+            .quiz-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <a href="/home" class="nav-btn">Главная</a>
+        <a href="/quiz" class="nav-btn">Все квизы</a>
+    </div>
+
+    <div class="main-content">
+        <div class="container">
+            <header class="header">
+                <h1 th:text="${quiz.name}">Название квиза</h1>
+                <div class="quiz-meta" th:if="${quiz.description}">
+                    <span th:text="${quiz.description}">Описание</span>
+                </div>
+            </header>
+
+            <div class="content-section">
+                <h2 class="section-title">Информация о квизе</h2>
+                <div class="quiz-info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Количество вопросов</div>
+                        <div class="info-value" th:text="${quiz.questions != null ? quiz.questions.size() : 0}">0</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Время на ответ</div>
+                        <div class="info-value" th:text="${quiz.timeLimit} + ' сек'">30 сек</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Тип</div>
+                        <div class="info-value" th:text="${quiz.isStatic ? 'Статичный' : 'Обновляемый'}">Статичный</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Видимость</div>
+                        <div class="info-value" th:text="${quiz.isPublic ? 'Публичный' : 'Приватный'}">Публичный</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-section" th:if="${quiz.questions != null and !quiz.questions.isEmpty()}">
+                <h2 class="section-title">Пример вопроса</h2>
+                <div class="question-preview" th:each="question, iterStat : ${quiz.questions}" th:if="${iterStat.index == 0}">
+                    <div class="question-text" th:text="${question.text}">Текст вопроса</div>
+                    <ul class="question-options" th:if="${question.options != null}">
+                        <li th:each="option : ${question.options}" th:text="${option.text}">Вариант ответа</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="content-section">
+                <div class="button-group">
+                    <button class="start-btn" onclick="startQuiz()">Начать квиз</button>
+                    <button class="leaderboard-btn" onclick="viewLeaderboard()">Таблица лидеров</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getCurrentUserId() {
+            return localStorage.getItem('userId') || '1';
+        }
+
+        function getQuizId() {
+            const path = window.location.pathname;
+            const match = path.match(/\/quiz\/(\d+)/);
+            return match ? match[1] : null;
+        }
+
+        function startQuiz() {
+            const quizId = getQuizId();
+            const userId = getCurrentUserId();
+            if (quizId) {
+                window.location.href = '/quiz/' + quizId + '/start?userId=' + userId;
+            }
+        }
+
+        function viewLeaderboard() {
+            const quizId = getQuizId();
+            const userId = getCurrentUserId();
+            if (quizId) {
+                window.location.href = '/quiz/' + quizId + '/leaderboard?userId=' + userId;
+            }
+        }
+    </script>
+</body>
+</html>
+

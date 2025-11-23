@@ -1,6 +1,20 @@
-# QuizArena
+# TODO: написать нормальный README
+-----------------------------------------------------
+# Проект Quiz AI Arena (команда 15)
 
-Проект для генерации вопросов для викторин с использованием LLM модели через FastAPI.
+> Веб-платформа, позволяющая пользователям автоматически 
+> генерировать квизы на основе выбранной темы или предоставленного
+> материала. Сервис использует интеллектуальные алгоритмы для
+> формирования вопросов и ответов, после чего пользователь
+> может пройти созданный квиз и увидеть результат
+
+## Запуск
+- Открыть Docker Desktop
+- Из консоли в директории проекта выполнить команду
+```bash
+docker compose up -d
+```
+- Нажать кнопочку Run
 
 ## Требования
 
@@ -145,3 +159,20 @@ API возвращает строку в следующем формате:
 **Модель не найдена:**
 - Загрузите модель: `ollama pull qwen3:8b`
 
+## Документы
+
+- [Функциональные и нефункциональные требования](https://docs.google.com/document/d/1iCJUvyteMbJYmxocf2DZl811XCzPHpy2WGHVnMrF6eQ/edit?tab=t.0)
+- [User story](https://docs.google.com/document/d/11rnLCAsbskH97Sg7dkK7zSCnAP9_jqC_lLmW3XKxXiU/edit?hl=RU&tab=t.0)
+- [Прототип UI](https://app.diagrams.net/?src=about#G1W5PkT0oa1OsAObiy0Fdg7VpnIeO6Zh_1%23%7B%22pageId%22%3A%22v4vXsFOn4bkPqltqCtXt%22%7D)
+- [Схема БД](https://drawsql.app/teams/mfti/diagrams/quizarena-2)
+
+## Авторы
+### Ментор
+- Александр Бобряков - @AlexanderBobryakov
+
+### Команда
+- Архипов Никита - @arkhind
+- Климанов Илья - @Rafl214
+- Соль Михаил - @sol-m-07
+- Сударкин Георгий - @SudarkinG
+- Чапурина Валерия - @Artyy-l

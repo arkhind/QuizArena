@@ -12,6 +12,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,7 +43,7 @@ public class DatabaseService {
 
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
-        String sql = "SELECT id, login, password FROM \"User\"";
+        String sql = "SELECT id, login, password FROM users";
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
@@ -63,8 +65,11 @@ public class DatabaseService {
 
     public List<Quiz> getAllQuizzes() {
         List<Quiz> quizzes = new ArrayList<>();
-        String sql = "SELECT id, name, prompt, create_by, has_material, material_url, question_number, " +
-                    "time, is_private, is_static, private_code, created_at FROM \"Quiz\"";
+        String sql = "SELECT q.id, q.name, q.prompt, q.created_by, q.has_material, q.material_url, " +
+                    "q.question_number, q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
+                    "u.id as user_id, u.login " +
+                    "FROM quizzes q " +
+                    "LEFT JOIN users u ON q.created_by = u.id";
         
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql);
@@ -75,15 +80,23 @@ public class DatabaseService {
                 quiz.setId(resultSet.getLong("id"));
                 quiz.setName(resultSet.getString("name"));
                 quiz.setPrompt(resultSet.getString("prompt"));
-                quiz.setCreateBy(resultSet.getLong("create_by"));
+                User creator = new User();
+                creator.setId(resultSet.getLong("user_id"));
+                creator.setLogin(resultSet.getString("login"));
+                quiz.setCreatedBy(creator);
                 quiz.setHasMaterial(resultSet.getBoolean("has_material"));
                 quiz.setMaterialUrl(resultSet.getString("material_url"));
-                quiz.setQuestionNumber(resultSet.getLong("question_number"));
-                quiz.setTime(resultSet.getLong("time"));
-                quiz.setIsPrivate(resultSet.getBoolean("is_private"));
-                quiz.setIsStatic(resultSet.getBoolean("is_static"));
-                quiz.setPrivateCode(resultSet.getString("private_code"));
-                quiz.setCreatedAt(resultSet.getTimestamp("created_at").toLocalDateTime());
+                quiz.setQuestionNumber(resultSet.getObject("question_number", Integer.class));
+
+                Integer seconds = resultSet.getObject("time_per_question_seconds", Integer.class);
+                quiz.setTimePerQuestion(seconds != null ? Duration.ofSeconds(seconds) : null);
+                
+                quiz.setPrivate(resultSet.getBoolean("is_private"));
+                quiz.setStatic(resultSet.getBoolean("is_static"));
+                
+                OffsetDateTime odt = resultSet.getObject("created_at", OffsetDateTime.class);
+                quiz.setCreatedAt(odt != null ? odt.toInstant() : null);
+                
                 quizzes.add(quiz);
             }
         } catch (SQLException e) {
