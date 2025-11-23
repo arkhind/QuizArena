@@ -134,8 +134,18 @@
 </div>
 
 <script>
+    function getQuizId() {
+      const path = window.location.pathname;
+      const match = path.match(/\/quiz\/(\d+)/);
+      return match ? match[1] : null;
+  }
     function goBack() {
-        window.location.href = '/quiz';
+      const quizId = getQuizId();
+      if (quizId) {
+          window.location.href = '/quiz/' + quizId;
+      } else {
+          window.location.href = '/quiz';
+      }
     }
 </script>
 </body>

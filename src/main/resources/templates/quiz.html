@@ -54,8 +54,6 @@
             gap: 20px;
         }
 
-
-
         .actions, .leaderboard {
             background: white;
             border-radius: 12px;
@@ -101,11 +99,6 @@
             color: #2c3e50;
         }
 
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-        }
-
         .leaderboard-list {
             list-style: none;
         }
@@ -140,6 +133,21 @@
             font-weight: 600;
         }
 
+        .rank.first {
+            background: #ffd700;
+            color: white;
+        }
+
+        .rank.second {
+            background: #c0c0c0;
+            color: white;
+        }
+
+        .rank.third {
+            background: #cd7f32;
+            color: white;
+        }
+
         .leaderboard-item.you .rank {
             background: #2575fc;
             color: white;
@@ -157,6 +165,12 @@
             color: #7f8c8d;
             font-size: 0.9rem;
         }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
     </style>
 </head>
 <body>
@@ -169,59 +183,66 @@
         <div class="actions">
             <h2>Действия</h2>
             <div class="action-buttons">
-                <button class="btn btn-primary">Начать квиз</button>
-                <button class="btn btn-secondary" th:if="${quizzes != null and !quizzes.isEmpty()}"
+                <button class="btn btn-primary"
+                        th:if="${quizzes != null and !quizzes.isEmpty()}"
+                        th:onclick="'startQuiz(' + ${quizzes[0].id} + ')'">Начать квиз</button>
+                <button class="btn btn-secondary"
+                        th:if="${quizzes != null and !quizzes.isEmpty()}"
                         th:onclick="'goToQuizDetails(' + ${quizzes[0].id} + ')'">Подробнее о квизе</button>
-                <button class="btn btn-secondary">Скопировать квиз</button>
+                <button class="btn btn-secondary"
+                        th:if="${quizzes != null and !quizzes.isEmpty()}"
+                        th:onclick="'copyQuiz(' + ${quizzes[0].id} + ')'">Скопировать квиз</button>
             </div>
         </div>
 
         <div class="leaderboard">
             <h2>Таблица лидеров</h2>
-            <ul class="leaderboard-list">
-                <li class="leaderboard-item">
-                    <div class="rank">1</div>
+            <ul class="leaderboard-list" th:if="${leaderboard != null and leaderboard.entries() != null and !leaderboard.entries().isEmpty()}">
+                <li th:each="entry : ${leaderboard.entries()}"
+                    th:classappend="${leaderboard.userPosition() != null and entry.position() != null and entry.position().equals(leaderboard.userPosition())} ? 'you' : ''">
+                    <div class="rank"
+                         th:classappend="${entry.position() != null and entry.position() == 1} ? 'first' : (${entry.position() != null and entry.position() == 2} ? 'second' : (${entry.position() != null and entry.position() == 3} ? 'third' : ''))"
+                         th:text="${entry.position()}"></div>
                     <div class="player-info">
-                        <div class="player-name">User</div>
-                        <div class="player-score">- очков</div>
-                    </div>
-                </li>
-                <li class="leaderboard-item">
-                    <div class="rank">2</div>
-                    <div class="player-info">
-                        <div class="player-name">User</div>
-                        <div class="player-score">- очков</div>
-                    </div>
-                </li>
-                <li class="leaderboard-item">
-                    <div class="rank">3</div>
-                    <div class="player-info">
-                        <div class="player-name">User</div>
-                        <div class="player-score">- очков</div>
-                    </div>
-                </li>
-                <li class="leaderboard-item">
-                    <div class="rank">4</div>
-                    <div class="player-info">
-                        <div class="player-name">User</div>
-                        <div class="player-score">- очков</div>
-                    </div>
-                </li>
-                <li class="leaderboard-item you">
-                    <div class="rank">5</div>
-                    <div class="player-info">
-                        <div class="player-name">User</div>
-                        <div class="player-score">- очков</div>
+                        <div class="player-name" th:text="${entry.username()}">User</div>
+                        <div class="player-score" th:text="${entry.score() + ' очков'}">- очков</div>
                     </div>
                 </li>
             </ul>
+            <div class="empty-state" th:if="${leaderboard == null or leaderboard.entries() == null or leaderboard.entries().isEmpty()}">
+                <p>Таблица лидеров пуста</p>
+                <p style="font-size: 0.9em; margin-top: 10px;">Еще никто не прошел этот квиз</p>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    function getQuizId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('quizId');
+    }
+
+    function getUserId() {
+        return localStorage.getItem('userId') || new URLSearchParams(window.location.search).get('userId');
+    }
+
     function goToQuizDetails(quizId) {
         window.location.href = '/quiz/' + quizId;
+    }
+
+    function startQuiz(quizId) {
+        const userId = getUserId();
+        if (!userId) {
+            alert('Необходимо войти в систему');
+            window.location.href = '/login';
+            return;
+        }
+        window.location.href = '/quiz/' + quizId + '/start?userId=' + userId;
+    }
+
+    function copyQuiz(quizId) {
+        alert('Функция копирования квиза будет реализована позже');
     }
 </script>
 </body>
