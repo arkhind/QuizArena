@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Авторизация</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .auth-box {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            width: 300px;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .register-btn {
+            background: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-box">
+        <h2>Авторизация</h2>
+        <form id="loginForm">
+            <div class="form-group">
+               <input type="text" name="username" id="username" placeholder="Логин" required>
+            </div>
+            <div class="form-group">
+                <input type="password" name="password" id="password" placeholder="Пароль" required>
+            </div>
+            <button type="submit">Войти</button>
+            <button type="button" class="register-btn" onclick="goToRegister()">Зарегистрироваться</button>
+        </form>
+        <div id="errorMessage" style="color: red; text-align: center; margin-top: 10px; display: none;"></div>
+    </div>
+    <script>
+        function goToRegister() {
+            window.location.href = '/register';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const formData = new FormData(form);
+            const username = formData.get('username');
+            const password = formData.get('password');
+            
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+            
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Вход...';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+                
+                if (response.ok) {
+                    const authResponse = await response.json();
+                    
+                    if (authResponse.token) {
+                        localStorage.setItem('token', authResponse.token);
+                        localStorage.setItem('userId', authResponse.userId);
+                        localStorage.setItem('username', authResponse.username);
+                        window.location.href = '/home';
+                    } else {
+                        errorDiv.textContent = 'Ошибка: токен не получен';
+                        errorDiv.style.display = 'block';
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Войти';
+                    }
+                } else {
+                    // Пытаемся получить сообщение об ошибке
+                    let errorMessage = 'Неверный логин или пароль';
+                    try {
+                        const errorData = await response.json();
+                        // Проверяем разные форматы ответа
+                        if (errorData.message) {
+                            errorMessage = errorData.message;
+                        } else if (typeof errorData === 'string') {
+                            errorMessage = errorData;
+                        } else if (errorData.error) {
+                            errorMessage = errorData.error;
+                        }
+                    } catch (e) {
+                        // Если не удалось распарсить JSON, пробуем получить текст
+                        try {
+                            const text = await response.text();
+                            if (text) {
+                                errorMessage = text;
+                            }
+                        } catch (e2) {
+                            // Оставляем дефолтное сообщение
+                        }
+                    }
+                    errorDiv.textContent = errorMessage;
+                    errorDiv.style.display = 'block';
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Войти';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                errorDiv.textContent = 'Ошибка сети. Попробуйте позже.';
+                errorDiv.style.display = 'block';
+                submitButton.disabled = false;
+                submitButton.textContent = 'Войти';
+            }
+        });
+    </script>
+</body>
+</html>

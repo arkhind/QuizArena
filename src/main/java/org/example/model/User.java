@@ -1,24 +1,29 @@
 package org.example.model;
 
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
 public class User {
-    private Long id;
-    private String login;
-    private String password;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    public User() {}
+  @Column(nullable = false, unique = true)
+  private String login;
 
-    public User(Long id, String login, String password) {
-        this.id = id;
-        this.login = login;
-        this.password = password;
-    }
+  @Column(nullable = false)
+  private String password;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+  public User() {}
 
-    public String getLogin() { return login; }
-    public void setLogin(String login) { this.login = login; }
-
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+  public User(Long id, String login, String password) {
+    this.id = id;
+    this.login = login;
+    this.password = password;
+  }
 }

@@ -1,39 +1,51 @@
 package org.example.model;
 
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Table(name = "questions")
+@Getter
+@Setter
 public class Question {
-    private Long id;
-    private Long quizId;
-    private String text;
-    private String type;
-    private String explanation;
-    private String imageUrl;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    public Question() {}
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "quiz_id", nullable = false)
+  private Quiz quiz;
 
-    public Question(Long id, Long quizId, String text, String type, String explanation, String imageUrl) {
-        this.id = id;
-        this.quizId = quizId;
-        this.text = text;
-        this.type = type;
-        this.explanation = explanation;
-        this.imageUrl = imageUrl;
-    }
+  @Column(columnDefinition = "TEXT")
+  private String text;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private QuestionType type;
 
-    public Long getQuizId() { return quizId; }
-    public void setQuizId(Long quizId) { this.quizId = quizId; }
+  @Column(columnDefinition = "TEXT")
+  private String explanation;
 
-    public String getText() { return text; }
-    public void setText(String text) { this.text = text; }
+  @Lob
+  private byte[] image;
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
+  @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<AnswerOption> answerOptions = new ArrayList<>();
 
-    public String getExplanation() { return explanation; }
-    public void setExplanation(String explanation) { this.explanation = explanation; }
+  public Question() {
+    this.answerOptions = new ArrayList<>();
+  }
 
-    public String getImageUrl() { return imageUrl; }
-    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+  public Question(Long id, Quiz quiz, String text, QuestionType type, String explanation, byte[] image) {
+    this.id = id;
+    this.quiz = quiz;
+    this.text = text;
+    this.type = type;
+    this.explanation = explanation;
+    this.image = image;
+    this.answerOptions = new ArrayList<>();
+  }
 }
