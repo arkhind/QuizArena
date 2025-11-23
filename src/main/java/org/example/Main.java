@@ -1,8 +1,6 @@
 package org.example;
 
 import org.example.service.DatabaseService;
-import org.example.model.User;
-import org.example.model.Quiz;
 
 public class Main {
     public static void main(String[] args) {

@@ -11,11 +11,12 @@ CREATE TABLE quizzes(
     created_by BIGINT NOT NULL,
     has_material BOOLEAN NOT NULL,
     material_url VARCHAR(255),
+    question_number INTEGER,
     time_per_question_seconds INTEGER,
     is_private BOOLEAN NOT NULL,
     is_static BOOLEAN NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT quizzes_created_by_fk FOREIGN KEY(created_by) REFERENCES users(id)
+    CONSTRAINT quizzes_created_by_fk FOREIGN KEY(created_by) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE TABLE questions(
@@ -45,6 +46,6 @@ CREATE TABLE user_quiz_attempts(
     finish_time TIMESTAMP WITH TIME ZONE,
     score BIGINT,
     is_completed BOOLEAN NOT NULL DEFAULT FALSE,
-    CONSTRAINT user_quiz_attempts_user_id_fk FOREIGN KEY(user_id) REFERENCES users(id),
+    CONSTRAINT user_quiz_attempts_user_id_fk FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT user_quiz_attempts_quiz_id_fk FOREIGN KEY(quiz_id) REFERENCES quizzes(id)
 );
