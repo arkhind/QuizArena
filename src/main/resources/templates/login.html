@@ -113,8 +113,30 @@
                         submitButton.textContent = 'Войти';
                     }
                 } else {
-                    const error = await response.json().catch(() => ({}));
-                    errorDiv.textContent = error.message || 'Неверный логин или пароль';
+                    // Пытаемся получить сообщение об ошибке
+                    let errorMessage = 'Неверный логин или пароль';
+                    try {
+                        const errorData = await response.json();
+                        // Проверяем разные форматы ответа
+                        if (errorData.message) {
+                            errorMessage = errorData.message;
+                        } else if (typeof errorData === 'string') {
+                            errorMessage = errorData;
+                        } else if (errorData.error) {
+                            errorMessage = errorData.error;
+                        }
+                    } catch (e) {
+                        // Если не удалось распарсить JSON, пробуем получить текст
+                        try {
+                            const text = await response.text();
+                            if (text) {
+                                errorMessage = text;
+                            }
+                        } catch (e2) {
+                            // Оставляем дефолтное сообщение
+                        }
+                    }
+                    errorDiv.textContent = errorMessage;
                     errorDiv.style.display = 'block';
                     submitButton.disabled = false;
                     submitButton.textContent = 'Войти';

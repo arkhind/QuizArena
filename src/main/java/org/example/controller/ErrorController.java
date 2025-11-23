@@ -15,7 +15,14 @@ public class ErrorController implements org.springframework.boot.web.servlet.err
         Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
         
         if (status != null) {
-            Integer statusCode = Integer.valueOf(status.toString());
+            Integer statusCode;
+            try {
+                statusCode = Integer.valueOf(status.toString());
+            } catch (NumberFormatException e) {
+                model.addAttribute("errorMessage", "Неизвестная ошибка");
+                model.addAttribute("errorCode", "Unknown");
+                return "error";
+            }
             
             if (statusCode == 404) {
                 model.addAttribute("errorMessage", "Страница не найдена");

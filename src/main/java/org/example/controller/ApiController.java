@@ -118,12 +118,13 @@ public interface ApiController {
    * Включает пример вопроса, материалы и настройки квиза.
    *
    * @param quizId уникальный идентификатор квиза
+   * @param userId идентификатор пользователя (опционально, для проверки доступа к приватным квизам)
    * @return DTO с детальной информацией о квизе
    * @throws EntityNotFoundException если квиз не найден
    * @throws AccessDeniedException если квиз приватный и у пользователя нет доступа
    * @see QuizDetailsDTO
    */
-  QuizDetailsDTO getQuiz(Long quizId);
+  QuizDetailsDTO getQuiz(Long quizId, Long userId);
 
   /**
    * Удаляет квиз, созданный пользователем.

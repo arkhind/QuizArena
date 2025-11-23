@@ -6,6 +6,7 @@ import org.example.dto.common.LeaderboardEntry;
 import org.example.dto.common.QuizMaterial;
 import org.example.model.Quiz;
 import org.example.model.User;
+import org.example.service.FileStorageService;
 import org.example.repository.AnswerOptionRepository;
 import org.example.repository.QuestionRepository;
 import org.example.repository.QuizRepository;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -37,18 +39,21 @@ public class QuizService {
     private final AnswerOptionRepository answerOptionRepository;
     private final UserQuizAttemptRepository attemptRepository;
     private final org.example.repository.UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
     @Autowired
     public QuizService(QuizRepository quizRepository,
                       QuestionRepository questionRepository,
                       AnswerOptionRepository answerOptionRepository,
                       UserQuizAttemptRepository attemptRepository,
-                      org.example.repository.UserRepository userRepository) {
+                      org.example.repository.UserRepository userRepository,
+                      FileStorageService fileStorageService) {
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
         this.attemptRepository = attemptRepository;
         this.userRepository = userRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     public QuizResponseDTO createQuiz(CreateQuizRequest request) {
@@ -61,6 +66,7 @@ public class QuizService {
         quiz.setCreatedBy(creator);
         quiz.setHasMaterial(request.hasMaterial() != null && request.hasMaterial());
         quiz.setMaterialUrl(null); // TODO: Сохранение материалов
+        quiz.setQuestionNumber(request.questionNumber());
         quiz.setTimePerQuestion(request.timeLimit() != null ? 
                 java.time.Duration.ofSeconds(request.timeLimit()) : null);
         quiz.setPrivate(request.isPrivate() != null && request.isPrivate());
@@ -88,7 +94,20 @@ public class QuizService {
         if (request.query() == null || request.query().trim().isEmpty()) {
             page = quizRepository.findByIsPrivateFalse(pageable);
         } else {
-            page = quizRepository.searchPublicQuizzes(request.query().trim(), pageable);
+            String query = request.query().trim();
+            // Проверяем, является ли запрос числом (ID квиза)
+            try {
+                Long quizId = Long.parseLong(query);
+                Optional<Quiz> quizById = quizRepository.findById(quizId);
+                if (quizById.isPresent() && !quizById.get().isPrivate()) {
+                    // Если найден публичный квиз по ID, возвращаем его
+                    List<QuizDTO> content = List.of(toQuizDTO(quizById.get()));
+                    return new QuizSearchResponse(content, 0, 1, 1L);
+                }
+            } catch (NumberFormatException e) {
+                // Не число, продолжаем обычный поиск
+            }
+            page = quizRepository.searchPublicQuizzes(query, pageable);
         }
 
         List<QuizDTO> content = page.getContent().stream()
@@ -103,12 +122,19 @@ public class QuizService {
         );
     }
 
-    public QuizDetailsDTO getQuiz(Long quizId) {
+    public QuizDetailsDTO getQuiz(Long quizId, Long userId) {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
 
+        // Если квиз приватный, проверяем доступ: разрешаем доступ создателю или если пользователь знает ID
         if (quiz.isPrivate()) {
-            throw new SecurityException("Доступ к приватному квизу запрещен");
+            // Разрешаем доступ создателю квиза
+            if (userId != null && quiz.getCreatedBy().getId().equals(userId)) {
+                // Создатель имеет доступ к своему приватному квизу
+            } else {
+                // Для других пользователей доступ к приватному квизу запрещен
+                throw new SecurityException("Доступ к приватному квизу запрещен");
+            }
         }
 
         List<QuestionDTO> questions = questionRepository.findByQuizId(quizId).stream()
@@ -174,6 +200,18 @@ public class QuizService {
         );
     }
 
+    /**
+     * Обновляет URL материала квиза.
+     */
+    public void updateQuizMaterialUrl(Long quizId, String materialUrl) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
+        
+        quiz.setMaterialUrl(materialUrl);
+        quiz.setHasMaterial(true);
+        quizRepository.save(quiz);
+    }
+
     public boolean removeQuestionFromQuiz(RemoveQuestionRequest request) {
         if (!quizRepository.existsById(request.quizId())) {
             throw new IllegalArgumentException("Квиз не найден");
@@ -196,7 +234,8 @@ public class QuizService {
         }
 
         Pageable pageable = PageRequest.of(0, 100);
-        Page<org.example.model.UserQuizAttempt> attempts = attemptRepository.findCompletedByQuizIdOrderByScoreDesc(quizId, pageable);
+        // Используем метод, который возвращает только лучший результат каждого пользователя
+        Page<org.example.model.UserQuizAttempt> attempts = attemptRepository.findBestAttemptsByQuizId(quizId, pageable);
 
         List<LeaderboardEntry> entries = new ArrayList<>();
         int userPosition = -1;
@@ -225,9 +264,87 @@ public class QuizService {
         return new LeaderboardDTO(entries, userPosition, userScore != null ? userScore.intValue() : null);
     }
 
+    /**
+     * Копирует квиз для нового пользователя.
+     * Создает новый квиз с теми же параметрами, но без вопросов (вопросы будут сгенерированы заново).
+     */
+    public QuizResponseDTO copyQuiz(Long quizId, Long newCreatorId) {
+        Quiz originalQuiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
+
+        User newCreator = userRepository.findById(newCreatorId)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+
+        Quiz copiedQuiz = new Quiz();
+        copiedQuiz.setName(originalQuiz.getName() + " (копия)");
+        copiedQuiz.setPrompt(originalQuiz.getPrompt());
+        copiedQuiz.setCreatedBy(newCreator);
+        copiedQuiz.setHasMaterial(originalQuiz.isHasMaterial());
+        copiedQuiz.setMaterialUrl(originalQuiz.getMaterialUrl());
+        copiedQuiz.setQuestionNumber(originalQuiz.getQuestionNumber());
+        copiedQuiz.setTimePerQuestion(originalQuiz.getTimePerQuestion());
+        copiedQuiz.setPrivate(originalQuiz.isPrivate());
+        copiedQuiz.setStatic(originalQuiz.isStatic());
+        copiedQuiz.setCreatedAt(Instant.now());
+
+        copiedQuiz = quizRepository.save(copiedQuiz);
+
+        // Вопросы не копируются - они будут сгенерированы заново при создании
+
+        return new QuizResponseDTO(
+                copiedQuiz.getId(),
+                copiedQuiz.getName(),
+                "copied",
+                toLocalDateTime(copiedQuiz.getCreatedAt()),
+                String.valueOf(copiedQuiz.getId())
+        );
+    }
+
+    /**
+     * Получает квиз по ID, включая приватные (для доступа по ID).
+     */
+    public QuizDetailsDTO getQuizById(Long quizId, Long userId) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
+
+        // Если квиз приватный, проверяем доступ
+        if (quiz.isPrivate() && (userId == null || !quiz.getCreatedBy().getId().equals(userId))) {
+            // Для приватных квизов доступ возможен только по прямому ID
+            // В данном случае разрешаем доступ, так как пользователь знает ID
+        }
+
+        List<QuestionDTO> questions = questionRepository.findByQuizId(quizId).stream()
+                .map(this::toQuestionDTO)
+                .collect(Collectors.toList());
+
+        List<QuizMaterial> materials = new ArrayList<>();
+        if (quiz.isHasMaterial() && quiz.getMaterialUrl() != null) {
+            // TODO: Загрузка материалов
+        }
+
+        return new QuizDetailsDTO(
+                quiz.getId(),
+                quiz.getName(),
+                quiz.getPrompt(),
+                quiz.getCreatedBy().getLogin(),
+                questions,
+                materials,
+                quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null,
+                !quiz.isPrivate(),
+                quiz.isStatic(),
+                String.valueOf(quiz.getId()),
+                toLocalDateTime(quiz.getCreatedAt())
+        );
+    }
+
     // Вспомогательные методы
     private QuizDTO toQuizDTO(Quiz quiz) {
-        int questionCount = (int) questionRepository.countByQuizId(quiz.getId());
+        // Считаем реальное количество вопросов в БД
+        int actualQuestionCount = (int) questionRepository.countByQuizId(quiz.getId());
+        // Если вопросов еще нет, но есть запланированное количество, показываем его
+        // Иначе показываем реальное количество
+        int questionCount = actualQuestionCount > 0 ? actualQuestionCount : 
+                           (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
         return new QuizDTO(
                 quiz.getId(),
                 quiz.getName(),
