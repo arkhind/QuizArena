@@ -91,8 +91,8 @@ public class ApiService implements ApiController {
     }
 
     @Override
-    public QuizDetailsDTO getQuiz(Long quizId) {
-        return quizService.getQuiz(quizId);
+    public QuizDetailsDTO getQuiz(Long quizId, Long userId) {
+        return quizService.getQuiz(quizId, userId);
     }
 
     @Override
