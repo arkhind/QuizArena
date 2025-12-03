@@ -235,7 +235,9 @@
                     </div>
                     <div class="progress-item">
                         <div class="progress-label">Осталось времени</div>
-                        <div class="progress-value" id="timeRemaining" th:text="${timeRemaining} + ' сек'">60 сек</div>
+                        <div class="progress-value" id="timeRemaining" 
+                             th:text="${timeRemaining} + ' сек'"
+                             th:attr="data-default-time=${defaultTimeLimit != null ? defaultTimeLimit : 60}">60 сек</div>
                     </div>
                 </div>
 
@@ -365,11 +367,13 @@
 
                 if (response.ok) {
                     const result = await response.json();
-                    
-                    if (result.nextQuestion || questionsRemaining > 1) {
-                        window.location.href = '/quiz/attempt/' + attemptId + '/question';
+
+                    if (result.nextQuestion) {
+                        updateQuestionOnPage(result.nextQuestion);
+                        updateQuestionsCounter();
+                        resetTimer();
                     } else {
-                        window.location.href = '/quiz/attempt/' + attemptId + '/finish';
+                        window.location.href = '/quiz/attempt/' + attemptId + '/question';
                     }
                 } else {
                     const error = await response.json().catch(() => ({}));
@@ -378,6 +382,65 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('Ошибка сети');
+            }
+        }
+
+        function updateQuestionOnPage(question) {
+            if (!question) {
+                return;
+            }
+
+            const questionTextElement = document.getElementById('questionText');
+            if (questionTextElement && question.text) {
+                questionTextElement.textContent = question.text;
+            }
+
+            const options = question.options || [];
+            for (let i = 0; i < 4; i++) {
+                const input = document.getElementById('option-' + i);
+                const label = input ? input.nextElementSibling : null;
+
+                if (input && label && options[i]) {
+                    input.value = options[i].id || '';
+                    input.disabled = false;
+                    label.textContent = options[i].text || 'Загрузка варианта ответа...';
+                    input.style.opacity = '1';
+                    label.style.opacity = '1';
+                    input.style.cursor = 'pointer';
+                    label.style.cursor = 'pointer';
+                }
+            }
+
+            document.querySelectorAll('input[name="answer"]').forEach(radio => {
+                radio.checked = false;
+            });
+        }
+
+        function updateQuestionsCounter() {
+            const remainingElement = document.getElementById('questionsRemaining');
+            if (remainingElement) {
+                const current = parseInt(remainingElement.textContent) || 0;
+                if (current > 0) {
+                    const newValue = current - 1;
+                    remainingElement.textContent = newValue;
+                    questionsRemaining = newValue;
+                }
+            }
+        }
+
+        function resetTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+
+            const timeElement = document.getElementById('timeRemaining');
+            if (timeElement) {
+                const defaultTime = parseInt(timeElement.dataset.defaultTime) || 60;
+                timeRemaining = defaultTime;
+                timeElement.textContent = timeRemaining + ' сек';
+                
+                startTimer();
             }
         }
 
@@ -410,12 +473,10 @@
             }
             
             if (timeElement) {
-                const timeText = timeElement.textContent;
-                const match = timeText.match(/(\d+)/);
-                if (match) {
-                    timeRemaining = parseInt(match[1]);
-                    startTimer();
-                }
+                const defaultTime = parseInt(timeElement.dataset.defaultTime) || 60;
+                timeRemaining = defaultTime;
+                timeElement.textContent = timeRemaining + ' сек';
+                startTimer();
             }
         });
 
