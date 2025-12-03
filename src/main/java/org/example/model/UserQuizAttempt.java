@@ -33,6 +33,9 @@ public class UserQuizAttempt {
   @Column(name = "is_completed")
   private boolean isCompleted;
 
+  @Column(name = "session_id", length = 100)
+  private String sessionId; // null для одиночных попыток, UUID для мультиплеера
+
   public UserQuizAttempt() {}
 
   public UserQuizAttempt(Long id, User user, Quiz quiz, Instant startTime,
@@ -44,5 +47,17 @@ public class UserQuizAttempt {
     this.finishTime = finishTime;
     this.score = score;
     this.isCompleted = isCompleted;
+  }
+
+  public UserQuizAttempt(Long id, User user, Quiz quiz, Instant startTime,
+                         Instant finishTime, Long score, boolean isCompleted, String sessionId) {
+    this.id = id;
+    this.user = user;
+    this.quiz = quiz;
+    this.startTime = startTime;
+    this.finishTime = finishTime;
+    this.score = score;
+    this.isCompleted = isCompleted;
+    this.sessionId = sessionId;
   }
 }
