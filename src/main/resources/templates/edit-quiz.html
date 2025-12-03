@@ -525,7 +525,7 @@
                 }
 
 
-                const response = await fetch('/api/quizzes/${getQuizId()}', {
+                const response = await fetch('/api/quizzes/' + getQuizId(), {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -568,7 +568,7 @@
                 }
 
 
-                const response = await fetch('/api/quizzes/${getQuizId()}?userId=${getCurrentUserId()}', {
+                const response = await fetch('/api/quizzes/' + getQuizId() + '?userId=' + getCurrentUserId(), {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
