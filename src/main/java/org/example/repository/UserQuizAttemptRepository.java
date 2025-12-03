@@ -26,6 +26,15 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
            "ORDER BY u.score DESC NULLS LAST, u.finishTime ASC")
     Page<UserQuizAttempt> findCompletedByQuizIdOrderByScoreDesc(@Param("quizId") Long quizId, Pageable pageable);
 
+    /**
+     * Находит ID квиза по ID попытки прохождения.
+     *
+     * @param attemptId ID попытки прохождения
+     * @return ID квиза или null если попытка не найдена
+     */
+    @Query("SELECT u.quiz.id FROM UserQuizAttempt u WHERE u.id = :attemptId")
+    Long findQuizIdByAttemptId(@Param("attemptId") Long attemptId);
+
     long countByUserId(Long userId);
 }
 
