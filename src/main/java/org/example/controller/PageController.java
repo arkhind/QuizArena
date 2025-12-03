@@ -14,6 +14,7 @@ import org.example.dto.response.history.*;
 import org.example.dto.response.generation.*;
 
 import org.example.dto.common.*;
+import org.example.repository.*;
 import org.example.service.QuizService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -29,11 +30,13 @@ public class PageController {
 
     private final ApiController apiController;
     private final QuizService quizService;
+    private final UserQuizAttemptRepository attemptRepository;
 
     @Autowired
-    public PageController(ApiController apiController, QuizService quizService) {
+    public PageController(ApiController apiController, QuizService quizService, UserQuizAttemptRepository attemptRepository) {
         this.apiController = apiController;
         this.quizService = quizService;
+        this.attemptRepository = attemptRepository;
     }
     
     @GetMapping("/")
@@ -71,6 +74,22 @@ public class PageController {
         model.addAttribute("userHistory", userHistory);
         model.addAttribute("createdQuizzes", createdQuizzes);
         return "profile";
+    }
+
+    @GetMapping("/history")
+    public String historyPage(@RequestParam Long userId, Model model) {
+        try {
+            UserHistoryDTO history = apiController.getUserHistory(userId);
+
+            model.addAttribute("attempts", history.attempts());
+            model.addAttribute("userId", userId);
+
+            return "history";
+        } catch (Exception e) {
+            model.addAttribute("attempts", List.of());
+            model.addAttribute("userId", userId);
+            return "history";
+        }
     }
 
     @GetMapping("/quiz")
@@ -197,7 +216,48 @@ public class PageController {
         model.addAttribute("timeRemaining", response.timeRemaining());
         model.addAttribute("questionsRemaining", response.questionsRemaining());
         model.addAttribute("quizName", response.quizName());
+        model.addAttribute("quizId", response.quizId());
+        model.addAttribute("defaultTimeLimit", response.timeRemaining());
         return "quiz-attempt";
+    }
+
+    @GetMapping("/quiz/attempt/{attemptId}/question")
+    public String quizQuestionPage(@PathVariable Long attemptId, Model model) {
+        try {
+            QuestionDTO nextQuestion = apiController.getNextQuestion(attemptId);
+
+            if (nextQuestion == null) {
+                Long quizId = attemptRepository.findQuizIdByAttemptId(attemptId);
+                if (quizId != null) {
+                    return "redirect:/quiz/attempt/" + attemptId + "/finish?quizId=" + quizId;
+                } else {
+                    return "redirect:/home";
+                }
+            }
+
+            Long quizId = attemptRepository.findQuizIdByAttemptId(attemptId);
+            if (quizId == null) {
+                return "redirect:/home";
+            }
+
+            QuizDetailsDTO quiz = quizService.getQuiz(quizId);
+            String quizName = quiz.name();
+            Integer timeLimit = quiz.timeLimit() != null ? quiz.timeLimit() : 60;
+            Integer questionsRemaining = 10;
+            
+            model.addAttribute("attemptId", attemptId);
+            model.addAttribute("currentQuestion", nextQuestion);
+            model.addAttribute("quizName", quizName);
+            model.addAttribute("quizId", quizId);
+            model.addAttribute("timeRemaining", timeLimit);
+            model.addAttribute("defaultTimeLimit", timeLimit);
+            model.addAttribute("questionsRemaining", questionsRemaining);
+            
+            return "quiz-attempt";
+            
+        } catch (IllegalArgumentException e) {
+            return "redirect:/home";
+        }
     }
 
     @GetMapping("/multiplayer/session/{sessionId}/results")
