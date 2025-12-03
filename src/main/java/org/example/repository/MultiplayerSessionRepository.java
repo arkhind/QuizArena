@@ -11,7 +11,6 @@ import java.util.Optional;
 
 /**
  * Репозиторий для работы с сессиями мультиплеера.
- * Путь: src/main/java/org/example/repository/MultiplayerSessionRepository.java
  */
 @Repository
 public interface MultiplayerSessionRepository extends JpaRepository<MultiplayerSession, Long> {
