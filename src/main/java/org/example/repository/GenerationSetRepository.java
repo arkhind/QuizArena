@@ -11,7 +11,6 @@ import java.util.Optional;
 
 /**
  * Репозиторий для работы с наборами сгенерированных вопросов.
- * Путь: src/main/java/org/example/repository/GenerationSetRepository.java
  */
 @Repository
 public interface GenerationSetRepository extends JpaRepository<GenerationSet, Long> {

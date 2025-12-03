@@ -11,7 +11,6 @@ import java.util.Optional;
 
 /**
  * Репозиторий для работы с ответами пользователей.
- * Путь: src/main/java/org/example/repository/UserAnswerRepository.java
  */
 @Repository
 public interface UserAnswerRepository extends JpaRepository<UserAnswer, Long> {
