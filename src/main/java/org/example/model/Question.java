@@ -32,6 +32,18 @@ public class Question {
   @Lob
   private byte[] image;
 
+  @Column(name = "is_generated")
+  private Boolean isGenerated; // true для сгенерированных вопросов
+
+  @Column(name = "generation_set_id")
+  private Long generationSetId; // ID набора генерации
+
+  @Column(name = "is_valid")
+  private Boolean isValid; // null = не проверен, true/false = результат валидации
+
+  @Column(name = "is_duplicate")
+  private Boolean isDuplicate; // true если вопрос является дубликатом
+
   @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<AnswerOption> answerOptions = new ArrayList<>();
 
