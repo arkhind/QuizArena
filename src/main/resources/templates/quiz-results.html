@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результаты квиза</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            padding: 25px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            height: 200px;
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 80%;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            margin-left: 340px;
+            max-width: calc(100vw - 360px);
+        }
+
+        .container {
+            max-width: none;
+            width: 80%;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            text-align: center;
+            margin: 0;
+        }
+
+        .content-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .score-display {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .score-value {
+            font-size: 4em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .score-label {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+            text-align: center;
+        }
+
+        .result-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .result-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .leaderboard-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .home-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <a href="/home" class="nav-btn">Главная</a>
+    <a href="/quiz" class="nav-btn">Все квизы</a>
+</div>
+
+<div class="main-content">
+    <div class="container">
+        <header class="header">
+            <h1 th:text="${quizName != null ? quizName : 'Результаты квиза'}">Результаты квиза</h1>
+        </header>
+
+        <div class="content-section">
+            <div class="score-display">
+                <div class="score-value" th:text="${score != null ? score : 0}"></div>
+                <div class="score-label">Ваш результат</div>
+                <div class="position-badge" th:if="${position != null}">
+                    Место: <span th:text="${position}">-</span>
+                </div>
+            </div>
+
+            <div class="results-grid">
+                <div class="result-item">
+                    <div class="result-label">Правильных ответов</div>
+                    <div class="result-value" th:text="${correctAnswers != null ? correctAnswers : 0}"></div>
+                    <div class="result-label" th:if="${totalQuestions != null}" th:text="'из ' + ${totalQuestions}">из </div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Всего вопросов</div>
+                    <div class="result-value" th:text="${totalQuestions != null ? totalQuestions : 0}"></div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="leaderboard-btn" onclick="viewLeaderboard()">Таблица лидеров</button>
+                <button class="home-btn" onclick="goHome()">На главную</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function getQuizId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('quizId');
+    }
+
+    function viewLeaderboard() {
+        const quizId = getQuizId();
+        const userId = localStorage.getItem('userId') || '1';
+        if (quizId) {
+            window.location.href = '/quiz/' + quizId + '/leaderboard?userId=' + userId;
+        }
+    }
+
+    function goHome() {
+        window.location.href = '/home';
+    }
+</script>
+</body>
+</html>
