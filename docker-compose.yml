@@ -2,7 +2,7 @@ version: '3.3'
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:14
     container_name: quizarena_postgres
     environment:
       POSTGRES_DB: quizarena
@@ -11,8 +11,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
-
-volumes:
-  postgres_data:
+  volumes:
+    postgres_data:
