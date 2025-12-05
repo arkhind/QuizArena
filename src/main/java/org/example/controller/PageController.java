@@ -1,5 +1,4 @@
 package org.example.controller;
-
 import org.example.dto.request.auth.*;
 import org.example.dto.request.quiz.*;
 import org.example.dto.request.attempt.*;
@@ -16,21 +15,25 @@ import org.example.dto.response.generation.*;
 import org.example.dto.common.*;
 import org.example.repository.*;
 import org.example.service.QuizService;
+import org.example.service.ApiService;
+import org.example.util.TokenUtil;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
 
 @Controller
 public class PageController {
-
     private final ApiController apiController;
     private final QuizService quizService;
     private final UserQuizAttemptRepository attemptRepository;
+    private final ApiService apiService;
 
     @Autowired
     public PageController(ApiController apiController, QuizService quizService, UserQuizAttemptRepository attemptRepository) {
@@ -57,7 +60,7 @@ public class PageController {
     @GetMapping("/home")
     public String home(Model model) {
         QuizSearchRequest request = new QuizSearchRequest("", "popularity", true, 0, 20);
-        QuizSearchResponse response = apiController.searchPublicQuizzes(request);
+        QuizSearchResponse response = apiService.searchPublicQuizzes(request);
         model.addAttribute("quizzes", response.content());
         model.addAttribute("totalPages", response.totalPages());
         model.addAttribute("currentPage", response.currentPage());
@@ -132,15 +135,17 @@ public class PageController {
     }
 
     @GetMapping("/quiz/{quizId}")
-    public String quizDetails(@PathVariable Long quizId, Model model) {
-        QuizDetailsDTO quiz = apiController.getQuiz(quizId);
+    public String quizDetails(@PathVariable Long quizId, HttpServletRequest request, Model model) {
+        // Извлекаем userId из токена для проверки доступа к приватным квизам
+        Long userId = TokenUtil.extractUserIdFromRequest(request);
+        QuizDetailsDTO quiz = apiService.getQuiz(quizId, userId);
         model.addAttribute("quiz", quiz);
         return "quiz-details";
     }
 
     @GetMapping("/my-quizzes")
     public String myQuizzes(@RequestParam Long userId, Model model) {
-        java.util.List<QuizDTO> createdQuizzes = apiController.getCreatedQuizzes(userId);
+        java.util.List<QuizDTO> createdQuizzes = apiService.getCreatedQuizzes(userId);
         model.addAttribute("createdQuizzes", createdQuizzes);
         return "my-quizzes";
     }
