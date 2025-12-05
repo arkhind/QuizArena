@@ -190,7 +190,7 @@
 <body>
 <div class="sidebar">
     <div class="profile-section">
-        <a th:href="@{/profile(userId=${#httpServletRequest.getParameter('userId')})}" class="nav-btn">Назад</a>
+        <a th:href="@{/profile(userId=${userId})}" class="nav-btn">Назад</a>
         <a th:href="@{/home}" class="nav-btn">Главная</a>
     </div>
 </div>

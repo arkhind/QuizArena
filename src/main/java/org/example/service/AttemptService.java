@@ -7,7 +7,6 @@ import org.example.dto.response.attempt.AnswerResponse;
 import org.example.dto.response.attempt.AttemptResponse;
 import org.example.dto.response.attempt.QuizResultDTO;
 import org.example.dto.response.quiz.QuestionDTO;
-import org.example.dto.common.AnswerOption;
 import org.example.model.*;
 import org.example.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +22,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -33,25 +34,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class AttemptService {
-  private final Map<Long, AttemptState> attemptStates = new ConcurrentHashMap<>();
-
-  public AttemptService() {
-  }
-
-  /**
-   * Внутренний класс для отслеживания состояния попыток в памяти
-   */
-  private static class AttemptState {
-    Long attemptId;
-    Long userId;
-    Long quizId;
-    List<Long> questionIds;
-    int currentQuestionIndex;
-    Map<Long, Long> answers;
-    Map<Long, Boolean> answerResults;
-    Instant startTime;
-    int score;
-
+    private final Map<Long, AttemptState> attemptStates = new ConcurrentHashMap<>();
     private final UserQuizAttemptRepository attemptRepository;
     private final QuizRepository quizRepository;
     private final UserRepository userRepository;
@@ -73,6 +56,21 @@ public class AttemptService {
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
         this.userAnswerRepository = userAnswerRepository;
+    }
+
+    /**
+     * Внутренний класс для отслеживания состояния попыток в памяти
+     */
+    private static class AttemptState {
+        Long attemptId;
+        Long userId;
+        Long quizId;
+        List<Long> questionIds;
+        int currentQuestionIndex;
+        Map<Long, Long> answers;
+        Map<Long, Boolean> answerResults;
+        Instant startTime;
+        int score;
     }
 
     /**
@@ -129,7 +127,6 @@ public class AttemptService {
                 timeRemaining
         );
     }
-  }
 
     /**
      * Получает следующий вопрос для попытки.

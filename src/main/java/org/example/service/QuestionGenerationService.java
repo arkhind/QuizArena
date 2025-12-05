@@ -19,6 +19,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -28,15 +30,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class QuestionGenerationService {
-  private final DatabaseService databaseService;
-
-  private final Map<Long, QuestionSetState> questionSets = new ConcurrentHashMap<>();
-  private long nextQuestionSetId = 1;
-
-  public QuestionGenerationService(DatabaseService databaseService) {
-    this.databaseService = databaseService;
-  }
-
+    private final Map<Long, QuestionSetState> questionSets = new ConcurrentHashMap<>();
+    private long nextQuestionSetId = 1;
     private final GenerationSetRepository generationSetRepository;
     private final QuizRepository quizRepository;
     private final QuestionRepository questionRepository;
@@ -53,6 +48,38 @@ public class QuestionGenerationService {
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
+    }
+
+    /**
+     * Внутренний класс для хранения состояния набора вопросов
+     */
+    private static class QuestionSetState {
+        Long setId;
+        Long quizId;
+        String status;
+        List<Long> questionIds;
+    }
+
+    /**
+     * Внутренний класс для хранения сгенерированного вопроса
+     */
+    private static class GeneratedQuestion {
+        Long id;
+        String text;
+        QuestionType type;
+        String explanation;
+        List<GeneratedAnswerOption> answerOptions;
+        boolean isValid;
+        boolean isDuplicate;
+    }
+
+    /**
+     * Внутренний класс для хранения варианта ответа
+     */
+    private static class GeneratedAnswerOption {
+        Long id;
+        String text;
+        boolean isCorrect;
     }
 
     /**
@@ -82,16 +109,20 @@ public class QuestionGenerationService {
         //     request.questionCount()
         // );
 
-        // Пока генерируем заглушки
+        // Пока генерируем заглушки (в будущем здесь будет интеграция с LLM)
         int questionCount = request.questionCount() != null ? request.questionCount() : 10;
         List<Question> generatedQuestions = new ArrayList<>();
+        
+        // Используем prompt для генерации более релевантных вопросов
+        String basePrompt = request.prompt() != null ? request.prompt() : "Общая тема";
 
         for (int i = 0; i < questionCount; i++) {
             Question genQuestion = new Question();
             genQuestion.setQuiz(quiz);
-            genQuestion.setText("Сгенерированный вопрос " + (i + 1));
+            // Генерируем более реалистичные вопросы на основе prompt
+            genQuestion.setText("Вопрос " + (i + 1) + " по теме \"" + basePrompt + "\": Какой из следующих вариантов является правильным ответом?");
             genQuestion.setType(QuestionType.SINGLE_CHOICE);
-            genQuestion.setExplanation("Объяснение к вопросу " + (i + 1));
+            genQuestion.setExplanation("Это правильный ответ, потому что он соответствует теме \"" + basePrompt + "\".");
             genQuestion.setIsGenerated(true);
             genQuestion.setGenerationSetId(questionSet.getId());
             genQuestion.setIsValid(null); // Будет проверено при валидации
@@ -102,7 +133,7 @@ public class QuestionGenerationService {
             for (int j = 0; j < 4; j++) {
                 org.example.model.AnswerOption option = new org.example.model.AnswerOption();
                 option.setQuestion(genQuestion);
-                option.setText("Вариант ответа " + (j + 1));
+                option.setText("Вариант ответа " + (j + 1) + " для вопроса по теме \"" + basePrompt + "\"");
                 option.setCorrect(j == 0); // Первый вариант правильный (пример)
                 option.setNaOption(false);
                 answerOptionRepository.save(option);
@@ -124,19 +155,6 @@ public class QuestionGenerationService {
                 generatedQuestions.size() // finalCount
         );
     }
-  }
-
-  /**
-   * Внутренний класс для хранения сгенерированного вопроса
-   */
-  private static class GeneratedQuestion {
-    Long id;
-    String text;
-    QuestionType type;
-    String explanation;
-    List<GeneratedAnswerOption> answerOptions;
-    boolean isValid;
-    boolean isDuplicate;
 
     /**
      * Валидирует сгенерированные вопросы.
@@ -213,7 +231,6 @@ public class QuestionGenerationService {
                 errors
         );
     }
-  }
 
     /**
      * Удаляет дубликаты вопросов.
@@ -271,16 +288,6 @@ public class QuestionGenerationService {
                 duplicatePairs
         );
     }
-  }
-
-  /**
-   * Генерирует вопросы для квиза с использованием ИИ.
-   * Включает валидацию и удаление дубликатов.
-   */
-  public QuestionGenerationResponse generateQuizQuestions(QuestionGenerationRequest request) {
-    Long quizId = request.quizId();
-    String prompt = request.prompt();
-    Integer questionCount = request.questionCount() != null ? request.questionCount() : 10;
 
     /**
      * Получает сгенерированные вопросы.

@@ -40,6 +40,7 @@ public class QuizService {
     private final UserQuizAttemptRepository attemptRepository;
     private final org.example.repository.UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final QuestionGenerationService questionGenerationService;
 
     @Autowired
     public QuizService(QuizRepository quizRepository,
@@ -47,13 +48,15 @@ public class QuizService {
                       AnswerOptionRepository answerOptionRepository,
                       UserQuizAttemptRepository attemptRepository,
                       org.example.repository.UserRepository userRepository,
-                      FileStorageService fileStorageService) {
+                      FileStorageService fileStorageService,
+                      QuestionGenerationService questionGenerationService) {
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
         this.attemptRepository = attemptRepository;
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
+        this.questionGenerationService = questionGenerationService;
     }
 
     public QuizResponseDTO createQuiz(CreateQuizRequest request) {
@@ -75,8 +78,51 @@ public class QuizService {
 
         quiz = quizRepository.save(quiz);
 
-        // TODO: Генерация вопросов через ИИ
-        // Пока возвращаем успешный ответ без вопросов
+        // Автоматическая генерация вопросов через ИИ, если есть prompt
+        if (request.prompt() != null && !request.prompt().trim().isEmpty()) {
+            try {
+                System.out.println("Начинаем автоматическую генерацию вопросов для квиза ID: " + quiz.getId());
+                
+                // Генерируем вопросы
+                int questionCount = request.questionNumber() != null && request.questionNumber() > 0 
+                    ? request.questionNumber() 
+                    : 10; // По умолчанию 10 вопросов
+                
+                org.example.dto.request.generation.QuestionGenerationRequest genRequest = 
+                    new org.example.dto.request.generation.QuestionGenerationRequest(
+                        quiz.getId(),
+                        request.prompt(),
+                        request.materials(),
+                        request.questionNumber(), // questionNumber
+                        questionCount // questionCount
+                    );
+                
+                // Запускаем генерацию вопросов
+                var generationResponse = questionGenerationService.generateQuizQuestions(genRequest);
+                System.out.println("Сгенерировано вопросов: " + generationResponse.generatedCount() + 
+                                 " для набора ID: " + generationResponse.questionSetId());
+                
+                // Автоматически валидируем сгенерированные вопросы
+                try {
+                    var validationResponse = questionGenerationService.validateGeneratedQuestions(generationResponse.questionSetId());
+                    System.out.println("Валидных вопросов: " + validationResponse.validQuestions() + 
+                                     " из " + validationResponse.totalQuestions());
+                    
+                    // После валидации удаляем дубликаты
+                    var dedupResponse = questionGenerationService.removeDuplicateQuestions(generationResponse.questionSetId());
+                    System.out.println("Уникальных вопросов после дедупликации: " + dedupResponse.finalCount());
+                } catch (Exception e) {
+                    System.err.println("Ошибка при валидации/дедупликации вопросов: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            } catch (Exception e) {
+                // Логируем ошибку, но не прерываем создание квиза
+                System.err.println("Ошибка при автоматической генерации вопросов: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("Пропуск генерации вопросов: prompt отсутствует для квиза ID: " + quiz.getId());
+        }
 
         return new QuizResponseDTO(
                 quiz.getId(),
