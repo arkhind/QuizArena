@@ -36,10 +36,11 @@ public class PageController {
     private final ApiService apiService;
 
     @Autowired
-    public PageController(ApiController apiController, QuizService quizService, UserQuizAttemptRepository attemptRepository) {
+    public PageController(ApiController apiController, QuizService quizService, UserQuizAttemptRepository attemptRepository, ApiService apiService) {
         this.apiController = apiController;
         this.quizService = quizService;
         this.attemptRepository = attemptRepository;
+        this.apiService = apiService;
     }
     
     @GetMapping("/")
@@ -105,7 +106,7 @@ public class PageController {
         LeaderboardDTO leaderboard = null;
         
         if (quizId != null) {
-            QuizDetailsDTO quizDetails = quizService.getQuiz(quizId);
+            QuizDetailsDTO quizDetails = quizService.getQuiz(quizId, userId);
             quiz = new QuizDTO(
                 quizDetails.id(),
                 quizDetails.name(),
@@ -135,6 +136,58 @@ public class PageController {
     }
 
     @GetMapping("/quiz/{quizId}")
+    public String quizPageByPath(@PathVariable Long quizId, HttpServletRequest request, Model model,
+                                  @RequestParam(required = false) String error) {
+        // Извлекаем userId из токена для проверки доступа к приватным квизам
+        Long userId = TokenUtil.extractUserIdFromRequest(request);
+        
+        QuizDTO quiz = null;
+        LeaderboardDTO leaderboard = null;
+        boolean hasQuestions = false;
+        
+        try {
+            QuizDetailsDTO quizDetails = quizService.getQuiz(quizId, userId);
+            hasQuestions = quizDetails.questions() != null && !quizDetails.questions().isEmpty();
+            quiz = new QuizDTO(
+                quizDetails.id(),
+                quizDetails.name(),
+                quizDetails.author(),
+                quizDetails.questions() != null ? quizDetails.questions().size() : 0,
+                quizDetails.timeLimit(),
+                quizDetails.isPublic(),
+                quizDetails.isStatic(),
+                quizDetails.createdAt()
+            );
+        } catch (Exception e) {
+            // Если квиз не найден, возвращаем пустой список
+        }
+        
+        // Пытаемся загрузить лидерборд (может быть null если userId не передан)
+        try {
+            leaderboard = quizService.getQuizLeaderboard(quizId, userId);
+        } catch (Exception e) {
+            // Лидерборд может быть пустым или недоступным
+        }
+        
+        List<QuizDTO> quizzes = quiz != null ? List.of(quiz) : List.of();
+        
+        model.addAttribute("quizzes", quizzes);
+        model.addAttribute("leaderboard", leaderboard);
+        model.addAttribute("quizId", quizId);
+        model.addAttribute("userId", userId);
+        model.addAttribute("hasQuestions", hasQuestions);
+        
+        // Обработка ошибок
+        if ("noQuestions".equals(error)) {
+            model.addAttribute("errorMessage", "Этот квиз не содержит вопросов. Невозможно начать прохождение.");
+        } else if ("startFailed".equals(error)) {
+            model.addAttribute("errorMessage", "Ошибка при начале квиза. Попробуйте позже.");
+        }
+        
+        return "quiz";
+    }
+
+    @GetMapping("/quiz/{quizId}/details")
     public String quizDetails(@PathVariable Long quizId, HttpServletRequest request, Model model) {
         // Извлекаем userId из токена для проверки доступа к приватным квизам
         Long userId = TokenUtil.extractUserIdFromRequest(request);
@@ -147,6 +200,7 @@ public class PageController {
     public String myQuizzes(@RequestParam Long userId, Model model) {
         java.util.List<QuizDTO> createdQuizzes = apiService.getCreatedQuizzes(userId);
         model.addAttribute("createdQuizzes", createdQuizzes);
+        model.addAttribute("userId", userId);
         return "my-quizzes";
     }
 
@@ -157,7 +211,7 @@ public class PageController {
 
     @GetMapping("/quiz/{quizId}/edit")
     public String editQuizPage(@PathVariable Long quizId, @RequestParam Long userId, Model model) {
-        QuizDetailsDTO quiz = apiController.getQuiz(quizId);
+        QuizDetailsDTO quiz = apiController.getQuiz(quizId, userId);
 
         model.addAttribute("quiz", quiz);
         model.addAttribute("quizId", quizId);
@@ -195,7 +249,7 @@ public class PageController {
         
         String quizName = "Квиз";
         try {
-            QuizDetailsDTO quiz = quizService.getQuiz(quizId);
+            QuizDetailsDTO quiz = quizService.getQuiz(quizId, null);
             quizName = quiz.name();
         } catch (Exception e) {
             quizName = "Квиз";
@@ -214,16 +268,32 @@ public class PageController {
     public String startQuizPage(@PathVariable Long quizId,
                                 @RequestParam Long userId,
                                 Model model) {
-        StartAttemptRequest request = new StartAttemptRequest(quizId, userId);
-        AttemptResponse response = apiController.startQuizAttempt(request);
-        model.addAttribute("attemptId", response.attemptId());
-        model.addAttribute("currentQuestion", response.currentQuestion());
-        model.addAttribute("timeRemaining", response.timeRemaining());
-        model.addAttribute("questionsRemaining", response.questionsRemaining());
-        model.addAttribute("quizName", response.quizName());
-        model.addAttribute("quizId", response.quizId());
-        model.addAttribute("defaultTimeLimit", response.timeRemaining());
-        return "quiz-attempt";
+        try {
+            StartAttemptRequest request = new StartAttemptRequest(quizId, userId);
+            AttemptResponse response = apiController.startQuizAttempt(request);
+            model.addAttribute("attemptId", response.attemptId());
+            model.addAttribute("currentQuestion", response.currentQuestion());
+            model.addAttribute("timeRemaining", response.timeRemaining());
+            model.addAttribute("questionsRemaining", response.questionsRemaining());
+            model.addAttribute("quizName", response.quizName());
+            model.addAttribute("quizId", response.quizId());
+            model.addAttribute("defaultTimeLimit", response.timeRemaining());
+            return "quiz-attempt";
+        } catch (IllegalStateException e) {
+            // Если квиз не содержит вопросов или другая ошибка состояния
+            if (e.getMessage() != null && e.getMessage().contains("не содержит вопросов")) {
+                model.addAttribute("errorMessage", "Этот квиз не содержит вопросов. Невозможно начать прохождение.");
+                model.addAttribute("quizId", quizId);
+                model.addAttribute("userId", userId);
+                return "redirect:/quiz/" + quizId + "?error=noQuestions";
+            }
+            throw e;
+        } catch (Exception e) {
+            model.addAttribute("errorMessage", "Ошибка при начале квиза: " + e.getMessage());
+            model.addAttribute("quizId", quizId);
+            model.addAttribute("userId", userId);
+            return "redirect:/quiz/" + quizId + "?error=startFailed";
+        }
     }
 
     @GetMapping("/quiz/attempt/{attemptId}/question")
@@ -245,7 +315,7 @@ public class PageController {
                 return "redirect:/home";
             }
 
-            QuizDetailsDTO quiz = quizService.getQuiz(quizId);
+            QuizDetailsDTO quiz = quizService.getQuiz(quizId, null);
             String quizName = quiz.name();
             Integer timeLimit = quiz.timeLimit() != null ? quiz.timeLimit() : 60;
             Integer questionsRemaining = 10;
@@ -284,7 +354,7 @@ public class PageController {
         model.addAttribute("leaderboard", leaderboard);
         model.addAttribute("userPosition", leaderboard.userPosition());
         model.addAttribute("quizId", quizId);
-        QuizDetailsDTO quiz = quizService.getQuiz(quizId);
+        QuizDetailsDTO quiz = quizService.getQuiz(quizId, userId);
         model.addAttribute("quizName", quiz.name());
         return "quiz-leaderboard";
     }

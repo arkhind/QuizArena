@@ -17,7 +17,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -27,14 +29,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class MultiplayerService {
-  private final AttemptService attemptService;
-
-  private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
-
-  public MultiplayerService(AttemptService attemptService) {
-    this.attemptService = attemptService;
-  }
-
+    private final AttemptService attemptService;
+    private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
     private final MultiplayerSessionRepository sessionRepository;
     private final QuizRepository quizRepository;
     private final UserRepository userRepository;
@@ -42,14 +38,26 @@ public class MultiplayerService {
 
     @Autowired
     public MultiplayerService(
+            AttemptService attemptService,
             MultiplayerSessionRepository sessionRepository,
             QuizRepository quizRepository,
             UserRepository userRepository,
             UserQuizAttemptRepository attemptRepository) {
+        this.attemptService = attemptService;
         this.sessionRepository = sessionRepository;
         this.quizRepository = quizRepository;
         this.userRepository = userRepository;
         this.attemptRepository = attemptRepository;
+    }
+
+    /**
+     * Внутренний класс для хранения состояния сессии
+     */
+    private static class SessionState {
+        String sessionId;
+        Long quizId;
+        List<Long> participantIds;
+        Instant startTime;
     }
 
     /**
@@ -105,14 +113,6 @@ public class MultiplayerService {
                 toLocalDateTime(session.getCreatedAt())
         );
     }
-  }
-
-  /**
-   * Информация об участнике сессии
-   */
-  private static class ParticipantInfo {
-    Long userId;
-    Instant joinedAt;
 
     /**
      * Получает информацию о сессии.
@@ -149,15 +149,6 @@ public class MultiplayerService {
                 toLocalDateTime(session.getCreatedAt())
         );
     }
-  }
-
-  /**
-   * Создает новую сессию для совместного прохождения квиза.
-   * Генерирует уникальный идентификатор сессии.
-   */
-  public MultiplayerSessionDTO createMultiplayerSession(CreateMultiplayerRequest request) {
-    Long userId = request.userId();
-    Long quizId = request.quizId();
 
     /**
      * Подключает пользователя к сессии.

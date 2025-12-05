@@ -171,10 +171,56 @@
             padding: 20px;
             color: #999;
         }
+
+        .back-btn {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            background-color: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .warning-message {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
 <div class="container">
+    <button class="back-btn" onclick="goBack()">← Назад</button>
+    
+    <div th:if="${errorMessage != null}" class="error-message" th:text="${errorMessage}"></div>
+    <div th:if="${hasQuestions != null and !hasQuestions}" class="warning-message">
+        ⚠️ Этот квиз не содержит вопросов. Невозможно начать прохождение.
+    </div>
+    
     <header>
         <h1 th:text="${quizzes != null and !quizzes.isEmpty() ? quizzes[0].name : 'Квиз'}">Название квиза</h1>
     </header>
@@ -184,8 +230,11 @@
             <h2>Действия</h2>
             <div class="action-buttons">
                 <button class="btn btn-primary"
-                        th:if="${quizzes != null and !quizzes.isEmpty()}"
+                        th:if="${quizzes != null and !quizzes.isEmpty() and hasQuestions != null and hasQuestions}"
                         th:onclick="'startQuiz(' + ${quizzes[0].id} + ')'">Начать квиз</button>
+                <button class="btn btn-primary"
+                        th:if="${quizzes != null and !quizzes.isEmpty() and (hasQuestions == null or !hasQuestions)}"
+                        disabled>Начать квиз</button>
                 <button class="btn btn-secondary"
                         th:if="${quizzes != null and !quizzes.isEmpty()}"
                         th:onclick="'goToQuizDetails(' + ${quizzes[0].id} + ')'">Подробнее о квизе</button>
@@ -219,6 +268,13 @@
 
 <script>
     function getQuizId() {
+        // Извлекаем quizId из пути URL (/quiz/{quizId})
+        const path = window.location.pathname;
+        const match = path.match(/\/quiz\/(\d+)/);
+        if (match) {
+            return match[1];
+        }
+        // Если не найден в пути, пробуем из query параметров
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('quizId');
     }
@@ -228,7 +284,8 @@
     }
 
     function goToQuizDetails(quizId) {
-        window.location.href = '/quiz/' + quizId;
+        // Переход на страницу с деталями квиза
+        window.location.href = '/quiz/' + quizId + '/details';
     }
 
     function startQuiz(quizId) {
@@ -242,6 +299,10 @@
 
     function copyQuiz(quizId) {
         alert('Функция копирования квиза будет реализована позже');
+    }
+
+    function goBack() {
+        window.location.href = '/home';
     }
 </script>
 </body>

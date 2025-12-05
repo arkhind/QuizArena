@@ -108,15 +108,14 @@ public class DatabaseService {
 
     public Long saveQuestion(Question question) throws SQLException {
         Long nextId = getNextQuestionId();
-        String sql = "INSERT INTO \"Question\" (id, quiz_id, text, type, explanation, image_url) VALUES (?, ?, ?, ?, ?, ?) RETURNING id";
+        String sql = "INSERT INTO \"Question\" (id, quiz_id, text, type, explanation) VALUES (?, ?, ?, ?, ?) RETURNING id";
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, nextId);
-            statement.setLong(2, question.getQuizId());
+            statement.setLong(2, question.getQuiz().getId());
             statement.setString(3, question.getText());
-            statement.setString(4, question.getType());
+            statement.setString(4, question.getType().name());
             statement.setString(5, question.getExplanation());
-            statement.setString(6, question.getImageUrl());
             
             ResultSet rs = statement.executeQuery();
             if (rs.next()) {
@@ -144,10 +143,10 @@ public class DatabaseService {
         try (Connection connection = dataSource.getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setLong(1, nextId);
-            statement.setLong(2, option.getQuestionId());
+            statement.setLong(2, option.getQuestion().getId());
             statement.setString(3, option.getText());
-            statement.setBoolean(4, option.getIsCorrect());
-            statement.setBoolean(5, option.getIsNaOption());
+            statement.setBoolean(4, option.isCorrect());
+            statement.setBoolean(5, option.isNaOption());
             statement.executeUpdate();
         }
     }
@@ -248,16 +247,67 @@ public class DatabaseService {
     }
 
     public void saveQuestionsWithAnswers(List<QuestionParser.ParsedQuestion> parsedQuestions, Long quizId) throws SQLException {
+        // Получаем Quiz из базы данных
+        Quiz quiz = getQuizById(quizId);
+        if (quiz == null) {
+            throw new SQLException("Quiz with id " + quizId + " not found");
+        }
+        
         for (QuestionParser.ParsedQuestion pq : parsedQuestions) {
-            pq.question.setQuizId(quizId);
+            pq.question.setQuiz(quiz);
             Long questionId = saveQuestion(pq.question);
             if (questionId != null) {
+                // Создаем объект Question с установленным ID для связи
+                Question savedQuestion = new Question();
+                savedQuestion.setId(questionId);
+                
                 for (AnswerOption option : pq.answerOptions) {
-                    option.setQuestionId(questionId);
+                    option.setQuestion(savedQuestion);
                     saveAnswerOption(option);
                 }
             }
         }
+    }
+    
+    private Quiz getQuizById(Long quizId) throws SQLException {
+        String sql = "SELECT q.id, q.name, q.prompt, q.created_by, q.has_material, q.material_url, " +
+                    "q.question_number, q.time_per_question_seconds, q.is_private, q.is_static, q.created_at, " +
+                    "u.id as user_id, u.login " +
+                    "FROM quizzes q " +
+                    "LEFT JOIN users u ON q.created_by = u.id " +
+                    "WHERE q.id = ?";
+        
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setLong(1, quizId);
+            ResultSet resultSet = statement.executeQuery();
+            
+            if (resultSet.next()) {
+                Quiz quiz = new Quiz();
+                quiz.setId(resultSet.getLong("id"));
+                quiz.setName(resultSet.getString("name"));
+                quiz.setPrompt(resultSet.getString("prompt"));
+                User creator = new User();
+                creator.setId(resultSet.getLong("user_id"));
+                creator.setLogin(resultSet.getString("login"));
+                quiz.setCreatedBy(creator);
+                quiz.setHasMaterial(resultSet.getBoolean("has_material"));
+                quiz.setMaterialUrl(resultSet.getString("material_url"));
+                quiz.setQuestionNumber(resultSet.getObject("question_number", Integer.class));
+
+                Integer seconds = resultSet.getObject("time_per_question_seconds", Integer.class);
+                quiz.setTimePerQuestion(seconds != null ? Duration.ofSeconds(seconds) : null);
+                
+                quiz.setPrivate(resultSet.getBoolean("is_private"));
+                quiz.setStatic(resultSet.getBoolean("is_static"));
+                
+                OffsetDateTime odt = resultSet.getObject("created_at", OffsetDateTime.class);
+                quiz.setCreatedAt(odt != null ? odt.toInstant() : null);
+                
+                return quiz;
+            }
+        }
+        return null;
     }
 
     public void close() {
