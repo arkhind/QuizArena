@@ -1,8 +1,8 @@
-version: '3.8'
+version: '3.3'
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:14
     container_name: quizarena_postgres
     environment:
       POSTGRES_DB: quizarena
@@ -10,10 +10,9 @@ services:
       POSTGRES_PASSWORD: quizpass
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./src/main/resources/sql/init_tables.sql:/docker-entrypoint-initdb.d/init_tables.sql
+    # volumes:
+    #   - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-volumes:
-  postgres_data:
+# volumes:
+#   postgres_data:
