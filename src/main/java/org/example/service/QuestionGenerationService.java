@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.dto.common.*;
 import org.example.dto.request.generation.QuestionGenerationRequest;
 import org.example.dto.response.generation.*;
 import org.example.dto.common.GenerationMetadata;
@@ -27,6 +28,14 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class QuestionGenerationService {
+  private final DatabaseService databaseService;
+
+  private final Map<Long, QuestionSetState> questionSets = new ConcurrentHashMap<>();
+  private long nextQuestionSetId = 1;
+
+  public QuestionGenerationService(DatabaseService databaseService) {
+    this.databaseService = databaseService;
+  }
 
     private final GenerationSetRepository generationSetRepository;
     private final QuizRepository quizRepository;
@@ -115,6 +124,19 @@ public class QuestionGenerationService {
                 generatedQuestions.size() // finalCount
         );
     }
+  }
+
+  /**
+   * Внутренний класс для хранения сгенерированного вопроса
+   */
+  private static class GeneratedQuestion {
+    Long id;
+    String text;
+    QuestionType type;
+    String explanation;
+    List<GeneratedAnswerOption> answerOptions;
+    boolean isValid;
+    boolean isDuplicate;
 
     /**
      * Валидирует сгенерированные вопросы.
@@ -191,6 +213,7 @@ public class QuestionGenerationService {
                 errors
         );
     }
+  }
 
     /**
      * Удаляет дубликаты вопросов.
@@ -248,6 +271,16 @@ public class QuestionGenerationService {
                 duplicatePairs
         );
     }
+  }
+
+  /**
+   * Генерирует вопросы для квиза с использованием ИИ.
+   * Включает валидацию и удаление дубликатов.
+   */
+  public QuestionGenerationResponse generateQuizQuestions(QuestionGenerationRequest request) {
+    Long quizId = request.quizId();
+    String prompt = request.prompt();
+    Integer questionCount = request.questionCount() != null ? request.questionCount() : 10;
 
     /**
      * Получает сгенерированные вопросы.

@@ -143,7 +143,12 @@ public class UserService {
     }
 
     private QuizDTO toQuizDTO(org.example.model.Quiz quiz) {
-        int questionCount = (int) questionRepository.countByQuizId(quiz.getId());
+        // Считаем реальное количество вопросов в БД
+        int actualQuestionCount = (int) questionRepository.countByQuizId(quiz.getId());
+        // Если вопросов еще нет, но есть запланированное количество, показываем его
+        // Иначе показываем реальное количество
+        int questionCount = actualQuestionCount > 0 ? actualQuestionCount : 
+                           (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
         return new QuizDTO(
                 quiz.getId(),
                 quiz.getName(),

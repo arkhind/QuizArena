@@ -34,6 +34,14 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
      */
     @Query("SELECT u.quiz.id FROM UserQuizAttempt u WHERE u.id = :attemptId")
     Long findQuizIdByAttemptId(@Param("attemptId") Long attemptId);
+  
+     * Находит лучший результат каждого пользователя по квизу (только лучший результат для каждого пользователя).
+     */
+    @Query("SELECT u FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
+           "AND u.score = (SELECT MAX(u2.score) FROM UserQuizAttempt u2 WHERE u2.quiz.id = :quizId " +
+           "AND u2.user.id = u.user.id AND u2.isCompleted = true) " +
+           "ORDER BY u.score DESC NULLS LAST, u.finishTime ASC")
+    Page<UserQuizAttempt> findBestAttemptsByQuizId(@Param("quizId") Long quizId, Pageable pageable);
 
     long countByUserId(Long userId);
 }

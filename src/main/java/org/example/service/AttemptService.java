@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.dto.common.AnswerOption;
 import org.example.dto.request.attempt.StartAttemptRequest;
 import org.example.dto.request.attempt.SubmitAnswerRequest;
 import org.example.dto.response.attempt.AnswerResponse;
@@ -32,6 +33,24 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class AttemptService {
+  private final Map<Long, AttemptState> attemptStates = new ConcurrentHashMap<>();
+
+  public AttemptService() {
+  }
+
+  /**
+   * Внутренний класс для отслеживания состояния попыток в памяти
+   */
+  private static class AttemptState {
+    Long attemptId;
+    Long userId;
+    Long quizId;
+    List<Long> questionIds;
+    int currentQuestionIndex;
+    Map<Long, Long> answers;
+    Map<Long, Boolean> answerResults;
+    Instant startTime;
+    int score;
 
     private final UserQuizAttemptRepository attemptRepository;
     private final QuizRepository quizRepository;
@@ -110,6 +129,7 @@ public class AttemptService {
                 timeRemaining
         );
     }
+  }
 
     /**
      * Получает следующий вопрос для попытки.

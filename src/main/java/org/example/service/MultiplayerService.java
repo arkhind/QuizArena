@@ -27,6 +27,13 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class MultiplayerService {
+  private final AttemptService attemptService;
+
+  private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
+
+  public MultiplayerService(AttemptService attemptService) {
+    this.attemptService = attemptService;
+  }
 
     private final MultiplayerSessionRepository sessionRepository;
     private final QuizRepository quizRepository;
@@ -98,6 +105,14 @@ public class MultiplayerService {
                 toLocalDateTime(session.getCreatedAt())
         );
     }
+  }
+
+  /**
+   * Информация об участнике сессии
+   */
+  private static class ParticipantInfo {
+    Long userId;
+    Instant joinedAt;
 
     /**
      * Получает информацию о сессии.
@@ -134,6 +149,15 @@ public class MultiplayerService {
                 toLocalDateTime(session.getCreatedAt())
         );
     }
+  }
+
+  /**
+   * Создает новую сессию для совместного прохождения квиза.
+   * Генерирует уникальный идентификатор сессии.
+   */
+  public MultiplayerSessionDTO createMultiplayerSession(CreateMultiplayerRequest request) {
+    Long userId = request.userId();
+    Long quizId = request.quizId();
 
     /**
      * Подключает пользователя к сессии.
