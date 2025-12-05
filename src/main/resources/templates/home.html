@@ -2,9 +2,10 @@
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
-    <title>Главная страница</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная страница - QuizArena</title>
     <style>
-        {
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -24,6 +25,7 @@
             padding: 20px;
             box-shadow: 4px 0 15px rgba(0,0,0,0.1);
             height: 30vh;
+            position: fixed;
             left: 40px;
             top: 40px;
             border-radius: 10px;
@@ -44,10 +46,6 @@
             width: 80%;
             transition: transform 0.2s;
             margin-bottom: 10px;
-        }
-
-        .profile-btn:hover {
-            transform: translateY(-2px);
         }
 
         .nav-btn {
@@ -74,6 +72,7 @@
         .main-content {
             flex: 1;
             padding: 20px;
+            margin-left: 320px;
         }
 
         .container {
@@ -139,10 +138,6 @@
             transition: transform 0.2s;
         }
 
-        .search-btn:hover {
-            transform: translateY(-2px);
-        }
-
         .public-quizzes {
             background: white;
             border-radius: 10px;
@@ -153,9 +148,36 @@
 
         .public-quizzes h2 {
             color: #333;
-            margin-bottom: 40px;
+            margin-bottom: 20px;
             font-size: 1.8em;
             text-align: center;
+        }
+
+        .quiz-list {
+            list-style: none;
+        }
+
+        .quiz-item {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .quiz-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .quiz-meta {
+            font-size: 14px;
+            opacity: 0.8;
+            display: flex;
+            gap: 15px;
         }
 
         .empty-state {
@@ -164,13 +186,36 @@
             font-size: 20px;
             margin-top: 50px;
         }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .page-btn {
+            padding: 8px 15px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .page-btn.active {
+            background: #667eea;
+            color: white;
+        }
     </style>
 </head>
 <body>
 <div class="sidebar">
     <div class="profile-section">
         <button class="profile-btn" onclick="goToProfile()">Профиль</button>
-        <a href="#" class="nav-btn" onclick="goToQuiz()">Quiz</a>
+        <a href="/quiz" class="nav-btn">Quiz</a>
+        <a href="/home" class="nav-btn">Главная</a>
     </div>
 </div>
 
@@ -183,43 +228,63 @@
 
         <section class="search-section">
             <div class="search-box">
-                <input type="text" class="search-input" placeholder="Поиск">
-                <button class="search-btn">Найти</button>
+                <input type="text" class="search-input" id="searchInput" placeholder="Поиск квизов..." th:value="${search}">
+                <button class="search-btn" onclick="performSearch()">Найти</button>
             </div>
         </section>
 
         <section class="public-quizzes">
             <h2>Публичные Квизы</h2>
-            <div class="empty-state" th:if="${quizzes == null or quizzes.isEmpty()}">
-                Здесь будут отображаться публичные квизы
-            </div>
-            <ul th:if="${quizzes != null and !quizzes.isEmpty()}" style="list-style: none; padding: 0;">
-                <li th:each="quiz : ${quizzes}" style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 15px; padding: 20px; margin-bottom: 15px; cursor: pointer;" th:onclick="'goToQuizDetail(' + ${quiz.id} + ')'">
-                    <div style="font-size: 20px; font-weight: bold; margin-bottom: 8px;" th:text="${quiz.name}">Название квиза</div>
-                    <div style="font-size: 14px; color: #666;">
-                        <span th:text="'Вопросов: ' + ${quiz.questionCount}">Вопросов: -</span>
-                        <span style="margin-left: 15px;" th:text="'Время: ' + ${quiz.timeLimit} + ' сек'">Время: -</span>
+            <ul class="quiz-list" th:if="${quizzes != null and !quizzes.isEmpty()}">
+                <li class="quiz-item" th:each="quiz : ${quizzes}" th:onclick="'goToQuiz(' + ${quiz.id} + ')'">
+                    <div class="quiz-name" th:text="${quiz.name}">Название квиза</div>
+                    <div class="quiz-meta">
+                        <span th:text="'Автор: ' + ${quiz.author}">Автор</span>
+                        <span th:text="'Вопросов: ' + ${quiz.questionCount}">Вопросов</span>
+                        <span th:text="'Время: ' + ${quiz.timeLimit} + ' мин'">Время</span>
                     </div>
                 </li>
             </ul>
+            <div class="pagination" th:if="${totalPages > 1}">
+                <button class="page-btn" th:each="page : ${#numbers.sequence(1, totalPages)}"
+                        th:classappend="${page == currentPage + 1 ? 'active' : ''}"
+                        th:onclick="'goToPage(' + ${page - 1} + ')'"
+                        th:text="${page}">1</button>
+            </div>
         </section>
     </div>
 </div>
 
 <script>
     function goToProfile() {
-        const userId = localStorage.getItem('userId') || '1';
-        window.location.href = '/profile?userId=' + userId;
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+            window.location.href = '/profile?userId=' + userId;
+        } else {
+            window.location.href = '/login';
+        }
     }
 
-    function goToQuiz() {
-        window.location.href = '/quiz';
-    }
-    
-    function goToQuizDetail(quizId) {
+    function goToQuiz(quizId) {
         window.location.href = '/quiz/' + quizId;
     }
-</script>
 
+    function performSearch() {
+        const searchTerm = document.getElementById('searchInput').value;
+        window.location.href = '/home?search=' + encodeURIComponent(searchTerm);
+    }
+
+    function goToPage(page) {
+        const searchTerm = document.getElementById('searchInput').value;
+        window.location.href = '/home?search=' + encodeURIComponent(searchTerm) + '&page=' + page;
+    }
+
+    // Поиск по Enter
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            performSearch();
+        }
+    });
+</script>
 </body>
 </html>

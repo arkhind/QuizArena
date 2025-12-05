@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>История прохождений - QuizArena</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            padding: 25px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            height: 200px;
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 80%;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            margin-left: 340px;
+            max-width: calc(100vw - 360px);
+        }
+
+        .container {
+            max-width: none;
+            width: 80%;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            text-align: center;
+            margin: 0;
+        }
+
+        .content-section {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            min-height: 500px;
+        }
+
+        .attempts-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .attempts-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .attempts-table thead {
+            background: #f8f9fa;
+        }
+
+        .attempts-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+            border-bottom: 2px solid #e9ecef;
+            color: #333;
+        }
+
+        .attempts-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .attempts-table tbody tr {
+            transition: background 0.2s;
+        }
+
+        .attempts-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .quiz-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .score-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .date-value {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+
+        .empty-state p {
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                margin-bottom: 20px;
+                height: auto;
+            }
+
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+            }
+
+            .attempts-table {
+                font-size: 14px;
+            }
+
+            .attempts-table th,
+            .attempts-table td {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <a th:href="@{/profile(userId=${#httpServletRequest.getParameter('userId')})}" class="nav-btn">Назад</a>
+    <a th:href="@{/home}" class="nav-btn">Главная</a>
+</div>
+
+<div class="main-content">
+    <div class="container">
+        <header class="header">
+            <h1>История прохождений</h1>
+        </header>
+
+        <section class="content-section">
+            <div class="attempts-title">Попытки прохождения</div>
+
+            <table class="attempts-table" th:if="${attempts != null and !attempts.isEmpty()}">
+                <thead>
+                <tr>
+                    <th>Квиз</th>
+                    <th>Результат</th>
+                    <th>Дата прохождения</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="attempt : ${attempts}">
+                    <td class="quiz-name" th:text="${attempt.quizName()}">Название квиза</td>
+                    <td class="score-value" th:text="${attempt.score() != null ? attempt.score() : '-'}"></td>
+                    <td class="date-value"
+                        th:text="${attempt.completedAt() != null ? #temporals.format(attempt.completedAt(), 'dd.MM.yyyy HH:mm') : '-'}">
+
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <div class="empty-state" th:if="${attempts == null or attempts.isEmpty()}">
+                <h3>История пуста</h3>
+                <p>Вы еще не проходили квизы</p>
+            </div>
+        </section>
+    </div>
+</div>
+
+</body>
+</html>

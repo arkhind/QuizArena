@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Создание квиза</title>
+    <title>Создание квиза - QuizArena</title>
     <style>
         * {
             margin: 0;
@@ -71,6 +71,7 @@
         textarea:focus,
         input[type="file"]:focus {
             outline: none;
+            border-color: #667eea;
         }
 
         textarea {
@@ -82,32 +83,28 @@
             background: #f8f9fa;
             border: 2px dashed #dee2e6;
             border-radius: 8px;
-            padding: 25px;
+            padding: 20px;
             text-align: center;
             transition: all 0.3s;
             cursor: pointer;
         }
 
+        .file-upload-section:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
 
         .file-upload-label {
             display: block;
             color: #666;
             margin-bottom: 15px;
-            font-size: 14px;
+            cursor: pointer;
         }
 
         .file-upload-icon {
             font-size: 40px;
             color: #667eea;
             margin-bottom: 10px;
-        }
-
-        input[type="file"] {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
         }
 
         .quiz-type-section {
@@ -213,15 +210,20 @@
             display: none;
         }
 
-        input:invalid ~ .error-message {
+        .error-message.show {
             display: block;
         }
 
+        .file-name {
+            color: #28a745;
+            font-size: 14px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
 <div class="form-container">
-    <h1>Страница создания квиза</h1>
+    <h1>Создание квиза</h1>
 
     <form id="createQuizForm" onsubmit="handleSubmit(event)">
         <!-- Название квиза -->
@@ -247,22 +249,17 @@
 
         <!-- Загрузка файла -->
         <div class="form-group">
-            <div class="file-upload-section" onclick="document.getElementById('quizMaterial').click()">
-                <div class="file-upload-icon">📄</div>
-                <span class="file-upload-label" id="fileLabel">
+            <div class="file-upload-section" id="fileUploadSection">
+                <span class="file-upload-label" id="fileUploadLabel">
                     Добавьте материал (.pdf, .txt, .doc, .docx)
                 </span>
-                <small style="color: #999; display: block; margin-top: 10px;">
-                    Необязательно. Материал будет использован для генерации вопросов
-                </small>
-                <div class="file-input-wrapper">
-                    <input type="file"
-                           id="quizMaterial"
-                           name="material"
-                           accept=".pdf,.txt,.doc,.docx"
-                           style="display: none;">
-                </div>
+                <input type="file"
+                       id="quizMaterial"
+                       name="material"
+                       accept=".pdf,.txt,.doc,.docx"
+                       style="display: none;">
             </div>
+            <div class="file-name" id="fileName" style="display: none;"></div>
         </div>
 
         <!-- Числовые параметры -->
@@ -275,6 +272,7 @@
                        id="questionNumber"
                        name="questionNumber"
                        value="10"
+                       min="1"
                        required>
             </div>
 
@@ -286,6 +284,7 @@
                        id="timeLimit"
                        name="timeLimit"
                        value="30"
+                       min="1"
                        required>
             </div>
         </div>
@@ -341,6 +340,8 @@
             </div>
         </div>
 
+        <div class="error-message" id="errorMessage"></div>
+
         <!-- Кнопки -->
         <div class="button-group">
             <button type="button" class="cancel-btn" onclick="goBack()">
@@ -354,12 +355,32 @@
 </div>
 
 <script>
-    function goBack() {
-        window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
+    function getCurrentUserId() {
+        return localStorage.getItem('userId') || new URLSearchParams(window.location.search).get('userId') || '1';
     }
 
-    function getCurrentUserId() {
-        return localStorage.getItem('userId') || '1';
+    function goBack() {
+        const userId = getCurrentUserId();
+        window.location.href = '/my-quizzes' + (userId ? '?userId=' + userId : '');
+    }
+
+
+    document.getElementById('fileUploadSection').addEventListener('click', function() {
+        document.getElementById('quizMaterial').click();
+    });
+
+
+    document.getElementById('quizMaterial').addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            updateFileLabel(e.target.files[0].name);
+        }
+    });
+
+    function updateFileLabel(fileName) {
+        const label = document.getElementById('fileUploadLabel');
+        const fileNameDiv = document.getElementById('fileName');
+        label.textContent = 'Файл выбран: ' + fileName;
+        fileNameDiv.textContent = fileName;
     }
 
     async function handleSubmit(event) {
@@ -367,22 +388,25 @@
 
         const form = document.getElementById('createQuizForm');
         const formData = new FormData(form);
+        const errorMessage = document.getElementById('errorMessage');
+        const fileInput = document.getElementById('quizMaterial');
 
-        // Собираем данные формы
+
         const quizData = {
             name: formData.get('name'),
             prompt: formData.get('prompt'),
             createdBy: parseInt(getCurrentUserId()),
-            hasMaterial: formData.get('material') !== null && formData.get('material').size > 0,
-            materials: [], // TODO: обработка загруженного файла
+            hasMaterial: fileInput.files.length > 0 && fileInput.files[0].size > 0,
+            materials: [],
             questionNumber: parseInt(formData.get('questionNumber')),
             timeLimit: parseInt(formData.get('timeLimit')),
             isPrivate: formData.get('visibility') === 'private',
             isStatic: formData.get('contentType') === 'static'
         };
 
+
         try {
-            const response = await fetch('/api/quiz/create', {
+            const response = await fetch('/api/quizzes', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -394,49 +418,25 @@
             if (response.ok) {
                 const result = await response.json();
                 alert('Квиз успешно создан!');
-                window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
+                const userId = getCurrentUserId();
+                window.location.href = '/my-quizzes' + (userId ? '?userId=' + userId : '');
             } else {
-                const error = await response.json();
-                alert('Ошибка при создании квиза: ' + (error.message || 'Неизвестная ошибка'));
+                let errorText = 'Ошибка';
+                try {
+                    const error = await response.json();
+                    errorText = error.message || errorText;
+                } catch (e) {
+                    errorText = 'Ошибка : ' + response.status;
+                }
+                errorMessage.textContent = 'Ошибка при создании квиза: ' + errorText;
+                errorMessage.classList.add('show');
             }
         } catch (error) {
-            alert('Ошибка сети. Проверьте подключение.');
+            errorMessage.textContent = 'Ошибка сети.';
+            errorMessage.classList.add('show');
             console.error('Error:', error);
         }
     }
-
-    /**
-     * Обновление текста метки после выбора файла.
-     * Показывает имя загруженного файла вместо стандартного текста.
-     * 
-     * @param {string} fileName - имя выбранного файла
-     */
-    function updateFileLabel(fileName) {
-        const label = document.getElementById('fileLabel');
-        label.textContent = '✓ Файл загружен: ' + fileName;
-        label.style.color = '#28a745';
-        label.style.fontWeight = 'bold';
-    }
-
-    // ============ ОБРАБОТКА ЗАГРУЗКИ ФАЙЛОВ ============
-
-    const fileInput = document.getElementById('quizMaterial');
-
-    /**
-     * Обработчик изменения файла через стандартный выбор.
-     * Срабатывает при клике на "Выбрать файл" в диалоге.
-     */
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            updateFileLabel(e.target.files[0].name);
-        } else {
-            // Если файл удален, возвращаем исходный текст
-            const label = document.getElementById('fileLabel');
-            label.textContent = 'Добавьте материал (.pdf, .txt, .doc, .docx)';
-            label.style.color = '#666';
-            label.style.fontWeight = 'normal';
-        }
-    });
 </script>
 </body>
 </html>
