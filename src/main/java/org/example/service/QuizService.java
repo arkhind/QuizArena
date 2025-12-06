@@ -6,11 +6,7 @@ import org.example.dto.common.LeaderboardEntry;
 import org.example.dto.common.QuizMaterial;
 import org.example.model.Quiz;
 import org.example.model.User;
-import org.example.service.FileStorageService;
-import org.example.repository.AnswerOptionRepository;
-import org.example.repository.QuestionRepository;
-import org.example.repository.QuizRepository;
-import org.example.repository.UserQuizAttemptRepository;
+import org.example.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,20 +20,18 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
-/**
- * Сервис для управления квизами.
- */
 @Service
 @Transactional
 public class QuizService {
-
     private final QuizRepository quizRepository;
     private final QuestionRepository questionRepository;
     private final AnswerOptionRepository answerOptionRepository;
     private final UserQuizAttemptRepository attemptRepository;
+    private final UserAnswerRepository userAnswerRepository;
+    private final GenerationSetRepository generationSetRepository;
+    private final MultiplayerSessionRepository multiplayerSessionRepository;
     private final org.example.repository.UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final QuestionGenerationService questionGenerationService;
@@ -47,6 +41,9 @@ public class QuizService {
                       QuestionRepository questionRepository,
                       AnswerOptionRepository answerOptionRepository,
                       UserQuizAttemptRepository attemptRepository,
+                      UserAnswerRepository userAnswerRepository,
+                      GenerationSetRepository generationSetRepository,
+                      MultiplayerSessionRepository multiplayerSessionRepository,
                       org.example.repository.UserRepository userRepository,
                       FileStorageService fileStorageService,
                       QuestionGenerationService questionGenerationService) {
@@ -54,6 +51,9 @@ public class QuizService {
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
         this.attemptRepository = attemptRepository;
+        this.userAnswerRepository = userAnswerRepository;
+        this.generationSetRepository = generationSetRepository;
+        this.multiplayerSessionRepository = multiplayerSessionRepository;
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
         this.questionGenerationService = questionGenerationService;
@@ -61,14 +61,14 @@ public class QuizService {
 
     public QuizResponseDTO createQuiz(CreateQuizRequest request) {
         User creator = userRepository.findById(request.createdBy())
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + request.createdBy()));
 
         Quiz quiz = new Quiz();
         quiz.setName(request.name());
         quiz.setPrompt(request.prompt());
         quiz.setCreatedBy(creator);
         quiz.setHasMaterial(request.hasMaterial() != null && request.hasMaterial());
-        quiz.setMaterialUrl(null); // TODO: Сохранение материалов
+        quiz.setMaterialUrl(null);
         quiz.setQuestionNumber(request.questionNumber());
         quiz.setTimePerQuestion(request.timeLimit() != null ? 
                 java.time.Duration.ofSeconds(request.timeLimit()) : null);
@@ -78,50 +78,26 @@ public class QuizService {
 
         quiz = quizRepository.save(quiz);
 
-        // Автоматическая генерация вопросов через ИИ, если есть prompt
         if (request.prompt() != null && !request.prompt().trim().isEmpty()) {
             try {
-                System.out.println("Начинаем автоматическую генерацию вопросов для квиза ID: " + quiz.getId());
-                
-                // Генерируем вопросы
                 int questionCount = request.questionNumber() != null && request.questionNumber() > 0 
                     ? request.questionNumber() 
-                    : 10; // По умолчанию 10 вопросов
+                    : 10;
                 
                 org.example.dto.request.generation.QuestionGenerationRequest genRequest = 
                     new org.example.dto.request.generation.QuestionGenerationRequest(
                         quiz.getId(),
                         request.prompt(),
                         request.materials(),
-                        request.questionNumber(), // questionNumber
-                        questionCount // questionCount
+                        request.questionNumber(),
+                        questionCount
                     );
                 
-                // Запускаем генерацию вопросов
-                var generationResponse = questionGenerationService.generateQuizQuestions(genRequest);
-                System.out.println("Сгенерировано вопросов: " + generationResponse.generatedCount() + 
-                                 " для набора ID: " + generationResponse.questionSetId());
-                
-                // Автоматически валидируем сгенерированные вопросы
-                try {
-                    var validationResponse = questionGenerationService.validateGeneratedQuestions(generationResponse.questionSetId());
-                    System.out.println("Валидных вопросов: " + validationResponse.validQuestions() + 
-                                     " из " + validationResponse.totalQuestions());
-                    
-                    // После валидации удаляем дубликаты
-                    var dedupResponse = questionGenerationService.removeDuplicateQuestions(generationResponse.questionSetId());
-                    System.out.println("Уникальных вопросов после дедупликации: " + dedupResponse.finalCount());
-                } catch (Exception e) {
-                    System.err.println("Ошибка при валидации/дедупликации вопросов: " + e.getMessage());
-                    e.printStackTrace();
-                }
+                questionGenerationService.generateQuizQuestions(genRequest);
             } catch (Exception e) {
-                // Логируем ошибку, но не прерываем создание квиза
-                System.err.println("Ошибка при автоматической генерации вопросов: " + e.getMessage());
+                System.err.println("QuizService: Ошибка при генерации вопросов: " + e.getMessage());
                 e.printStackTrace();
             }
-        } else {
-            System.out.println("Пропуск генерации вопросов: prompt отсутствует для квиза ID: " + quiz.getId());
         }
 
         return new QuizResponseDTO(
@@ -141,12 +117,10 @@ public class QuizService {
             page = quizRepository.findByIsPrivateFalse(pageable);
         } else {
             String query = request.query().trim();
-            // Проверяем, является ли запрос числом (ID квиза)
             try {
                 Long quizId = Long.parseLong(query);
-                Optional<Quiz> quizById = quizRepository.findById(quizId);
+                var quizById = quizRepository.findById(quizId);
                 if (quizById.isPresent() && !quizById.get().isPrivate()) {
-                    // Если найден публичный квиз по ID, возвращаем его
                     List<QuizDTO> content = List.of(toQuizDTO(quizById.get()));
                     return new QuizSearchResponse(content, 0, 1, 1L);
                 }
@@ -172,13 +146,10 @@ public class QuizService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
 
-        // Если квиз приватный, проверяем доступ: разрешаем доступ создателю или если пользователь знает ID
         if (quiz.isPrivate()) {
-            // Разрешаем доступ создателю квиза
             if (userId != null && quiz.getCreatedBy().getId().equals(userId)) {
-                // Создатель имеет доступ к своему приватному квизу
+                // Создатель имеет доступ
             } else {
-                // Для других пользователей доступ к приватному квизу запрещен
                 throw new SecurityException("Доступ к приватному квизу запрещен");
             }
         }
@@ -202,7 +173,7 @@ public class QuizService {
                 quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null,
                 !quiz.isPrivate(),
                 quiz.isStatic(),
-                String.valueOf(quiz.getId()), // TODO: Генерация shareableId
+                String.valueOf(quiz.getId()),
                 toLocalDateTime(quiz.getCreatedAt())
         );
     }
@@ -216,7 +187,21 @@ public class QuizService {
             throw new SecurityException("Только создатель может удалить квиз");
         }
 
-        quizRepository.deleteById(request.quizId());
+        Long quizId = request.quizId();
+        List<org.example.model.UserQuizAttempt> attempts = attemptRepository.findByQuizId(quizId);
+        for (org.example.model.UserQuizAttempt attempt : attempts) {
+            userAnswerRepository.findByAttemptId(attempt.getId()).forEach(userAnswerRepository::delete);
+        }
+        attemptRepository.findByQuizId(quizId).forEach(attemptRepository::delete);
+        generationSetRepository.findAllByQuizId(quizId).forEach(generationSetRepository::delete);
+        multiplayerSessionRepository.findByQuizId(quizId).forEach(multiplayerSessionRepository::delete);
+        questionRepository.deleteByQuizId(quizId);
+        try {
+            fileStorageService.deleteQuizMaterials(quizId);
+        } catch (Exception e) {
+            // Игнорируем ошибки при удалении файлов
+        }
+        quizRepository.deleteById(quizId);
         return true;
     }
 
@@ -246,9 +231,6 @@ public class QuizService {
         );
     }
 
-    /**
-     * Обновляет URL материала квиза.
-     */
     public void updateQuizMaterialUrl(Long quizId, String materialUrl) {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
@@ -280,7 +262,6 @@ public class QuizService {
         }
 
         Pageable pageable = PageRequest.of(0, 100);
-        // Используем метод, который возвращает только лучший результат каждого пользователя
         Page<org.example.model.UserQuizAttempt> attempts = attemptRepository.findBestAttemptsByQuizId(quizId, pageable);
 
         List<LeaderboardEntry> entries = new ArrayList<>();
@@ -310,10 +291,6 @@ public class QuizService {
         return new LeaderboardDTO(entries, userPosition, userScore != null ? userScore.intValue() : null);
     }
 
-    /**
-     * Копирует квиз для нового пользователя.
-     * Создает новый квиз с теми же параметрами, но без вопросов (вопросы будут сгенерированы заново).
-     */
     public QuizResponseDTO copyQuiz(Long quizId, Long newCreatorId) {
         Quiz originalQuiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
@@ -335,8 +312,6 @@ public class QuizService {
 
         copiedQuiz = quizRepository.save(copiedQuiz);
 
-        // Вопросы не копируются - они будут сгенерированы заново при создании
-
         return new QuizResponseDTO(
                 copiedQuiz.getId(),
                 copiedQuiz.getName(),
@@ -346,49 +321,44 @@ public class QuizService {
         );
     }
 
-    /**
-     * Получает квиз по ID, включая приватные (для доступа по ID).
-     */
     public QuizDetailsDTO getQuizById(Long quizId, Long userId) {
-        Quiz quiz = quizRepository.findById(quizId)
-                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
-
-        // Если квиз приватный, проверяем доступ
-        if (quiz.isPrivate() && (userId == null || !quiz.getCreatedBy().getId().equals(userId))) {
-            // Для приватных квизов доступ возможен только по прямому ID
-            // В данном случае разрешаем доступ, так как пользователь знает ID
-        }
-
-        List<QuestionDTO> questions = questionRepository.findByQuizId(quizId).stream()
-                .map(this::toQuestionDTO)
-                .collect(Collectors.toList());
-
-        List<QuizMaterial> materials = new ArrayList<>();
-        if (quiz.isHasMaterial() && quiz.getMaterialUrl() != null) {
-            // TODO: Загрузка материалов
-        }
-
-        return new QuizDetailsDTO(
-                quiz.getId(),
-                quiz.getName(),
-                quiz.getPrompt(),
-                quiz.getCreatedBy().getLogin(),
-                questions,
-                materials,
-                quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null,
-                !quiz.isPrivate(),
-                quiz.isStatic(),
-                String.valueOf(quiz.getId()),
-                toLocalDateTime(quiz.getCreatedAt())
-        );
+        return getQuiz(quizId, userId);
     }
 
-    // Вспомогательные методы
+    private Pageable createPageable(Integer page, Integer size, String sortBy, Boolean ascending) {
+        int pageNumber = page != null && page >= 0 ? page : 0;
+        int pageSize = size != null && size > 0 ? size : 10;
+        
+        Sort.Direction direction = (ascending != null && ascending) ? 
+                Sort.Direction.ASC : Sort.Direction.DESC;
+        
+        // Маппинг полей сортировки на реальные поля в Quiz
+        String actualSortField = "createdAt"; // по умолчанию
+        if (sortBy != null) {
+            switch (sortBy.toLowerCase()) {
+                case "name":
+                    actualSortField = "name";
+                    break;
+                case "created":
+                case "created_at":
+                case "createdat":
+                    actualSortField = "createdAt";
+                    break;
+                case "popularity":
+                    // Поля popularity нет, используем createdAt
+                    actualSortField = "createdAt";
+                    break;
+                default:
+                    actualSortField = "createdAt";
+            }
+        }
+        
+        Sort sort = Sort.by(direction, actualSortField);
+        return PageRequest.of(pageNumber, pageSize, sort);
+    }
+
     private QuizDTO toQuizDTO(Quiz quiz) {
-        // Считаем реальное количество вопросов в БД
         int actualQuestionCount = (int) questionRepository.countByQuizId(quiz.getId());
-        // Если вопросов еще нет, но есть запланированное количество, показываем его
-        // Иначе показываем реальное количество
         int questionCount = actualQuestionCount > 0 ? actualQuestionCount : 
                            (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
         return new QuizDTO(
@@ -396,7 +366,7 @@ public class QuizService {
                 quiz.getName(),
                 quiz.getCreatedBy().getLogin(),
                 questionCount,
-                quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null,
+                quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() / 60 : null,
                 !quiz.isPrivate(),
                 quiz.isStatic(),
                 toLocalDateTime(quiz.getCreatedAt())
@@ -406,60 +376,31 @@ public class QuizService {
     private QuestionDTO toQuestionDTO(org.example.model.Question question) {
         List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(question.getId());
         List<org.example.dto.common.AnswerOption> dtoOptions = options.stream()
-                .map(opt -> new org.example.dto.common.AnswerOption(
-                        opt.getId(),
-                        opt.getText()
-                ))
+                .map(opt -> new org.example.dto.common.AnswerOption(opt.getId(), opt.getText()))
                 .collect(Collectors.toList());
+
+        Integer timeLimit = null;
+        if (question.getQuiz().getTimePerQuestion() != null) {
+            timeLimit = (int) question.getQuiz().getTimePerQuestion().getSeconds();
+        }
 
         return new QuestionDTO(
                 question.getId(),
                 question.getText(),
                 dtoOptions,
-                question.getQuiz().getTimePerQuestion() != null ? 
-                        (int) question.getQuiz().getTimePerQuestion().getSeconds() : null,
-                null, // materialReference
+                timeLimit,
+                null,
                 question.getExplanation(),
-                null, // difficulty
-                null, // category
-                0, // position
+                null,
+                null,
+                0,
                 toLocalDateTime(question.getQuiz().getCreatedAt())
         );
     }
 
     private LocalDateTime toLocalDateTime(Instant instant) {
-        return instant != null ? LocalDateTime.ofInstant(instant, ZoneId.systemDefault()) : null;
-    }
-
-    private Pageable createPageable(Integer page, Integer size, String sortBy, Boolean ascending) {
-        int pageNum = page != null && page >= 0 ? page : 0;
-        int pageSize = size != null && size > 0 ? size : 20;
-
-        Sort.Direction direction = (ascending != null && ascending) ? 
-                Sort.Direction.ASC : Sort.Direction.DESC;
-
-        Sort sort;
-        if (sortBy != null) {
-            switch (sortBy.toLowerCase()) {
-                case "name":
-                    sort = Sort.by(direction, "name");
-                    break;
-                case "created":
-                case "created_at":
-                    sort = Sort.by(direction, "createdAt");
-                    break;
-                case "popularity":
-                    // TODO: Сортировка по популярности (количество прохождений)
-                    sort = Sort.by(direction, "createdAt");
-                    break;
-                default:
-                    sort = Sort.by(direction, "createdAt");
+        return instant != null
+                ? LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
+                : null;
             }
-        } else {
-            sort = Sort.by(direction, "createdAt");
-        }
-
-        return PageRequest.of(pageNum, pageSize, sort);
-    }
 }
-

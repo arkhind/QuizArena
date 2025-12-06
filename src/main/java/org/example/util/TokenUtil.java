@@ -45,26 +45,36 @@ public class TokenUtil {
      * @return userId или null, если токен невалидный
      */
     public static Long extractUserId(String token) {
+        System.out.println("TokenUtil.extractUserId: token=" + (token != null ? token.substring(0, Math.min(50, token.length())) + "..." : "null"));
+        
         if (token == null || token.isEmpty()) {
+            System.out.println("TokenUtil.extractUserId: токен пустой, возвращаем null");
             return null;
         }
         
         // Простая проверка формата токена
         if (!token.startsWith("token_")) {
+            System.out.println("TokenUtil.extractUserId: токен не начинается с 'token_', возвращаем null");
             return null;
         }
         
         // Извлекаем userId из токена
         String[] parts = token.split("_");
+        System.out.println("TokenUtil.extractUserId: разбит на части, количество: " + parts.length);
         if (parts.length < 3) {
+            System.out.println("TokenUtil.extractUserId: недостаточно частей в токене, возвращаем null");
             return null;
         }
         
         try {
             Long userId = Long.parseLong(parts[1]);
+            System.out.println("TokenUtil.extractUserId: извлечен userId=" + userId);
             // Проверяем, что userId валидный
-            return userId > 0 ? userId : null;
+            Long result = userId > 0 ? userId : null;
+            System.out.println("TokenUtil.extractUserId: возвращаем userId=" + result);
+            return result;
         } catch (NumberFormatException e) {
+            System.err.println("TokenUtil.extractUserId: ошибка парсинга userId: " + e.getMessage());
             return null;
         }
     }
@@ -76,8 +86,12 @@ public class TokenUtil {
      * @return userId или null, если токен не найден или невалидный
      */
     public static Long extractUserIdFromRequest(HttpServletRequest request) {
+        System.out.println("TokenUtil.extractUserIdFromRequest: извлечение токена из запроса");
         String token = extractToken(request);
-        return token != null ? extractUserId(token) : null;
+        System.out.println("TokenUtil.extractUserIdFromRequest: токен извлечен: " + (token != null ? "да" : "нет"));
+        Long userId = token != null ? extractUserId(token) : null;
+        System.out.println("TokenUtil.extractUserIdFromRequest: итоговый userId=" + userId);
+        return userId;
     }
 }
 

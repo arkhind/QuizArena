@@ -33,5 +33,11 @@ public interface MultiplayerSessionRepository extends JpaRepository<MultiplayerS
      * Проверяет существование сессии по sessionId.
      */
     boolean existsBySessionId(String sessionId);
+
+    /**
+     * Находит все сессии для указанного квиза.
+     */
+    @Query("SELECT m FROM MultiplayerSession m WHERE m.quiz.id = :quizId")
+    List<MultiplayerSession> findByQuizId(@Param("quizId") Long quizId);
 }
 

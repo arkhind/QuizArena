@@ -268,8 +268,13 @@ public class PageController {
     public String startQuizPage(@PathVariable Long quizId,
                                 @RequestParam Long userId,
                                 Model model) {
+        System.out.println("=== PageController.startQuizPage() ===");
+        System.out.println("Получен userId из URL параметра: " + userId);
+        System.out.println("QuizId: " + quizId);
         try {
-            StartAttemptRequest request = new StartAttemptRequest(quizId, userId);
+            // ВАЖНО: StartAttemptRequest принимает (userId, quizId) в таком порядке!
+            StartAttemptRequest request = new StartAttemptRequest(userId, quizId);
+            System.out.println("Создан StartAttemptRequest: userId=" + request.userId() + ", quizId=" + request.quizId());
             AttemptResponse response = apiController.startQuizAttempt(request);
             model.addAttribute("attemptId", response.attemptId());
             model.addAttribute("currentQuestion", response.currentQuestion());

@@ -280,7 +280,22 @@
     }
 
     function getUserId() {
-        return localStorage.getItem('userId') || new URLSearchParams(window.location.search).get('userId');
+        // ВСЕГДА используем localStorage в первую очередь, чтобы избежать старых значений из URL
+        const storedUserId = localStorage.getItem('userId');
+        if (storedUserId) {
+            console.log('getUserId: Используем userId из localStorage:', storedUserId);
+            return storedUserId;
+        }
+        // Только если в localStorage нет - берем из URL (для обратной совместимости)
+        const urlUserId = new URLSearchParams(window.location.search).get('userId');
+        if (urlUserId) {
+            console.log('getUserId: userId из localStorage отсутствует, используем из URL:', urlUserId);
+            // Сохраняем в localStorage для будущего использования
+            localStorage.setItem('userId', urlUserId);
+            return urlUserId;
+        }
+        console.warn('getUserId: userId не найден ни в localStorage, ни в URL');
+        return null;
     }
 
     function goToQuizDetails(quizId) {
@@ -290,12 +305,34 @@
 
     function startQuiz(quizId) {
         const userId = getUserId();
+        console.log('startQuiz: quizId=' + quizId);
+        console.log('startQuiz: userId from getUserId()=' + userId + ' (type: ' + typeof userId + ')');
+        console.log('startQuiz: localStorage.getItem("userId")=' + localStorage.getItem('userId'));
+        console.log('startQuiz: Все значения в localStorage:');
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            console.log('  ' + key + '=' + localStorage.getItem(key));
+        }
+        
         if (!userId) {
             alert('Необходимо войти в систему');
             window.location.href = '/login';
             return;
         }
-        window.location.href = '/quiz/' + quizId + '/attempt?userId=' + userId;    }
+        // Убеждаемся, что userId - это число
+        const userIdNum = parseInt(userId);
+        console.log('startQuiz: userIdNum after parseInt=' + userIdNum);
+        if (isNaN(userIdNum) || userIdNum <= 0) {
+            console.error('ОШИБКА: Некорректный userId: ' + userId);
+            alert('Ошибка: некорректный ID пользователя. Пожалуйста, войдите в систему заново.');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+            return;
+        }
+        console.log('startQuiz: перенаправление на /quiz/' + quizId + '/attempt?userId=' + userIdNum);
+        window.location.href = '/quiz/' + quizId + '/attempt?userId=' + userIdNum;
+    }
 
     function copyQuiz(quizId) {
         alert('Функция копирования квиза будет реализована позже');

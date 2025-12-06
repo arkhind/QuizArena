@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,7 +35,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class AttemptService {
-    private final Map<Long, AttemptState> attemptStates = new ConcurrentHashMap<>();
+  private final Map<Long, AttemptState> attemptStates = new ConcurrentHashMap<>();
     private final UserQuizAttemptRepository attemptRepository;
     private final QuizRepository quizRepository;
     private final UserRepository userRepository;
@@ -78,45 +79,54 @@ public class AttemptService {
      * Создает UserQuizAttempt и возвращает первый вопрос.
      */
     public AttemptResponse startQuizAttempt(StartAttemptRequest request) {
-        // 1. Проверяем существование пользователя и квиза
         User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+                .orElseThrow(() -> {
+                    System.err.println("AttemptService: Пользователь не найден: " + request.userId());
+                    return new IllegalArgumentException("Пользователь не найден");
+                });
 
         Quiz quiz = quizRepository.findById(request.quizId())
-                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
+                .orElseThrow(() -> {
+                    System.err.println("AttemptService: Квиз не найден: " + request.quizId());
+                    return new IllegalArgumentException("Квиз не найден");
+                });
 
         if (quiz.isPrivate()) {
             throw new SecurityException("Доступ к приватному квизу запрещен");
         }
 
-        // 2. Проверяем, что у квиза есть вопросы
         List<Question> questions = questionRepository.findByQuizId(request.quizId());
+        
         if (questions.isEmpty()) {
+            System.err.println("AttemptService: Квиз ID " + request.quizId() + " не содержит вопросов!");
             throw new IllegalStateException("Квиз не содержит вопросов");
         }
 
-        // 3. Создаем новую попытку
         UserQuizAttempt attempt = new UserQuizAttempt();
         attempt.setUser(user);
         attempt.setQuiz(quiz);
         attempt.setStartTime(Instant.now());
         attempt.setCompleted(false);
         attempt.setScore(null);
-        attempt.setSessionId(null); // Одиночная попытка
+        attempt.setSessionId(null);
         attempt = attemptRepository.save(attempt);
 
-        // 4. Получаем первый вопрос (можно рандомизировать)
         Question firstQuestion = getFirstQuestion(questions);
+        
+        List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(firstQuestion.getId());
+        if (options.isEmpty()) {
+            System.err.println("AttemptService: У вопроса ID " + firstQuestion.getId() + " нет вариантов ответов!");
+            throw new IllegalStateException("У вопроса нет вариантов ответов");
+        }
+        
         QuestionDTO questionDTO = toQuestionDTO(firstQuestion);
 
-        // 5. Вычисляем количество оставшихся вопросов
         int totalQuestions = questions.size();
         int questionsRemaining = totalQuestions;
 
-        // 6. Получаем время на вопрос
         Integer timeRemaining = quiz.getTimePerQuestion() != null
                 ? (int) quiz.getTimePerQuestion().getSeconds()
-                : 60; // значение по умолчанию
+                : 60;
 
         return new AttemptResponse(
                 attempt.getId(),
@@ -126,7 +136,7 @@ public class AttemptService {
                 questionsRemaining,
                 timeRemaining
         );
-    }
+  }
 
     /**
      * Получает следующий вопрос для попытки.
@@ -143,6 +153,7 @@ public class AttemptService {
 
         // 2. Получаем все вопросы квиза
         List<Question> allQuestions = questionRepository.findByQuizId(attempt.getQuiz().getId());
+        
         if (allQuestions.isEmpty()) {
             return null;
         }
@@ -224,7 +235,6 @@ public class AttemptService {
                 throw new IllegalArgumentException("Вариант ответа не принадлежит этому вопросу");
             }
 
-            // Находим правильный ответ
             Optional<org.example.model.AnswerOption> correctOptionOpt = answerOptionRepository
                     .findByQuestionIdAndIsCorrectTrue(questionId);
 
@@ -233,10 +243,11 @@ public class AttemptService {
                 correctAnswerId = correctOption.getId();
                 isCorrect = selectedAnswerId.equals(correctAnswerId);
 
-                // Начисляем очки только за правильный ответ
                 if (isCorrect) {
                     scoreEarned = calculateScore(question, attempt);
                 }
+            } else {
+                System.err.println("AttemptService: Не найден правильный ответ для вопроса ID=" + questionId);
             }
         } else {
             // ТАЙМАУТ: selectedAnswerId == null
@@ -333,21 +344,63 @@ public class AttemptService {
     // ========== Вспомогательные методы ==========
 
     private Question getFirstQuestion(List<Question> questions) {
-        // Можно рандомизировать порядок вопросов
-        List<Question> shuffled = new ArrayList<>(questions);
-        Collections.shuffle(shuffled);
-        return shuffled.get(0);
+        List<Question> validQuestions = questions.stream()
+                .filter(q -> q != null 
+                        && q.getText() != null 
+                        && !q.getText().trim().isEmpty()
+                        && (q.getIsValid() == null || q.getIsValid())
+                        && (q.getIsDuplicate() == null || !q.getIsDuplicate()))
+                .collect(Collectors.toList());
+        
+        if (validQuestions.isEmpty()) {
+            validQuestions = questions.stream()
+                    .filter(q -> q != null && q.getText() != null && !q.getText().trim().isEmpty())
+                    .collect(Collectors.toList());
+        }
+        
+        if (validQuestions.isEmpty()) {
+            throw new IllegalStateException("Нет вопросов с текстом для отображения");
+        }
+        
+        return validQuestions.get(0);
     }
 
     private QuestionDTO toQuestionDTO(Question question) {
+        if (question == null) {
+            throw new IllegalArgumentException("Question is null");
+        }
+        if (question.getText() == null || question.getText().trim().isEmpty()) {
+            System.err.println("AttemptService: текст вопроса пустой для ID " + question.getId());
+        }
+            
         List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(question.getId());
-        List<AnswerOption> dtoOptions = options.stream()
-                .map(opt -> new AnswerOption(opt.getId(), opt.getText()))
-                .collect(Collectors.toList());
+            
+        if (options.isEmpty()) {
+            throw new IllegalStateException("У вопроса ID " + question.getId() + " нет вариантов ответов");
+        }
+            
+        List<AnswerOption> dtoOptions = new ArrayList<>();
+        for (org.example.model.AnswerOption opt : options) {
+            if (opt == null) {
+                System.err.println("AttemptService: найден null вариант ответа, пропускаем");
+                continue;
+            }
+            String optionText = opt.getText();
+            if (optionText == null || optionText.trim().isEmpty()) {
+                System.err.println("AttemptService: текст варианта ответа пустой для ID " + opt.getId() + ", пропускаем");
+                continue;
+            }
+            dtoOptions.add(new AnswerOption(opt.getId(), optionText));
+        }
+            
+        if (dtoOptions.isEmpty()) {
+            throw new IllegalStateException("У вопроса ID " + question.getId() + " нет валидных вариантов ответов");
+        }
 
         Integer timeLimit = null;
-        if (question.getQuiz().getTimePerQuestion() != null) {
-            timeLimit = (int) question.getQuiz().getTimePerQuestion().getSeconds();
+        Quiz quiz = question.getQuiz();
+        if (quiz != null && quiz.getTimePerQuestion() != null) {
+            timeLimit = (int) quiz.getTimePerQuestion().getSeconds();
         }
 
         return new QuestionDTO(
@@ -355,12 +408,12 @@ public class AttemptService {
                 question.getText(),
                 dtoOptions,
                 timeLimit,
-                null, // materialReference
+                null,
                 question.getExplanation(),
-                null, // difficulty
-                null, // category
-                0, // position
-                toLocalDateTime(question.getQuiz().getCreatedAt())
+                null,
+                null,
+                0,
+                quiz != null ? toLocalDateTime(quiz.getCreatedAt()) : null
         );
     }
 
