@@ -213,7 +213,7 @@
                         <div class="quiz-name" th:text="${quiz.name}">Название квиза</div>
                         <div class="quiz-meta">
                             <span th:text="'Вопросов: ' + ${quiz.questionCount}">Вопросов: -</span>
-                            <span th:text="'Время: ' + ${quiz.timeLimit} + ' мин'">Время: -</span>
+                            <span th:text="'Время: ' + ${quiz.timeLimit} + ' сек'">Время: -</span>
                             <span th:text="${quiz.isPublic ? 'Публичный' : 'Приватный'}">Публичный</span>
                             <span th:if="${quiz.createdAt != null}"
                                   th:text="'Создан: ' + ${#temporals.format(quiz.createdAt, 'dd.MM.yyyy')}">Дата</span>

@@ -115,7 +115,7 @@
             </div>
             <div class="info-item">
                 <div class="info-label">Время на прохождение</div>
-                <div class="info-value" th:text="${quiz != null and quiz.timeLimit != null ? (quiz.timeLimit + ' минут') : '-'}">- минут</div>
+                <div class="info-value" th:text="${quiz != null and quiz.timeLimit != null ? (quiz.timeLimit + ' секунд') : '-'}">- минут</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Тип</div>
@@ -136,7 +136,7 @@
 <script>
     function goBack() {
         // Возвращаемся на главную страницу со списком квизов
-        window.location.href = '/home';
+        window.location.href = '/quiz/' + quizId;
     }
 </script>
 </body>
