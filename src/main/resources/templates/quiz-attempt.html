@@ -241,7 +241,7 @@
                     </div>
                 </div>
 
-                <form id="answerForm" onsubmit="submitAnswer(event)">
+                <form id="answerForm" onsubmit="submitAnswer(event)" th:attr="data-attempt-id=${attemptId}">
                     <div class="question-section">
                         <div class="question-field">
                             <div class="question-text" id="questionText" th:text="${currentQuestion != null ? currentQuestion.text : 'Загрузка вопроса...'}">
@@ -312,9 +312,20 @@
         let questionsRemaining = null;
 
         function getAttemptId() {
+            // Пробуем получить из data-атрибута формы
+            const form = document.getElementById('answerForm');
+            if (form && form.dataset.attemptId) {
+                return form.dataset.attemptId;
+            }
+            
+            // Пробуем получить из URL (для страницы /quiz/attempt/{attemptId}/question)
             const path = window.location.pathname;
             const match = path.match(/\/attempt\/(\d+)/);
-            return match ? match[1] : null;
+            if (match) {
+                return match[1];
+            }
+            
+            return null;
         }
 
         function exitAttempt() {

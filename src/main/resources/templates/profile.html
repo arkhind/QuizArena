@@ -229,7 +229,7 @@
 
     function goToProfile() {
         const userId = getCurrentUserId();
-        if (userId && userId !== '1') {
+        if (userId) {
             window.location.href = '/profile?userId=' + userId;
         } else {
             window.location.href = '/login';
@@ -238,7 +238,7 @@
 
     function goToMyQuizzes() {
         const userId = getCurrentUserId();
-        if (userId && userId !== '1') {
+        if (userId) {
             window.location.href = '/my-quizzes?userId=' + userId;
         } else {
             window.location.href = '/login';
@@ -247,7 +247,7 @@
 
     function goToEditProfile() {
         const userId = getCurrentUserId();
-        if (userId && userId !== '1') {
+        if (userId) {
             window.location.href = '/edit-profile?userId=' + userId;
         } else {
             alert('Ошибка: не найден ID пользователя. Пожалуйста, войдите в систему.');
@@ -257,7 +257,7 @@
 
     function goToHistory() {
         const userId = getCurrentUserId();
-        if (userId && userId !== '1') {
+        if (userId) {
             window.location.href = '/history?userId=' + userId;
         } else {
             window.location.href = '/login';
