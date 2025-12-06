@@ -219,6 +219,15 @@ public class QuizService {
         if (request.prompt() != null) {
             quiz.setPrompt(request.prompt());
         }
+        if (request.timeLimit() != null) {
+            quiz.setTimePerQuestion(java.time.Duration.ofSeconds(request.timeLimit()));
+        }
+        if (request.isPrivate() != null) {
+            quiz.setPrivate(request.isPrivate());
+        }
+        if (request.isStatic() != null) {
+            quiz.setStatic(request.isStatic());
+        }
 
         quiz = quizRepository.save(quiz);
 

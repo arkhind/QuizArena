@@ -114,8 +114,8 @@
                 <div class="info-value" th:text="${quiz != null and quiz.questions != null ? quiz.questions.size() : '-'}">-</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Время на прохождение</div>
-                <div class="info-value" th:text="${quiz != null and quiz.timeLimit != null ? (quiz.timeLimit + ' минут') : '-'}">- минут</div>
+                <div class="info-label">Время на вопрос</div>
+                <div class="info-value" th:text="${quiz != null and quiz.timeLimit != null ? (quiz.timeLimit + ' сек') : '-'}">-</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Тип</div>

@@ -509,7 +509,7 @@
             quizId: parseInt(getQuizId()),
             userId: parseInt(getCurrentUserId()),
             name: formData.get('name').trim(),
-            description: formData.get('description').trim(),
+            prompt: formData.get('description').trim(), // description -> prompt для соответствия DTO
             timeLimit: parseInt(formData.get('timeLimit')),
             isPrivate: formData.get('visibility') === 'private',
             isStatic: formData.get('contentType') === 'static'

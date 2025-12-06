@@ -145,7 +145,10 @@ public class QuizController {
                     quizId,
                     request.userId(),
                     request.name(),
-                    request.prompt()
+                    request.prompt(),
+                    request.timeLimit(),
+                    request.isPrivate(),
+                    request.isStatic()
             );
             QuizResponseDTO response = quizService.updateQuiz(updatedRequest);
             return ResponseEntity.ok(response);
