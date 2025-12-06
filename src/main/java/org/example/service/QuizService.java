@@ -213,14 +213,64 @@ public class QuizService {
             throw new SecurityException("Только создатель может редактировать квиз");
         }
 
+        // Сохраняем старый промпт для проверки изменения
+        String oldPrompt = quiz.getPrompt();
+        boolean promptChanged = request.prompt() != null && 
+                                (oldPrompt == null || !request.prompt().equals(oldPrompt));
+
         if (request.name() != null) {
             quiz.setName(request.name());
         }
         if (request.prompt() != null) {
             quiz.setPrompt(request.prompt());
         }
+        if (request.timeLimit() != null) {
+            quiz.setTimePerQuestion(java.time.Duration.ofSeconds(request.timeLimit()));
+        }
+        if (request.isPrivate() != null) {
+            quiz.setPrivate(request.isPrivate());
+        }
+        if (request.isStatic() != null) {
+            quiz.setStatic(request.isStatic());
+        }
 
         quiz = quizRepository.save(quiz);
+
+        // Если промпт изменился, перегенерируем вопросы
+        if (promptChanged) {
+            try {
+                // Определяем количество вопросов для генерации (берем текущее количество или дефолт 10)
+                int questionCount = (int) questionRepository.countByQuizId(request.quizId());
+                if (questionCount == 0) {
+                    questionCount = quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 10;
+                }
+
+                // Сначала обнуляем ссылки на answer_options в user_answers, чтобы избежать foreign key constraint
+                userAnswerRepository.nullifySelectedAnswerReferences(request.quizId());
+                
+                // Затем удаляем все ответы пользователей, связанные с вопросами этого квиза
+                userAnswerRepository.deleteByQuestionQuizId(request.quizId());
+                
+                // Затем удаляем старые вопросы (каскадно удалятся и варианты ответов)
+                questionRepository.deleteByQuizId(request.quizId());
+
+                // Генерируем новые вопросы на основе нового промпта
+                org.example.dto.request.generation.QuestionGenerationRequest genRequest =
+                        new org.example.dto.request.generation.QuestionGenerationRequest(
+                                request.quizId(),
+                                request.prompt(),
+                                null, // materials
+                                quiz.getQuestionNumber(),
+                                questionCount
+                        );
+                questionGenerationService.generateQuizQuestions(genRequest);
+            } catch (Exception e) {
+                System.err.println("Ошибка при перегенерации вопросов после изменения промпта: " + e.getMessage());
+                e.printStackTrace();
+                // Не прерываем обновление квиза, если генерация вопросов не удалась
+                // Пользователь сможет сгенерировать вопросы вручную позже
+            }
+        }
 
         return new QuizResponseDTO(
                 quiz.getId(),
