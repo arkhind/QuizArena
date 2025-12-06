@@ -167,10 +167,29 @@
             margin-bottom: 0;
         }
 
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 80%;
+            transition: all 0.3s;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
     </style>
 </head>
 <body>
-<div class="sidebar">
+    <div class="sidebar">
     <div class="profile-section">
         <button class="profile-btn" onclick="goToProfile()">
             <span>
@@ -178,6 +197,7 @@
             </span>
         </button>
         <a th:href="@{/home}" class="nav-btn">Главная</a>
+        <button class="logout-btn" onclick="logout()">Выйти</button>
     </div>
 </div>
 
@@ -244,6 +264,12 @@
         } else {
             window.location.href = '/login';
         }
+    }
+
+    function logout() {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        window.location.href = '/login';
     }
 
 </script>

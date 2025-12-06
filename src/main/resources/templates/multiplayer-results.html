@@ -211,7 +211,7 @@
 <body>
 <div class="sidebar">
     <a href="/home" class="nav-btn">Главная</a>
-    <a href="/quiz" class="nav-btn">Все квизы</a>
+    <button class="nav-btn" onclick="goToHome()" style="border: 2px solid #667eea; background: transparent; color: #667eea; padding: 15px 25px; border-radius: 25px; cursor: pointer; font-size: 18px; width: 80%; transition: all 0.3s; margin-bottom: 15px; text-align: center;">Вернуться в меню</button>
 </div>
 
 <div class="main-content">
@@ -222,6 +222,24 @@
         </header>
 
         <div class="content-section">
+            <div th:if="${allCompleted != null and !allCompleted}" style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center;">
+                <h3 style="color: #856404; margin-bottom: 10px;">Ожидание других участников</h3>
+                <p style="color: #856404; margin-bottom: 10px;">
+                    Завершено: <strong th:text="${completedCount}"></strong> из <strong th:text="${totalParticipants}"></strong> участников
+                </p>
+                <div th:if="${notCompletedUsernames != null and !notCompletedUsernames.isEmpty()}" style="margin-bottom: 15px;">
+                    <p style="color: #856404; margin-bottom: 5px;">Еще проходят квиз:</p>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                        <li th:each="username : ${notCompletedUsernames}" style="color: #856404; margin: 5px 0;">
+                            • <strong th:text="${username}"></strong>
+                        </li>
+                    </ul>
+                </div>
+                <button onclick="refreshResults()" style="background: #ffc107; color: #000; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                    Обновить результаты
+                </button>
+            </div>
+
             <table class="leaderboard-table" th:if="${results != null and results.results() != null and !results.results().isEmpty()}">
                 <thead>
                 <tr>
@@ -234,9 +252,7 @@
                 <tr th:each="result : ${results.results()}"
                     th:classappend="${results.userPosition() != null and result.position() != null and result.position().equals(results.userPosition())} ? 'user-row' : ''">
                     <td>
-                                <span class="rank"
-                                      th:classappend="${result.position() != null and result.position() == 1} ? 'first' : (${result.position() != null and result.position() == 2} ? 'second' : (${result.position() != null and result.position() == 3} ? 'third' : ''))"
-                                      th:text="${result.position()}"></span>
+                        <span class="rank" th:classappend="${result.position() == 1 ? 'first' : (result.position() == 2 ? 'second' : (result.position() == 3 ? 'third' : ''))}" th:text="${result.position()}"></span>
                     </td>
                     <td class="player-name" th:text="${result.username()}"></td>
                     <td class="player-score" th:text="${result.score()}"></td>
@@ -252,9 +268,28 @@
 </div>
 
 <script>
-    function goBack() {
-        window.location.href = '/home';
-    }
+    (function() {
+        var SESSION_ID = /*[[${sessionId}]]*/ '';
+        var USER_ID = /*[[${userId}]]*/ localStorage.getItem('userId') || '';
+
+        window.goBack = function() {
+            window.location.href = '/home';
+        };
+
+        window.goToHome = function() {
+            window.location.href = '/home';
+        };
+
+        window.refreshResults = function() {
+            var sessionId = SESSION_ID || '';
+            var userId = USER_ID || localStorage.getItem('userId') || '';
+            if (sessionId && userId) {
+                window.location.href = '/multiplayer/session/' + sessionId + '/results?userId=' + userId;
+            } else {
+                location.reload();
+            }
+        };
+    })();
 </script>
 </body>
 </html>

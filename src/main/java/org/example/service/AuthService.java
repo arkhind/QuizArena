@@ -77,7 +77,7 @@ public class AuthService {
 
         // TODO: Генерация JWT токена
         String token = "token_" + user.getId() + "_" + System.currentTimeMillis();
-        
+
         System.out.println("Возвращаем AuthResponse: userId=" + user.getId() + ", username=" + user.getLogin());
         return new AuthResponse(user.getId(), user.getLogin(), token);
     }
@@ -126,7 +126,7 @@ public class AuthService {
 
         // TODO: Генерация JWT токена
         String token = "token_" + user.getId() + "_" + System.currentTimeMillis();
-        
+
         System.out.println("Возвращаем AuthResponse: userId=" + user.getId() + ", username=" + user.getLogin());
         return new AuthResponse(user.getId(), user.getLogin(), token);
     }

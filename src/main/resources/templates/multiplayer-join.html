@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Присоединение к сессии</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+            padding: 30px;
+        }
+
+        .join-card {
+            background: white;
+            width: 420px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 32px 36px;
+            text-align: center;
+        }
+
+        .join-card h2 {
+            font-size: 1.4rem;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #666;
+            font-size: 0.95rem;
+            text-align: left;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .primary-btn {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35);
+        }
+
+        .primary-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .cancel-link {
+            display: inline-block;
+            margin-top: 18px;
+            color: #9ca3af;
+            text-decoration: none;
+            font-size: 0.95rem;
+        }
+
+        .cancel-link:hover {
+            text-decoration: underline;
+            color: #6b7280;
+        }
+
+        .status {
+            margin-top: 18px;
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+
+        .error-message {
+            background-color: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+<div class="join-card">
+    <h2>Присоединение к сессии</h2>
+    <div class="input-group">
+        <label for="sessionIdInput">ID сессии</label>
+        <input type="text" id="sessionIdInput" placeholder="Введите ID сессии" th:value="${sessionId != null ? sessionId : ''}">
+    </div>
+    <div id="errorMessage" class="error-message" style="display: none;"></div>
+    <button class="primary-btn" onclick="joinSession()">Присоединиться</button>
+    <a class="cancel-link" onclick="goBack()">Назад</a>
+    <div class="status" id="statusMessage">Введите ID сессии для присоединения</div>
+</div>
+
+<script>
+    const API_BASE = '/api/multiplayer';
+    let USER_ID = /*[[${userId}]]*/ Number(localStorage.getItem('userId')) || null;
+    
+    if (!USER_ID || USER_ID === 0) {
+        USER_ID = Number(localStorage.getItem('userId')) || null;
+    }
+
+    function getSessionId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('sessionId') || document.getElementById('sessionIdInput').value.trim();
+    }
+
+    async function joinSession() {
+        const sessionId = getSessionId();
+        if (!sessionId) {
+            showError('Введите ID сессии');
+            return;
+        }
+
+        if (!USER_ID || USER_ID === 0) {
+            USER_ID = Number(localStorage.getItem('userId')) || null;
+            if (!USER_ID) {
+                showError('Необходимо войти в систему');
+                setTimeout(() => window.location.href = '/login', 2000);
+                return;
+            }
+        }
+
+        const statusEl = document.getElementById('statusMessage');
+        statusEl.textContent = 'Присоединение...';
+        document.querySelector('.primary-btn').disabled = true;
+
+        try {
+            const response = await fetch(`${API_BASE}/sessions/join`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    userId: USER_ID
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || `Ошибка ${response.status}`);
+            }
+
+            const joined = await response.json();
+            if (joined) {
+                statusEl.textContent = 'Успешно присоединились! Перенаправление...';
+                setTimeout(() => {
+                    window.location.href = `/multiplayer/session/${sessionId}?userId=${USER_ID}`;
+                }, 1000);
+            } else {
+                showError('Не удалось присоединиться к сессии');
+            }
+        } catch (error) {
+            showError(error.message || 'Ошибка при присоединении');
+            statusEl.textContent = 'Ошибка';
+        } finally {
+            document.querySelector('.primary-btn').disabled = false;
+        }
+    }
+
+    function showError(message) {
+        const errorEl = document.getElementById('errorMessage');
+        errorEl.textContent = message;
+        errorEl.style.display = 'block';
+        setTimeout(() => {
+            errorEl.style.display = 'none';
+        }, 5000);
+    }
+
+    function goBack() {
+        window.location.href = '/home';
+    }
+
+    const sessionIdFromUrl = new URLSearchParams(window.location.search).get('sessionId');
+    if (sessionIdFromUrl) {
+        document.getElementById('sessionIdInput').value = sessionIdFromUrl;
+        joinSession();
+    }
+</script>
+</body>
+</html>
+
