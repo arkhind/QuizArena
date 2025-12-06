@@ -15,6 +15,7 @@ import org.example.repository.QuestionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,16 +35,19 @@ public class UserService {
     private final QuizRepository quizRepository;
     private final UserQuizAttemptRepository attemptRepository;
     private final QuestionRepository questionRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public UserService(UserRepository userRepository,
                       QuizRepository quizRepository,
                       UserQuizAttemptRepository attemptRepository,
-                      QuestionRepository questionRepository) {
+                      QuestionRepository questionRepository,
+                      PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.quizRepository = quizRepository;
         this.attemptRepository = attemptRepository;
         this.questionRepository = questionRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public UserProfileDTO updateUserProfile(UpdateProfileRequest request) {
@@ -59,8 +63,7 @@ public class UserService {
         }
 
         if (request.newPassword() != null && !request.newPassword().isEmpty()) {
-            // TODO: Хеширование пароля
-            user.setPassword(request.newPassword());
+            user.setPassword(passwordEncoder.encode(request.newPassword()));
         }
 
         user = userRepository.save(user);
