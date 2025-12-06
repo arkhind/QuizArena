@@ -245,7 +245,13 @@ public class QuizService {
                     questionCount = quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 10;
                 }
 
-                // Удаляем старые вопросы (каскадно удалятся и варианты ответов)
+                // Сначала обнуляем ссылки на answer_options в user_answers, чтобы избежать foreign key constraint
+                userAnswerRepository.nullifySelectedAnswerReferences(request.quizId());
+                
+                // Затем удаляем все ответы пользователей, связанные с вопросами этого квиза
+                userAnswerRepository.deleteByQuestionQuizId(request.quizId());
+                
+                // Затем удаляем старые вопросы (каскадно удалятся и варианты ответов)
                 questionRepository.deleteByQuizId(request.quizId());
 
                 // Генерируем новые вопросы на основе нового промпта

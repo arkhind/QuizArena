@@ -42,9 +42,17 @@ public interface UserAnswerRepository extends JpaRepository<UserAnswer, Long> {
 
     /**
      * Удаляет все ответы пользователей, связанные с вопросами указанного квиза.
+     * Сначала обнуляет ссылки на answer_options, затем удаляет записи.
      */
-    @Modifying
-    @Query("DELETE FROM UserAnswer ua WHERE ua.question.quiz.id = :quizId")
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM user_answers WHERE question_id IN (SELECT id FROM questions WHERE quiz_id = :quizId)", nativeQuery = true)
     void deleteByQuestionQuizId(@Param("quizId") Long quizId);
+    
+    /**
+     * Обнуляет ссылки на answer_options в ответах пользователей перед удалением.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE user_answers SET selected_answer_id = NULL WHERE selected_answer_id IN (SELECT ao.id FROM answer_options ao JOIN questions q ON ao.question_id = q.id WHERE q.quiz_id = :quizId)", nativeQuery = true)
+    void nullifySelectedAnswerReferences(@Param("quizId") Long quizId);
 }
 
