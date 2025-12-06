@@ -308,7 +308,8 @@
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.message || `Сервер вернул ${response.status}`);
+                const errorMessage = error.message || (response.status === 400 ? 'Нельзя начать мультиплеер одному. Нужно минимум 2 участника.' : `Сервер вернул ${response.status}`);
+                throw new Error(errorMessage);
             }
 
             const currentUserId = Number(localStorage.getItem('userId'));
@@ -321,8 +322,7 @@
                 document.getElementById('sessionStatus').textContent = 'Квиз начался!';
             }
         } catch (error) {
-            document.getElementById('sessionStatus').textContent =
-                `Не удалось запустить сессию: ${error.message}`;
+            document.getElementById('sessionStatus').textContent = error.message;
         }
     }
     async function cancelSession() {

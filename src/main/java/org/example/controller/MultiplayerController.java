@@ -64,14 +64,19 @@ public class MultiplayerController {
     }
 
     @PostMapping("/sessions/start")
-    public ResponseEntity<Boolean> startSession(@RequestBody StartMultiplayerRequest request) {
+    public ResponseEntity<?> startSession(@RequestBody StartMultiplayerRequest request) {
         try {
             boolean started = multiplayerService.startMultiplayerSession(request);
             return ResponseEntity.ok(started);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().build();
+        } catch (IllegalStateException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Недостаточно участников")) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Нельзя начать мультиплеер одному. Нужно минимум 2 участника."));
+            }
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Не удалось запустить сессию"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Неверные параметры запроса"));
         } catch (SecurityException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Только хост может запустить сессию"));
         }
     }
 
