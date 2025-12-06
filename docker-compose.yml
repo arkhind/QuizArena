@@ -1,8 +1,6 @@
-version: '3.3'
-
 services:
   postgres:
-    image: postgres:14
+    image: postgres:15
     container_name: quizarena_postgres
     environment:
       POSTGRES_DB: quizarena

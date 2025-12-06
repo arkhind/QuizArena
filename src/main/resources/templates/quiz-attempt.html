@@ -174,9 +174,28 @@
 
         .button-group {
             display: flex;
+            flex-direction: column;
             gap: 15px;
-            justify-content: center;
+            align-items: center;
             margin-top: 30px;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            padding: 8px 15px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            display: none;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .error-message.show {
+            display: block;
         }
 
         button {
@@ -242,6 +261,8 @@
                 </div>
 
                 <form id="answerForm" onsubmit="submitAnswer(event)">
+                    <input type="hidden" id="attemptIdInput" th:value="${attemptId}">
+                    <input type="hidden" id="currentQuestionId" th:value="${currentQuestion != null ? currentQuestion.id : ''}">
                     <div class="question-section">
                         <div class="question-field">
                             <div class="question-text" id="questionText" th:text="${currentQuestion != null ? currentQuestion.text : 'Загрузка вопроса...'}">
@@ -298,6 +319,7 @@
                     </div>
 
                     <div class="button-group">
+                        <div id="errorMessage" class="error-message"></div>
                         <button type="submit" class="submit-btn">Ответить</button>
                     </div>
                 </form>
@@ -305,16 +327,64 @@
         </div>
     </div>
 
-    <script>
-        let attemptId = null;
-        let timeRemaining = null;
+    <script th:inline="javascript">
+        let attemptId = /*[[${attemptId}]]*/ null;
+        let timeRemaining = /*[[${timeRemaining}]]*/ null;
         let timerInterval = null;
-        let questionsRemaining = null;
+        let questionsRemaining = /*[[${questionsRemaining}]]*/ null;
 
         function getAttemptId() {
+            // Сначала проверяем значение из сервера (Thymeleaf)
+            if (attemptId) {
+                return attemptId.toString();
+            }
+            // Потом проверяем скрытое поле в форме
+            const hiddenInput = document.getElementById('attemptIdInput');
+            if (hiddenInput && hiddenInput.value) {
+                return hiddenInput.value;
+            }
+            // Если нет, пытаемся извлечь из URL
             const path = window.location.pathname;
             const match = path.match(/\/attempt\/(\d+)/);
             return match ? match[1] : null;
+        }
+        
+        // Инициализация attemptId и currentQuestionId при загрузке страницы
+        window.addEventListener('DOMContentLoaded', function() {
+            const hiddenInput = document.getElementById('attemptIdInput');
+            if (hiddenInput && hiddenInput.value) {
+                attemptId = parseInt(hiddenInput.value);
+            }
+            
+            // Инициализируем currentQuestionId из скрытого поля
+            const questionIdInput = document.getElementById('currentQuestionId');
+            if (questionIdInput && questionIdInput.value) {
+                currentQuestionId = parseInt(questionIdInput.value);
+            }
+            
+            // Добавляем обработчики на радиокнопки для скрытия ошибки при выборе
+            const radioButtons = document.querySelectorAll('input[name="answer"]');
+            radioButtons.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    hideError();
+                });
+            });
+        });
+
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.classList.add('show');
+            }
+        }
+
+        function hideError() {
+            const errorElement = document.getElementById('errorMessage');
+            if (errorElement) {
+                errorElement.classList.remove('show');
+                errorElement.textContent = '';
+            }
         }
 
         function exitAttempt() {
@@ -323,16 +393,23 @@
             }
         }
 
+        // Глобальная переменная для хранения ID текущего вопроса
+        let currentQuestionId = null;
+
         async function submitAnswer(event, answerId = null) {
             if (event) {
                 event.preventDefault();
             }
 
-            attemptId = getAttemptId();
-            if (!attemptId) {
-                alert('Ошибка: не найден ID попытки');
+            // Получаем attemptId из разных источников
+            const currentAttemptId = getAttemptId();
+            if (!currentAttemptId) {
+                alert('Ошибка: не найден ID попытки. Пожалуйста, начните квиз заново.');
+                window.location.href = '/home';
                 return;
             }
+            
+            attemptId = parseInt(currentAttemptId);
 
             const token = localStorage.getItem('token');
             if (!token) {
@@ -348,8 +425,34 @@
                 selectedAnswer = formData.get('answer');
             }
 
+            // Валидация: если это не таймаут (вызов не из таймера), проверяем выбор ответа
+            // Таймаут вызывается как submitAnswer(null, null) без event
+            const isTimeout = answerId === null && !event;
+            
+            if (!isTimeout) {
+                // Если это обычная отправка формы, проверяем выбор
             if (!selectedAnswer) {
-                selectedAnswer = null;
+                    showError('Пожалуйста, выберите вариант ответа перед отправкой.');
+                    return;
+                } else {
+                    hideError();
+                }
+            } else {
+                hideError();
+            }
+            
+            // Если это таймаут, selectedAnswer может быть null (пропуск вопроса)
+            
+            // Если currentQuestionId не установлен, получаем его из первого варианта ответа
+            if (!currentQuestionId) {
+                const firstOption = document.querySelector('input[name="answer"]');
+                if (firstOption && firstOption.value) {
+                    // Получаем questionId из скрытого поля или из данных вопроса
+                    const questionIdInput = document.getElementById('currentQuestionId');
+                    if (questionIdInput) {
+                        currentQuestionId = questionIdInput.value;
+                    }
+                }
             }
 
             try {
@@ -361,7 +464,8 @@
                     },
                     body: JSON.stringify({
                         attemptId: parseInt(attemptId),
-                        answerId: selectedAnswer ? parseInt(selectedAnswer) : null
+                        questionId: currentQuestionId ? parseInt(currentQuestionId) : null,
+                        selectedAnswerId: selectedAnswer ? parseInt(selectedAnswer) : null
                     })
                 });
 
@@ -388,6 +492,15 @@
         function updateQuestionOnPage(question) {
             if (!question) {
                 return;
+            }
+
+            // Сохраняем ID текущего вопроса
+            if (question.id) {
+                currentQuestionId = question.id;
+                const questionIdInput = document.getElementById('currentQuestionId');
+                if (questionIdInput) {
+                    questionIdInput.value = question.id;
+                }
             }
 
             const questionTextElement = document.getElementById('questionText');

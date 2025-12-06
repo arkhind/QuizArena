@@ -31,7 +31,6 @@ public class QuizController {
     @PostMapping
     public ResponseEntity<?> createQuiz(@RequestBody CreateQuizRequest request) {
         try {
-            // Валидация входных данных
             if (request.name() == null || request.name().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("Название квиза не может быть пустым");
             }

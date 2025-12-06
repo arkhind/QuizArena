@@ -134,6 +134,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
+            overflow: visible;
         }
 
         .quiz-info {
@@ -157,6 +159,7 @@
         .quiz-actions {
             display: flex;
             gap: 10px;
+            flex-shrink: 0;
         }
 
         .quiz-btn {
@@ -180,10 +183,126 @@
         .quiz-btn.delete {
             background: #dc3545;
             color: white;
+            display: inline-block;
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            z-index: 10001;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .modal-message {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .modal-btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        .modal-btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .modal-btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .modal-btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .modal-btn-danger:hover {
+            background: #c82333;
         }
 
         .quiz-btn.delete:hover {
             background: #c82333;
+        }
+
+        /* Убеждаемся, что кнопка удаления всегда видна */
+        @media (max-width: 768px) {
+            .quiz-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .quiz-actions {
+                width: 100%;
+                margin-top: 15px;
+                justify-content: flex-end;
+            }
+            .quiz-btn {
+                flex: 1;
+            }
         }
     </style>
 </head>
@@ -229,6 +348,15 @@
     </div>
 </div>
 
+<!-- Модальное окно -->
+<div id="modalOverlay" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-title" id="modalTitle">Подтверждение</div>
+        <div class="modal-message" id="modalMessage"></div>
+        <div class="modal-buttons" id="modalButtons"></div>
+    </div>
+</div>
+
 <script>
     function getCurrentUserId() {
         return localStorage.getItem('userId') || new URLSearchParams(window.location.search).get('userId');
@@ -248,40 +376,153 @@
     window.location.href = '/quiz/' + quizId + '/edit?userId=' + userId;
     }
 
+    function showModal(title, message, buttons) {
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalMessage').textContent = message;
+        const buttonsContainer = document.getElementById('modalButtons');
+        buttonsContainer.innerHTML = '';
+        buttons.forEach(btn => {
+            const button = document.createElement('button');
+            button.className = 'modal-btn ' + btn.className;
+            button.textContent = btn.text;
+            button.onclick = btn.onclick;
+            buttonsContainer.appendChild(button);
+        });
+        document.getElementById('modalOverlay').classList.add('show');
+    }
+
+    function hideModal() {
+        document.getElementById('modalOverlay').classList.remove('show');
+    }
+
+    // Закрытие модального окна при клике вне его
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalOverlay = document.getElementById('modalOverlay');
+        if (modalOverlay) {
+            modalOverlay.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideModal();
+                }
+            });
+        }
+    });
+
     async function deleteQuiz(quizId) {
-        if (!confirm('Вы уверены, что хотите удалить этот квиз?')) {
-            return;
+        showModal(
+            'Подтверждение удаления',
+            'Вы уверены, что хотите удалить этот квиз? Это действие нельзя отменить.',
+            [
+                {
+                    text: 'Отмена',
+                    className: 'modal-btn-secondary',
+                    onclick: hideModal
+                },
+                {
+                    text: 'Удалить',
+                    className: 'modal-btn-danger',
+                    onclick: async () => {
+                        hideModal();
+                        await performDelete(quizId);
+                    }
+                }
+            ]
+        );
         }
 
+    async function performDelete(quizId) {
         const userId = getCurrentUserId();
         if (!userId) {
-            alert('Ошибка: пользователь не найден');
+            showModal(
+                'Ошибка',
+                'Ошибка: пользователь не найден',
+                [
+                    {
+                        text: 'OK',
+                        className: 'modal-btn-primary',
+                        onclick: hideModal
+                    }
+                ]
+            );
             return;
         }
 
         try {
-            const response = await fetch('/api/quiz/delete', {
-                method: 'POST',
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showModal(
+                    'Ошибка авторизации',
+                    'Вы не авторизованы',
+                    [
+                        {
+                            text: 'OK',
+                            className: 'modal-btn-primary',
+                            onclick: () => {
+                                hideModal();
+                                window.location.href = '/login';
+                            }
+                        }
+                    ]
+                );
+                return;
+            }
+
+            const response = await fetch('/api/quizzes/' + quizId + '?userId=' + userId, {
+                method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
-                body: JSON.stringify({
-                    quizId: quizId,
-                    userId: parseInt(userId)
-                })
+                    'Authorization': 'Bearer ' + token
+                }
             });
 
             if (response.ok) {
-                alert('Квиз успешно удалён');
+                showModal(
+                    'Успех',
+                    'Квиз успешно удалён',
+                    [
+                        {
+                            text: 'OK',
+                            className: 'modal-btn-primary',
+                            onclick: () => {
+                                hideModal();
                 window.location.reload();
+                            }
+                        }
+                    ]
+                );
             } else {
-                const error = await response.json();
-                alert('Ошибка при удалении: ' + (error.message || 'Неизвестная ошибка'));
+                const errorText = await response.text();
+                let errorMessage = 'Неизвестная ошибка';
+                try {
+                    const error = JSON.parse(errorText);
+                    errorMessage = error.message || error.error || errorText;
+                } catch (e) {
+                    errorMessage = errorText || `Ошибка ${response.status}: ${response.statusText}`;
+                }
+                showModal(
+                    'Ошибка',
+                    'Ошибка при удалении: ' + errorMessage,
+                    [
+                        {
+                            text: 'OK',
+                            className: 'modal-btn-primary',
+                            onclick: hideModal
+                        }
+                    ]
+                );
             }
         } catch (error) {
-            alert('Ошибка сети');
             console.error('Error:', error);
+            showModal(
+                'Ошибка сети',
+                'Ошибка сети. Проверьте подключение к интернету.',
+                [
+                    {
+                        text: 'OK',
+                        className: 'modal-btn-primary',
+                        onclick: hideModal
+                    }
+                ]
+            );
         }
     }
 </script>
