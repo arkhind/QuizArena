@@ -2,6 +2,7 @@ package org.example.repository;
 
 import org.example.model.UserAnswer;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -38,5 +39,12 @@ public interface UserAnswerRepository extends JpaRepository<UserAnswer, Long> {
      * Проверяет, был ли дан ответ на вопрос в попытке.
      */
     boolean existsByAttemptIdAndQuestionId(Long attemptId, Long questionId);
+
+    /**
+     * Удаляет все ответы пользователей, связанные с вопросами указанного квиза.
+     */
+    @Modifying
+    @Query("DELETE FROM UserAnswer ua WHERE ua.question.quiz.id = :quizId")
+    void deleteByQuestionQuizId(@Param("quizId") Long quizId);
 }
 
