@@ -230,11 +230,15 @@
             <h2>Действия</h2>
             <div class="action-buttons">
                 <button class="btn btn-primary"
-                        th:if="${quizzes != null and !quizzes.isEmpty() and hasQuestions != null and hasQuestions}"
+                        th:if="${quizzes != null and !quizzes.isEmpty() and hasQuestions != null and hasQuestions and (sessionId == null or isMultiplayerHost == true)}"
                         th:onclick="'startQuiz(' + ${quizzes[0].id} + ')'">Начать квиз</button>
                 <button class="btn btn-primary"
-                        th:if="${quizzes != null and !quizzes.isEmpty() and (hasQuestions == null or !hasQuestions)}"
+                        th:if="${quizzes != null and !quizzes.isEmpty() and (hasQuestions == null or !hasQuestions) and (sessionId == null or isMultiplayerHost == true)}"
                         disabled>Начать квиз</button>
+                <button class="btn btn-primary"
+                        th:if="${quizzes != null and !quizzes.isEmpty() and hasQuestions != null and hasQuestions and quizzes[0].isPublic()}"
+                        style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"
+                        th:onclick="'startMultiplayer(' + ${quizzes[0].id} + ')'">Пройти вместе</button>
                 <button class="btn btn-secondary"
                         th:if="${quizzes != null and !quizzes.isEmpty()}"
                         th:onclick="'goToQuizDetails(' + ${quizzes[0].id} + ')'">Подробнее о квизе</button>
@@ -336,6 +340,24 @@
 
     function copyQuiz(quizId) {
         alert('Функция копирования квиза будет реализована позже');
+    }
+
+    function startMultiplayer(quizId) {
+        const userId = getUserId();
+        if (!userId) {
+            alert('Необходимо войти в систему');
+            window.location.href = '/login';
+            return;
+        }
+        const userIdNum = parseInt(userId);
+        if (isNaN(userIdNum) || userIdNum <= 0) {
+            alert('Ошибка: некорректный ID пользователя. Пожалуйста, войдите в систему заново.');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+            return;
+        }
+        window.location.href = '/multiplayer/create?quizId=' + quizId + '&userId=' + userIdNum;
     }
 
     function goBack() {

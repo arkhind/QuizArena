@@ -42,6 +42,7 @@ public class AttemptService {
     private final QuestionRepository questionRepository;
     private final AnswerOptionRepository answerOptionRepository;
     private final UserAnswerRepository userAnswerRepository;
+    private final org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository;
 
     @Autowired
     public AttemptService(
@@ -50,13 +51,15 @@ public class AttemptService {
             UserRepository userRepository,
             QuestionRepository questionRepository,
             AnswerOptionRepository answerOptionRepository,
-            UserAnswerRepository userAnswerRepository) {
+            UserAnswerRepository userAnswerRepository,
+            org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository) {
         this.attemptRepository = attemptRepository;
         this.quizRepository = quizRepository;
         this.userRepository = userRepository;
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
         this.userAnswerRepository = userAnswerRepository;
+        this.multiplayerSessionRepository = multiplayerSessionRepository;
     }
 
     /**
@@ -77,6 +80,7 @@ public class AttemptService {
     /**
      * Начинает попытку прохождения квиза.
      * Создает UserQuizAttempt и возвращает первый вопрос.
+     * Если передан sessionId, использует существующую попытку для мультиплеера.
      */
     public AttemptResponse startQuizAttempt(StartAttemptRequest request) {
         User user = userRepository.findById(request.userId())
@@ -102,27 +106,46 @@ public class AttemptService {
             throw new IllegalStateException("Квиз не содержит вопросов");
         }
 
-        UserQuizAttempt attempt = new UserQuizAttempt();
+        UserQuizAttempt attempt;
+        
+        // Если передан sessionId, ищем существующую попытку для мультиплеера
+        if (request.sessionId() != null && !request.sessionId().isEmpty()) {
+            attempt = attemptRepository.findByUserIdAndQuizIdAndSessionId(
+                    request.userId(), request.quizId(), request.sessionId());
+            
+            if (attempt == null) {
+                System.err.println("AttemptService: Попытка с sessionId не найдена, создаем новую");
+                attempt = new UserQuizAttempt();
+                attempt.setUser(user);
+                attempt.setQuiz(quiz);
+                attempt.setStartTime(Instant.now());
+                attempt.setCompleted(false);
+                attempt.setScore(null);
+                attempt.setSessionId(request.sessionId());
+                attempt = attemptRepository.save(attempt);
+            } else {
+                System.err.println("AttemptService: Используем существующую попытку ID " + attempt.getId() + " для мультиплеера");
+            }
+        } else {
+            attempt = new UserQuizAttempt();
         attempt.setUser(user);
         attempt.setQuiz(quiz);
         attempt.setStartTime(Instant.now());
         attempt.setCompleted(false);
         attempt.setScore(null);
-        attempt.setSessionId(null);
+            attempt.setSessionId(null);
         attempt = attemptRepository.save(attempt);
-
-        Question firstQuestion = getFirstQuestion(questions);
-        
-        List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(firstQuestion.getId());
-        if (options.isEmpty()) {
-            System.err.println("AttemptService: У вопроса ID " + firstQuestion.getId() + " нет вариантов ответов!");
-            throw new IllegalStateException("У вопроса нет вариантов ответов");
         }
-        
-        QuestionDTO questionDTO = toQuestionDTO(firstQuestion);
+
+        // Получаем текущий вопрос (первый неотвеченный)
+        QuestionDTO currentQuestion = getNextQuestion(attempt.getId());
+        if (currentQuestion == null) {
+            throw new IllegalStateException("Все вопросы уже отвечены");
+        }
 
         int totalQuestions = questions.size();
-        int questionsRemaining = totalQuestions;
+        List<UserAnswer> answeredQuestions = userAnswerRepository.findByAttemptId(attempt.getId());
+        int questionsRemaining = totalQuestions - answeredQuestions.size();
 
         Integer timeRemaining = quiz.getTimePerQuestion() != null
                 ? (int) quiz.getTimePerQuestion().getSeconds()
@@ -132,7 +155,7 @@ public class AttemptService {
                 attempt.getId(),
                 quiz.getId(),
                 quiz.getName(),
-                questionDTO,
+                currentQuestion,
                 questionsRemaining,
                 timeRemaining
         );
@@ -313,6 +336,11 @@ public class AttemptService {
         attempt.setFinishTime(Instant.now());
         attempt = attemptRepository.save(attempt);
 
+        // 2.5. Если это мультиплеер, проверяем завершение сессии
+        if (attempt.getSessionId() != null && !attempt.getSessionId().isEmpty()) {
+            checkAndFinishMultiplayerSession(attempt.getSessionId());
+        }
+
         // 3. Получаем все ответы
         List<UserAnswer> answers = userAnswerRepository.findByAttemptId(attemptId);
 
@@ -339,6 +367,26 @@ public class AttemptService {
                 timeSpent,
                 toLocalDateTime(attempt.getFinishTime())
         );
+    }
+
+    private void checkAndFinishMultiplayerSession(String sessionId) {
+        try {
+            List<UserQuizAttempt> attempts = attemptRepository.findBySessionId(sessionId);
+            boolean allCompleted = attempts.stream().allMatch(UserQuizAttempt::isCompleted);
+            
+            if (allCompleted && attempts.size() >= 2) {
+                org.example.model.MultiplayerSession session = multiplayerSessionRepository.findBySessionId(sessionId)
+                    .orElse(null);
+                
+                if (session != null && !"FINISHED".equals(session.getStatus())) {
+                    session.setStatus("FINISHED");
+                    session.setFinishedAt(Instant.now());
+                    multiplayerSessionRepository.save(session);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("AttemptService: Ошибка при проверке завершения мультиплеер сессии: " + e.getMessage());
+        }
     }
 
     // ========== Вспомогательные методы ==========

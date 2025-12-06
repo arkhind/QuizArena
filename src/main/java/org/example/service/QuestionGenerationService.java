@@ -110,7 +110,7 @@ public class QuestionGenerationService {
             e.printStackTrace();
             
             if (generatedQuestions.isEmpty()) {
-                for (int i = 0; i < questionCount; i++) {
+        for (int i = 0; i < questionCount; i++) {
                     Question question = new Question();
                     question.setQuiz(quiz);
                     question.setText("Вопрос " + (i + 1) + " по теме \"" + prompt + "\"");
@@ -122,14 +122,14 @@ public class QuestionGenerationService {
                     question.setIsDuplicate(false);
                     question = questionRepository.save(question);
 
-                    for (int j = 0; j < 4; j++) {
+            for (int j = 0; j < 4; j++) {
                         AnswerOption option = new AnswerOption();
                         option.setQuestion(question);
                         option.setText("Вариант " + (j + 1));
                         option.setCorrect(j == 0);
-                        option.setNaOption(false);
-                        answerOptionRepository.save(option);
-                    }
+                option.setNaOption(false);
+                answerOptionRepository.save(option);
+            }
 
                     generatedQuestions.add(question);
                 }

@@ -258,6 +258,10 @@
                              th:text="${timeRemaining} + ' сек'"
                              th:attr="data-default-time=${defaultTimeLimit != null ? defaultTimeLimit : 60}">60 сек</div>
                     </div>
+                    <div class="progress-item" id="multiplayerStatus" style="display: none;">
+                        <div class="progress-label">Статус соперника</div>
+                        <div class="progress-value" id="opponentStatus">Ожидание...</div>
+                    </div>
                 </div>
 
                 <form id="answerForm" onsubmit="submitAnswer(event)">
@@ -473,11 +477,18 @@
                     const result = await response.json();
 
                     if (result.nextQuestion) {
+                        if (sessionId) {
+                            checkMultiplayerProgress();
+                        }
                         updateQuestionOnPage(result.nextQuestion);
                         updateQuestionsCounter();
                         resetTimer();
                     } else {
-                        window.location.href = '/quiz/attempt/' + attemptId + '/question';
+                        if (sessionId) {
+                            await finishMultiplayerAttempt();
+                        } else {
+                            window.location.href = '/quiz/attempt/' + attemptId + '/question';
+                        }
                     }
                 } else {
                     const error = await response.json().catch(() => ({}));
@@ -576,8 +587,63 @@
             }, 1000);
         }
 
+        let sessionId = null;
+        let multiplayerPollInterval = null;
+
+        function getSessionId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('sessionId');
+        }
+
+        async function checkMultiplayerProgress() {
+            if (!sessionId) return;
+
+            try {
+                const currentQuestionId = document.getElementById('currentQuestionId')?.value;
+                const url = `/api/multiplayer/sessions/${sessionId}/progress${currentQuestionId ? '?questionId=' + currentQuestionId : ''}`;
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                if (!response.ok) return;
+
+                const progress = await response.json();
+                const statusEl = document.getElementById('opponentStatus');
+                const multiplayerStatusEl = document.getElementById('multiplayerStatus');
+
+                if (statusEl && multiplayerStatusEl) {
+                    multiplayerStatusEl.style.display = 'block';
+                    
+                    const bothAnswered = progress.bothAnswered || false;
+                    const currentQuestionAnswered = progress.currentQuestionAnswered || false;
+
+                    if (bothAnswered && currentQuestionId && progress.currentQuestionId == currentQuestionId) {
+                        statusEl.textContent = 'Оба ответили';
+                        statusEl.style.color = '#16a34a';
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else if (currentQuestionAnswered) {
+                        statusEl.textContent = 'Соперник ответил';
+                        statusEl.style.color = '#f59e0b';
+                    } else {
+                        statusEl.textContent = 'Ожидание соперника...';
+                        statusEl.style.color = '#6b7280';
+                    }
+                }
+            } catch (error) {
+                console.error('Multiplayer progress check error:', error);
+            }
+        }
+
         window.addEventListener('load', () => {
             attemptId = getAttemptId();
+            sessionId = getSessionId();
+            
             const timeElement = document.getElementById('timeRemaining');
             const remainingElement = document.getElementById('questionsRemaining');
             
@@ -591,11 +657,41 @@
                 timeElement.textContent = timeRemaining + ' сек';
                 startTimer();
             }
+
+            if (sessionId) {
+                multiplayerPollInterval = setInterval(checkMultiplayerProgress, 1500);
+            }
         });
+
+        async function finishMultiplayerAttempt() {
+            try {
+                const response = await fetch(`/api/attempts/${attemptId}/finish`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                if (response.ok) {
+                    setTimeout(() => {
+                        window.location.href = `/multiplayer/session/${sessionId}/results?userId=${localStorage.getItem('userId')}`;
+                    }, 1000);
+                } else {
+                    console.error('Failed to finish attempt');
+                    window.location.href = `/multiplayer/session/${sessionId}/results?userId=${localStorage.getItem('userId')}`;
+                }
+            } catch (error) {
+                console.error('Error finishing attempt:', error);
+                window.location.href = `/multiplayer/session/${sessionId}/results?userId=${localStorage.getItem('userId')}`;
+            }
+        }
 
         window.addEventListener('beforeunload', () => {
             if (timerInterval) {
                 clearInterval(timerInterval);
+            }
+            if (multiplayerPollInterval) {
+                clearInterval(multiplayerPollInterval);
             }
         });
     </script>

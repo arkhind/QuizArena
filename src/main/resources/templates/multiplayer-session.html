@@ -150,8 +150,8 @@
 <body>
 <div class="session-card">
     <h2>Совместное прохождение</h2>
-    <div class="quiz-title" id="quizName" th:text="${quizName != null ? quizName : 'Название Квиза'}">Название Квиза</div>
-    <a class="session-link" id="sessionLink" th:href="${joinLink != null ? joinLink : '#'}" onclick="copySessionLink()">Скопировать ссылку на сессию</a>
+    <div class="quiz-title" id="quizName" th:text="${quizName != null ? quizName : 'Название Квиза'}" th:attr="data-quiz-id=${quizId}">Название Квиза</div>
+    <button class="session-link" id="sessionLink" type="button" onclick="copySessionLink(event)" style="background: none; border: none; color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer; padding: 0; margin: 12px 0 20px; display: inline-block;">Скопировать ссылку на сессию</button>
     <div class="copy-feedback" id="copyFeedback">Ссылка скопирована!</div>
 
     <div class="participants-box">
@@ -164,23 +164,48 @@
         </div>
     </div>
 
-    <button class="primary-btn" onclick="startSession()">
+    <button class="primary-btn" id="startSessionBtn" onclick="startSession()" th:if="${currentUserId != null and hostUserId != null and currentUserId == hostUserId}">
         ▶ Начать
     </button>
 
     <a class="cancel-link" onclick="cancelSession()">Отменить</a>
 
-    <div class="status" id="sessionStatus">
+    <div class="status" id="sessionStatus" th:text="${(currentUserId != null and hostUserId != null and currentUserId == hostUserId) ? 'Ожидание подключения участников...' : 'Ожидание начала квиза'}">
         Ожидание подключения участников...
     </div>
+    <div th:if="${errorMessage != null}" class="error-message" style="background-color: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 8px; margin-top: 15px;" th:text="${errorMessage}"></div>
 </div>
 
 <script>
-
-    const SESSION_ID = /*[[${sessionId}]]*/ 'abc123xyz';
-    const HOST_USER_ID = /*[[${hostUserId}]]*/ Number(localStorage.getItem('userId')) || 1; // кто ведёт сессию
+    let SESSION_ID = null;
+    let HOST_USER_ID = Number(localStorage.getItem('userId')) || 1;
     const MAX_PARTICIPANTS = 10;
     const API_BASE = '/api/multiplayer';
+    
+    (function() {
+        const sessionIdFromModel = /*[[${sessionId}]]*/ null;
+        const hostUserIdFromModel = /*[[${hostUserId}]]*/ null;
+        
+        if (sessionIdFromModel) {
+            SESSION_ID = sessionIdFromModel;
+        }
+        if (hostUserIdFromModel) {
+            HOST_USER_ID = Number(hostUserIdFromModel);
+        }
+    })();
+    
+    if (!SESSION_ID || SESSION_ID === 'null' || SESSION_ID === null) {
+        const pathMatch = window.location.pathname.match(/\/multiplayer\/session\/([^\/\?]+)/);
+        if (pathMatch && pathMatch[1]) {
+            SESSION_ID = pathMatch[1];
+            console.log('SESSION_ID extracted from URL:', SESSION_ID);
+        } else {
+            console.error('SESSION_ID not found in template or URL');
+        }
+    }
+    
+    console.log('SESSION_ID final value:', SESSION_ID);
+    console.log('HOST_USER_ID final value:', HOST_USER_ID);
 
      // Заголовок, если нужно поменять динамически
      // document.getElementById('quizName').textContent = `Квиз: ${window.initialQuizTitle}`;
@@ -213,8 +238,23 @@
     }
 
     async function fetchSession() {
+        if (!SESSION_ID || SESSION_ID === 'null' || SESSION_ID === 'abc123xyz' || SESSION_ID === null) {
+            const errorMsg = 'Ошибка: ID сессии не найден. SESSION_ID=' + SESSION_ID + ' (type: ' + typeof SESSION_ID + ')';
+            console.error(errorMsg);
+            console.error('Available in model:', {
+                sessionId: /*[[${sessionId}]]*/ 'not set',
+                hostUserId: /*[[${hostUserId}]]*/ 'not set'
+            });
+            document.getElementById('sessionStatus').textContent = errorMsg;
+            return;
+        }
+        
         try {
-            const response = await fetch(`${API_BASE}/sessions/${SESSION_ID}`, {
+            const url = `${API_BASE}/sessions/${SESSION_ID}`;
+            console.log('Fetching session from:', url);
+            console.log('SESSION_ID:', SESSION_ID);
+            
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -222,15 +262,32 @@
             });
 
             if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                console.error('Error response:', response.status, errorText);
                 throw new Error(`Сервер вернул ${response.status}`);
             }
 
             const session = await response.json();
+            console.log('Session loaded:', session);
             document.getElementById('quizName').textContent = session.quizName;
             renderParticipants(session.participants || []);
-            document.getElementById('sessionStatus').textContent =
-                `Статус: ${translateStatus(session.status)}`;
+            
+            const currentUserId = Number(localStorage.getItem('userId'));
+            const hostUserId = HOST_USER_ID;
+            const isHost = currentUserId && hostUserId && currentUserId === hostUserId;
+            
+            if (isHost) {
+                document.getElementById('sessionStatus').textContent =
+                    `Статус: ${translateStatus(session.status)}`;
+            } else {
+                if (session.status === 'STARTED') {
+                    document.getElementById('sessionStatus').textContent = 'Квиз начался!';
+                } else {
+                    document.getElementById('sessionStatus').textContent = 'Ожидание начала квиза';
+                }
+            }
         } catch (error) {
+            console.error('Error fetching session:', error);
             document.getElementById('sessionStatus').textContent =
                 `Не удалось загрузить данные сессии: ${error.message}`;
         }
@@ -254,8 +311,15 @@
                 throw new Error(error.message || `Сервер вернул ${response.status}`);
             }
 
-            document.getElementById('sessionStatus').textContent =
-                'Сессия запущена';
+            const currentUserId = Number(localStorage.getItem('userId'));
+            const hostUserId = HOST_USER_ID;
+            const isHost = currentUserId && hostUserId && currentUserId === hostUserId;
+            
+            if (isHost) {
+                document.getElementById('sessionStatus').textContent = 'Сессия запущена';
+            } else {
+                document.getElementById('sessionStatus').textContent = 'Квиз начался!';
+            }
         } catch (error) {
             document.getElementById('sessionStatus').textContent =
                 `Не удалось запустить сессию: ${error.message}`;
@@ -280,11 +344,10 @@
                 throw new Error(error.message || `Сервер вернул ${response.status}`);
             }
 
-            document.getElementById('sessionStatus').textContent =
-                'Сессия отменена.';
+            window.location.href = '/home';
         } catch (error) {
-            document.getElementById('sessionStatus').textContent =
-                `Не удалось отменить сессию: ${error.message}`;
+            console.error('Error canceling session:', error);
+            window.location.href = '/home';
         }
     }
     function translateStatus(status) {
@@ -297,24 +360,136 @@
         }
     }
     
-    function copySessionLink() {
-        const linkElement = document.getElementById('sessionLink');
-        const linkText = linkElement.href || linkElement.textContent;
+    function copySessionLink(event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
         
-        if (navigator.clipboard) {
+        let currentSessionId = SESSION_ID;
+        console.log('copySessionLink: initial SESSION_ID =', currentSessionId);
+        
+        if (!currentSessionId || currentSessionId === 'null' || currentSessionId === 'abc123xyz' || currentSessionId === null) {
+            const pathMatch = window.location.pathname.match(/\/multiplayer\/session\/([^\/\?]+)/);
+            if (pathMatch && pathMatch[1]) {
+                currentSessionId = pathMatch[1];
+                console.log('SESSION_ID extracted from URL for copy:', currentSessionId);
+            } else {
+                console.error('SESSION_ID not found in URL or variable');
+                alert('Ошибка: ID сессии не найден. Пожалуйста, обновите страницу.');
+                return;
+            }
+        }
+        
+        const userId = localStorage.getItem('userId') || HOST_USER_ID;
+        const linkText = window.location.origin + '/multiplayer/join?sessionId=' + currentSessionId + '&userId=' + userId;
+        
+        console.log('Copying link:', linkText);
+        console.log('SESSION_ID used:', currentSessionId);
+        console.log('userId used:', userId);
+        
+        const feedback = document.getElementById('copyFeedback');
+        
+        if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(linkText).then(() => {
-                const feedback = document.getElementById('copyFeedback');
-                feedback.style.display = 'block';
-                setTimeout(() => {
-                    feedback.style.display = 'none';
-                }, 2000);
+                console.log('Successfully copied to clipboard');
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    setTimeout(() => {
+                        feedback.style.display = 'none';
+                    }, 2000);
+                }
+            }).catch((err) => {
+                console.error('Failed to copy to clipboard:', err);
+                fallbackCopyTextToClipboard(linkText, feedback);
             });
         } else {
-            alert('Ссылка: ' + linkText);
+            console.log('Clipboard API not available, using fallback');
+            fallbackCopyTextToClipboard(linkText, feedback);
+        }
+    }
+    
+    function fallbackCopyTextToClipboard(text, feedbackElement) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                console.log('Fallback: Copying text command was successful');
+                if (feedbackElement) {
+                    feedbackElement.style.display = 'block';
+                    setTimeout(() => {
+                        feedbackElement.style.display = 'none';
+                    }, 2000);
+                }
+            } else {
+                console.error('Fallback: Unable to copy');
+                prompt('Скопируйте ссылку вручную:', text);
+            }
+        } catch (err) {
+            console.error('Fallback: Oops, unable to copy', err);
+            prompt('Скопируйте ссылку вручную:', text);
+        } finally {
+            document.body.removeChild(textArea);
         }
     }
 
     fetchSession();
+
+    let pollInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`${API_BASE}/sessions/${SESSION_ID}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (!response.ok) return;
+
+            const session = await response.json();
+            renderParticipants(session.participants || []);
+            const currentUserId = Number(localStorage.getItem('userId'));
+            const hostUserId = HOST_USER_ID;
+            const isHost = currentUserId && hostUserId && currentUserId === hostUserId;
+            
+            if (isHost) {
+                document.getElementById('sessionStatus').textContent =
+                    `Статус: ${translateStatus(session.status)}`;
+            } else {
+                if (session.status === 'STARTED') {
+                    document.getElementById('sessionStatus').textContent = 'Квиз начался!';
+                } else {
+                    document.getElementById('sessionStatus').textContent = 'Ожидание начала квиза';
+                }
+            }
+
+            if (session.status === 'STARTED') {
+                clearInterval(pollInterval);
+                const userId = localStorage.getItem('userId') || HOST_USER_ID;
+                const quizIdElement = document.querySelector('[data-quiz-id]');
+                const quizId = quizIdElement ? quizIdElement.getAttribute('data-quiz-id') : null;
+                if (quizId) {
+                    window.location.href = `/quiz/${quizId}/attempt?userId=${userId}&sessionId=${SESSION_ID}`;
+                } else {
+                    window.location.href = `/home`;
+                }
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
+        }
+    }, 2000);
+
+    window.addEventListener('beforeunload', () => {
+        clearInterval(pollInterval);
+    });
 
 </script>
 </body>

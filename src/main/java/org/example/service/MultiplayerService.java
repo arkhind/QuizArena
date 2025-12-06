@@ -35,6 +35,7 @@ public class MultiplayerService {
     private final QuizRepository quizRepository;
     private final UserRepository userRepository;
     private final UserQuizAttemptRepository attemptRepository;
+    private final UserAnswerRepository userAnswerRepository;
 
     @Autowired
     public MultiplayerService(
@@ -42,12 +43,14 @@ public class MultiplayerService {
             MultiplayerSessionRepository sessionRepository,
             QuizRepository quizRepository,
             UserRepository userRepository,
-            UserQuizAttemptRepository attemptRepository) {
+            UserQuizAttemptRepository attemptRepository,
+            UserAnswerRepository userAnswerRepository) {
         this.attemptService = attemptService;
         this.sessionRepository = sessionRepository;
         this.quizRepository = quizRepository;
         this.userRepository = userRepository;
         this.attemptRepository = attemptRepository;
+        this.userAnswerRepository = userAnswerRepository;
     }
 
     /**
@@ -64,6 +67,7 @@ public class MultiplayerService {
      * Создает сессию для совместного прохождения квиза.
      */
     public MultiplayerSessionDTO createMultiplayerSession(CreateMultiplayerRequest request) {
+        System.err.println("MultiplayerService.createMultiplayerSession: userId=" + request.userId() + ", quizId=" + request.quizId());
         User host = userRepository.findById(request.userId())
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
@@ -72,6 +76,7 @@ public class MultiplayerService {
 
         // Генерируем уникальный sessionId
         String sessionId = UUID.randomUUID().toString();
+        System.err.println("MultiplayerService.createMultiplayerSession: создана сессия с ID: " + sessionId);
 
         // Создаем сессию
         MultiplayerSession session = new MultiplayerSession();
@@ -81,6 +86,7 @@ public class MultiplayerService {
         session.setStatus("WAITING");
         session.setCreatedAt(Instant.now());
         session = sessionRepository.save(session);
+        System.err.println("MultiplayerService.createMultiplayerSession: сессия сохранена в БД с ID: " + session.getId());
 
         // Добавляем хоста как участника (создаем попытку с sessionId)
         UserQuizAttempt hostAttempt = new UserQuizAttempt();
@@ -118,16 +124,22 @@ public class MultiplayerService {
      * Получает информацию о сессии.
      */
     public MultiplayerSessionDTO getMultiplayerSession(String sessionId) {
+        if (sessionId == null || sessionId.isEmpty()) {
+            throw new IllegalArgumentException("SessionId не может быть пустым");
+        }
+        System.err.println("MultiplayerService.getMultiplayerSession: ищем сессию с ID: " + sessionId);
         MultiplayerSession session = sessionRepository.findBySessionId(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("Сессия не найдена"));
+                .orElseThrow(() -> {
+                    System.err.println("MultiplayerService.getMultiplayerSession: сессия не найдена: " + sessionId);
+                    return new IllegalArgumentException("Сессия не найдена: " + sessionId);
+                });
+        System.err.println("MultiplayerService.getMultiplayerSession: сессия найдена, статус: " + session.getStatus());
 
         // Получаем участников через попытки с этим sessionId
-        List<UserQuizAttempt> attempts = attemptRepository.findByQuizId(session.getQuiz().getId());
-        List<UserQuizAttempt> sessionAttempts = attempts.stream()
-                .filter(a -> sessionId.equals(a.getSessionId()))
-                .collect(Collectors.toList());
+        List<UserQuizAttempt> sessionAttempts = attemptRepository.findBySessionIdWithUser(sessionId);
 
         List<ParticipantDTO> participantDTOs = sessionAttempts.stream()
+                .filter(a -> a.getUser() != null)
                 .map(attempt -> new ParticipantDTO(
                         attempt.getUser().getId(),
                         attempt.getUser().getLogin(),
@@ -165,10 +177,9 @@ public class MultiplayerService {
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
         // Проверяем, не присоединился ли уже (ищем попытку с этим sessionId и userId)
-        List<UserQuizAttempt> attempts = attemptRepository.findByQuizId(session.getQuiz().getId());
+        List<UserQuizAttempt> attempts = attemptRepository.findBySessionIdWithUser(session.getSessionId());
         boolean alreadyJoined = attempts.stream()
-                .anyMatch(a -> session.getSessionId().equals(a.getSessionId()) 
-                        && user.getId().equals(a.getUser().getId()));
+                .anyMatch(a -> a.getUser() != null && user.getId().equals(a.getUser().getId()));
 
         if (alreadyJoined) {
             return false; // Уже участник
@@ -195,12 +206,10 @@ public class MultiplayerService {
                 .orElseThrow(() -> new IllegalArgumentException("Сессия не найдена"));
 
         // Получаем участников через попытки с этим sessionId
-        List<UserQuizAttempt> attempts = attemptRepository.findByQuizId(session.getQuiz().getId());
-        List<UserQuizAttempt> sessionAttempts = attempts.stream()
-                .filter(a -> sessionId.equals(a.getSessionId()))
-                .collect(Collectors.toList());
+        List<UserQuizAttempt> sessionAttempts = attemptRepository.findBySessionIdWithUser(sessionId);
 
         List<ParticipantDTO> participantDTOs = sessionAttempts.stream()
+                .filter(a -> a.getUser() != null)
                 .map(attempt -> new ParticipantDTO(
                         attempt.getUser().getId(),
                         attempt.getUser().getLogin(),
@@ -267,19 +276,43 @@ public class MultiplayerService {
         MultiplayerSession session = sessionRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Сессия не найдена"));
 
-        if (!"FINISHED".equals(session.getStatus())) {
-            throw new IllegalStateException("Сессия еще не завершена");
+        if (session.getQuiz() == null) {
+            throw new IllegalStateException("Сессия не содержит квиз");
         }
 
-        // Получаем всех участников с их результатами
-        List<UserQuizAttempt> attempts = attemptRepository.findByQuizId(session.getQuiz().getId());
-        List<UserQuizAttempt> sessionAttempts = attempts.stream()
-                .filter(a -> sessionId.equals(a.getSessionId()) && a.isCompleted())
+        List<UserQuizAttempt> attempts = attemptRepository.findBySessionIdWithUser(sessionId);
+        if (attempts == null || attempts.isEmpty()) {
+            return new MultiplayerResultsDTO(
+                    sessionId,
+                    new ArrayList<>(),
+                    null,
+                    session.getQuiz().getName(),
+                    null
+            );
+        }
+        
+        List<UserQuizAttempt> completedAttempts = attempts.stream()
+                .filter(a -> a != null && a.isCompleted())
                 .collect(Collectors.toList());
+
+        if (completedAttempts.size() >= 2 && !"FINISHED".equals(session.getStatus())) {
+            session.setStatus("FINISHED");
+            session.setFinishedAt(Instant.now());
+            sessionRepository.save(session);
+        }
+
+        // Получаем всех участников с их результатами (используем уже отфильтрованные completedAttempts)
+        // Если не все завершили, показываем результаты тех, кто завершил
+        List<UserQuizAttempt> sessionAttempts = completedAttempts;
 
         // Формируем результаты
         List<PlayerResult> results = new ArrayList<>();
         for (UserQuizAttempt attempt : sessionAttempts) {
+            if (attempt.getUser() == null || attempt.getUser().getLogin() == null) {
+                System.err.println("MultiplayerService: Пропущен attempt с null user или login, attemptId=" + attempt.getId());
+                continue;
+            }
+            
             int score = attempt.getScore() != null ? attempt.getScore().intValue() : 0;
             long timeSpent = 0;
             if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
@@ -315,6 +348,10 @@ public class MultiplayerService {
             ));
         }
 
+        if (session.getQuiz() == null) {
+            throw new IllegalStateException("Сессия не содержит квиз");
+        }
+        
         return new MultiplayerResultsDTO(
                 sessionId,
                 finalResults,
@@ -344,6 +381,45 @@ public class MultiplayerService {
         sessionRepository.save(session);
 
         return true;
+    }
+
+    /**
+     * Получает прогресс игроков в сессии для текущего вопроса.
+     */
+    public Map<String, Object> getSessionProgress(String sessionId, Long questionId) {
+        MultiplayerSession session = sessionRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Сессия не найдена"));
+
+        List<UserQuizAttempt> attempts = attemptRepository.findBySessionId(sessionId);
+        if (attempts.size() < 2) {
+            return Map.of(
+                    "bothAnswered", false,
+                    "currentQuestionAnswered", false,
+                    "currentQuestionId", questionId != null ? questionId : 0L
+            );
+        }
+
+        boolean bothAnswered = true;
+        boolean currentQuestionAnswered = false;
+
+        for (UserQuizAttempt attempt : attempts) {
+            if (questionId != null) {
+                boolean answered = userAnswerRepository.existsByAttemptIdAndQuestionId(attempt.getId(), questionId);
+                if (!answered) {
+                    bothAnswered = false;
+                } else {
+                    currentQuestionAnswered = true;
+                }
+            } else {
+                bothAnswered = false;
+            }
+        }
+
+        return Map.of(
+                "bothAnswered", bothAnswered,
+                "currentQuestionAnswered", currentQuestionAnswered,
+                "currentQuestionId", questionId != null ? questionId : 0L
+        );
     }
 
     // ========== Вспомогательные методы ==========

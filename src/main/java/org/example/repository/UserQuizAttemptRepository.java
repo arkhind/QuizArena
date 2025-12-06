@@ -45,5 +45,12 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
     Page<UserQuizAttempt> findBestAttemptsByQuizId(@Param("quizId") Long quizId, Pageable pageable);
 
     long countByUserId(Long userId);
+    
+    List<UserQuizAttempt> findBySessionId(String sessionId);
+    
+    @Query("SELECT u FROM UserQuizAttempt u JOIN FETCH u.user WHERE u.sessionId = :sessionId")
+    List<UserQuizAttempt> findBySessionIdWithUser(@Param("sessionId") String sessionId);
+    
+    UserQuizAttempt findByUserIdAndQuizIdAndSessionId(Long userId, Long quizId, String sessionId);
 }
 
