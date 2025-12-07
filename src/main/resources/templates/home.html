@@ -233,7 +233,6 @@
     <div class="profile-section">
         <button class="profile-btn" onclick="goToProfile()">Профиль</button>
         <a href="/home" class="nav-btn">Главная</a>
-        <button class="logout-btn" onclick="logout()">Выйти</button>
     </div>
 </div>
 
@@ -304,11 +303,6 @@
         }
     });
 
-    function logout() {
-        localStorage.removeItem('token');
-        localStorage.removeItem('userId');
-        window.location.href = '/login';
-    }
 </script>
 </body>
 </html>
