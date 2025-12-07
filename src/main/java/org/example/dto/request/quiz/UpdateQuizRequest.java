@@ -5,6 +5,7 @@ public record UpdateQuizRequest(
         Long userId,
         String name,
         String prompt,
+        Integer questionNumber,
         Integer timeLimit,
         Boolean isPrivate,
         Boolean isStatic
