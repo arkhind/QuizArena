@@ -63,7 +63,10 @@ public class QuestionGenerationService {
                 throw new RuntimeException("Парсер не нашел вопросов в ответе FastAPI");
             }
             
-            for (int i = 0; i < parsedQuestions.size(); i++) {
+            // Ограничиваем количество сохраняемых вопросов до запрошенного количества
+            int maxQuestionsToSave = questionCount;
+            
+            for (int i = 0; i < parsedQuestions.size() && generatedQuestions.size() < maxQuestionsToSave; i++) {
                 QuestionParser.ParsedQuestion pq = parsedQuestions.get(i);
                 
                 if (pq.question == null || pq.answerOptions == null || pq.answerOptions.isEmpty()) {
@@ -105,6 +108,12 @@ public class QuestionGenerationService {
                 }
                 
                 generatedQuestions.add(question);
+            }
+            
+            // Проверяем, что сохранилось ровно столько вопросов, сколько запрошено
+            if (generatedQuestions.size() != questionCount) {
+                System.out.println("QuestionGenerationService: ВНИМАНИЕ! Запрошено " + questionCount + 
+                        " вопросов, но сохранено " + generatedQuestions.size() + " вопросов.");
             }
             
             if (generatedQuestions.isEmpty()) {
