@@ -11,6 +11,8 @@ import org.example.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import jakarta.persistence.EntityManager;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -32,6 +34,8 @@ public class MultiplayerService {
     private final AttemptService attemptService;
     private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
     private final MultiplayerSessionRepository sessionRepository;
+    @Autowired
+    private EntityManager entityManager;
     private final QuizRepository quizRepository;
     private final UserRepository userRepository;
     private final UserQuizAttemptRepository attemptRepository;
@@ -135,7 +139,12 @@ public class MultiplayerService {
                 });
         System.err.println("MultiplayerService.getMultiplayerSession: сессия найдена, статус: " + session.getStatus());
 
-        // Получаем участников через попытки с этим sessionId
+        String quizName = session.getQuiz().getName();
+        Long hostUserId = session.getHostUser().getId();
+        String sessionStatus = session.getStatus();
+        Instant createdAt = session.getCreatedAt();
+        
+        entityManager.clear();
         List<UserQuizAttempt> sessionAttempts = attemptRepository.findBySessionIdWithUser(sessionId);
 
         List<ParticipantDTO> participantDTOs = sessionAttempts.stream()
@@ -145,20 +154,22 @@ public class MultiplayerService {
                         attempt.getUser().getLogin(),
                         toLocalDateTime(attempt.getStartTime() != null 
                                 ? attempt.getStartTime() 
-                                : session.getCreatedAt())
+                                : createdAt)
                 ))
                 .collect(Collectors.toList());
+        
+        System.out.println("MultiplayerService.getMultiplayerSession: возвращаем участников: " + participantDTOs.size());
 
         String joinLink = "/multiplayer/join?sessionId=" + sessionId;
 
         return new MultiplayerSessionDTO(
-                session.getSessionId(),
-                session.getQuiz().getName(),
-                session.getHostUser().getId(),
+                sessionId,
+                quizName,
+                hostUserId,
                 joinLink,
                 participantDTOs,
-                session.getStatus(),
-                toLocalDateTime(session.getCreatedAt())
+                sessionStatus,
+                toLocalDateTime(createdAt)
         );
     }
 
@@ -177,13 +188,15 @@ public class MultiplayerService {
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
         // Проверяем, не присоединился ли уже (ищем попытку с этим sessionId и userId)
-        List<UserQuizAttempt> attempts = attemptRepository.findBySessionIdWithUser(session.getSessionId());
-        boolean alreadyJoined = attempts.stream()
-                .anyMatch(a -> a.getUser() != null && user.getId().equals(a.getUser().getId()));
+        UserQuizAttempt existingAttempt = attemptRepository.findByUserIdAndQuizIdAndSessionId(
+                user.getId(), session.getQuiz().getId(), session.getSessionId());
 
-        if (alreadyJoined) {
-            return false; // Уже участник
+        if (existingAttempt != null) {
+            System.out.println("MultiplayerService.joinMultiplayerSession: пользователь userId=" + user.getId() + " уже присоединен к sessionId=" + session.getSessionId());
+            return true; // Уже участник, возвращаем true
         }
+        
+        System.out.println("MultiplayerService.joinMultiplayerSession: создаем новую попытку для userId=" + user.getId() + ", sessionId=" + session.getSessionId());
 
         // Добавляем участника (создаем попытку с sessionId)
         UserQuizAttempt participantAttempt = new UserQuizAttempt();
@@ -205,7 +218,8 @@ public class MultiplayerService {
         MultiplayerSession session = sessionRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Сессия не найдена"));
 
-        // Получаем участников через попытки с этим sessionId
+        Instant createdAt = session.getCreatedAt();
+        entityManager.clear();
         List<UserQuizAttempt> sessionAttempts = attemptRepository.findBySessionIdWithUser(sessionId);
 
         List<ParticipantDTO> participantDTOs = sessionAttempts.stream()
@@ -215,9 +229,11 @@ public class MultiplayerService {
                         attempt.getUser().getLogin(),
                         toLocalDateTime(attempt.getStartTime() != null 
                                 ? attempt.getStartTime() 
-                                : session.getCreatedAt())
+                                : createdAt)
                 ))
                 .collect(Collectors.toList());
+        
+        System.out.println("MultiplayerService.getSessionParticipants: возвращаем участников: " + participantDTOs.size());
 
         return new ParticipantsDTO(
                 sessionId,
@@ -381,6 +397,29 @@ public class MultiplayerService {
         sessionRepository.save(session);
 
         return true;
+    }
+
+    /**
+     * Удаляет участника из сессии (выход участника).
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean leaveMultiplayerSession(String sessionId, Long userId) {
+        MultiplayerSession session = sessionRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Сессия не найдена"));
+
+        if (!"WAITING".equals(session.getStatus())) {
+            throw new IllegalStateException("Нельзя покинуть сессию, которая уже начата");
+        }
+
+        Long quizId = session.getQuiz().getId();
+        
+        // Удаляем ответы пользователя через нативный SQL
+        userAnswerRepository.deleteByUserIdAndQuizIdAndSessionId(userId, quizId, sessionId);
+        
+        // Удаляем попытку через нативный SQL
+        int deleted = attemptRepository.deleteByUserIdAndQuizIdAndSessionId(userId, quizId, sessionId);
+        
+        return deleted > 0;
     }
 
     /**
