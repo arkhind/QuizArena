@@ -254,7 +254,12 @@
     }
 
     function goToProfileSettings() {
-        window.location.href = '/profile?userId=' + getCurrentUserId();
+        const userId = getCurrentUserId();
+        if (userId) {
+            window.location.href = '/edit-profile?userId=' + userId;
+        } else {
+            window.location.href = '/login';
+        }
     }
 
     function goToHistory() {
