@@ -4,6 +4,7 @@ import org.example.model.UserQuizAttempt;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -52,5 +53,9 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
     List<UserQuizAttempt> findBySessionIdWithUser(@Param("sessionId") String sessionId);
     
     UserQuizAttempt findByUserIdAndQuizIdAndSessionId(Long userId, Long quizId, String sessionId);
+    
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM user_quiz_attempts WHERE user_id = :userId AND quiz_id = :quizId AND session_id = :sessionId", nativeQuery = true)
+    int deleteByUserIdAndQuizIdAndSessionId(@Param("userId") Long userId, @Param("quizId") Long quizId, @Param("sessionId") String sessionId);
 }
 

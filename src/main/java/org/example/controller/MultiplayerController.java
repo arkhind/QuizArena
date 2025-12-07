@@ -44,12 +44,14 @@ public class MultiplayerController {
     }
 
     @PostMapping("/sessions/join")
-    public ResponseEntity<Boolean> joinSession(@RequestBody JoinMultiplayerRequest request) {
+    public ResponseEntity<?> joinSession(@RequestBody JoinMultiplayerRequest request) {
         try {
             boolean joined = multiplayerService.joinMultiplayerSession(request);
             return ResponseEntity.ok(joined);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Неверные параметры запроса"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Не удалось присоединиться к сессии"));
         }
     }
 
@@ -110,6 +112,22 @@ public class MultiplayerController {
             return ResponseEntity.ok(progress);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/sessions/{sessionId}/leave")
+    public ResponseEntity<?> leaveSession(@PathVariable String sessionId, @RequestParam Long userId) {
+        System.out.println("MultiplayerController.leaveSession: sessionId=" + sessionId + ", userId=" + userId);
+        try {
+            boolean left = multiplayerService.leaveMultiplayerSession(sessionId, userId);
+            System.out.println("MultiplayerController.leaveSession: результат удаления: " + left);
+            return ResponseEntity.ok(left);
+        } catch (IllegalArgumentException e) {
+            System.err.println("MultiplayerController.leaveSession: IllegalArgumentException: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Неверные параметры"));
+        } catch (IllegalStateException e) {
+            System.err.println("MultiplayerController.leaveSession: IllegalStateException: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Нельзя покинуть сессию"));
         }
     }
 }

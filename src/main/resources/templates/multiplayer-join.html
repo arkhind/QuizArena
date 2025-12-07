@@ -176,7 +176,10 @@
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                throw new Error(error.message || `Ошибка ${response.status}`);
+                const errorMessage = error.message || `Ошибка ${response.status}`;
+                showError(errorMessage);
+                statusEl.textContent = 'Ошибка';
+                return;
             }
 
             const joined = await response.json();
