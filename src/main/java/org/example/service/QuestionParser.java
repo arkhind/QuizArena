@@ -41,10 +41,56 @@ public class QuestionParser {
         cleaned = cleaned.replaceAll("\n{3,}", "\n\n");
         
         // Разделяем на отдельные вопросы
+        // Сначала пробуем разделить по "*Следующий вопрос*"
         String[] questionBlocks = cleaned.split("(?i)\\*Следующий вопрос\\*");
+        
+        System.out.println("QuestionParser: Разделение по '*Следующий вопрос*' дало " + questionBlocks.length + " блоков");
+        
+        // Если не нашли разделитель "Следующий вопрос", пробуем разделить по "*Вопрос*"
+        // Используем lookahead, чтобы включить "*Вопрос*" в начало каждого блока (кроме первого)
         if (questionBlocks.length == 1 && !cleaned.toLowerCase().contains("следующий вопрос")) {
-            questionBlocks = cleaned.split("(?i)\\*Вопрос\\*");
+            System.out.println("QuestionParser: Разделитель '*Следующий вопрос*' не найден, пробуем разделить по '*Вопрос*'");
+            // Разделяем по "*Вопрос*", используя positive lookahead, чтобы "*Вопрос*" оставался в начале каждого блока
+            String[] tempBlocks = cleaned.split("(?i)(?=\\*Вопрос\\*)");
+            
+            if (tempBlocks.length > 1) {
+                // Первый блок может не содержать "*Вопрос*" в начале, остальные - содержат
+                List<String> blocks = new ArrayList<>();
+                String firstBlock = tempBlocks[0].trim();
+                
+                // Если первый блок не пустой и не содержит "*Вопрос*", это префикс - пропускаем или объединяем
+                if (!firstBlock.isEmpty() && !firstBlock.toLowerCase().contains("*вопрос*")) {
+                    // Если есть второй блок, объединяем первый со вторым
+                    if (tempBlocks.length > 1) {
+                        blocks.add((firstBlock + tempBlocks[1]).trim());
+                        for (int i = 2; i < tempBlocks.length; i++) {
+                            String block = tempBlocks[i].trim();
+                            if (!block.isEmpty()) {
+                                blocks.add(block);
+                            }
+                        }
+                    } else {
+                        blocks.add(firstBlock);
+                    }
+                } else {
+                    // Первый блок уже содержит "*Вопрос*" или пустой - добавляем все блоки
+                    for (String block : tempBlocks) {
+                        String trimmed = block.trim();
+                        if (!trimmed.isEmpty()) {
+                            blocks.add(trimmed);
+                        }
+                    }
+                }
+                questionBlocks = blocks.toArray(new String[0]);
+                System.out.println("QuestionParser: После разделения по '*Вопрос*' получили " + questionBlocks.length + " блоков");
+            } else {
+                // Если разделение не сработало, используем весь текст как один вопрос
+                questionBlocks = new String[]{cleaned};
+                System.out.println("QuestionParser: Разделение не сработало, обрабатываем весь текст как один вопрос");
+            }
         }
+        
+        System.out.println("QuestionParser: Начинаем обработку " + questionBlocks.length + " блоков вопросов");
         
         for (int blockIndex = 0; blockIndex < questionBlocks.length; blockIndex++) {
             String block = questionBlocks[blockIndex].trim();
