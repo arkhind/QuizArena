@@ -94,6 +94,18 @@ public class PageController {
         return "profile";
     }
 
+    @GetMapping("/edit-profile")
+    public String editProfile(@RequestParam Long userId, Model model) {
+        try {
+            UserProfileDTO userProfile = apiController.getUserProfile(userId);
+            model.addAttribute("userProfile", userProfile);
+            model.addAttribute("userId", userId);
+            return "edit-profile";
+        } catch (Exception e) {
+            return "redirect:/profile?userId=" + userId;
+        }
+    }
+
     @GetMapping("/history")
     public String historyPage(@RequestParam Long userId, Model model) {
         try {
