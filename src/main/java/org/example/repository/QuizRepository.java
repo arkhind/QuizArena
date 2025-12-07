@@ -20,15 +20,14 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
     Optional<Quiz> findPublicById(@Param("id") Long id);
 
     /**
-     * Ищет публичные квизы по названию или логину создателя.
+     * Ищет публичные квизы по названию.
      *
      * @param searchTerm поисковый запрос
      * @param pageable параметры пагинации
      * @return страница с найденными квизами
      */
     @Query("SELECT q FROM Quiz q WHERE q.isPrivate = false AND " +
-           "(LOWER(q.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(q.createdBy.login) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+           "LOWER(q.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Quiz> searchPublicQuizzes(@Param("searchTerm") String searchTerm, Pageable pageable);
 
     /**
