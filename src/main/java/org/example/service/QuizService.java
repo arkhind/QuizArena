@@ -182,6 +182,7 @@ public class QuizService {
                 quiz.getCreatedBy().getLogin(),
                 questions,
                 materials,
+                quiz.getQuestionNumber(),
                 quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null,
                 !quiz.isPrivate(),
                 quiz.isStatic(),
@@ -238,6 +239,11 @@ public class QuizService {
         }
         if (request.prompt() != null) {
             quiz.setPrompt(request.prompt());
+        }
+        if (request.questionNumber() != null) {
+            // Ограничиваем количество вопросов для сессии максимум 13 (так как в БД всего 13 вопросов)
+            int questionNumber = Math.min(request.questionNumber(), 13);
+            quiz.setQuestionNumber(questionNumber);
         }
         if (request.timeLimit() != null) {
             quiz.setTimePerQuestion(java.time.Duration.ofSeconds(request.timeLimit()));

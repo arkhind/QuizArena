@@ -365,6 +365,22 @@
                 <div class="number-inputs">
                     <div class="form-group">
                         <label>
+                            <span class="required">*</span> Количество вопросов:
+                        </label>
+                        <input type="number"
+                               id="questionNumber"
+                               name="questionNumber"
+                               th:value="${quiz != null and quiz.questionNumber != null ? quiz.questionNumber : 10}"
+                               min="1"
+                               max="13"
+                               required>
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            Максимум 13 вопросов (из 13 доступных в базе данных)
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
                             <span class="required">*</span> Время на ответ (сек):
                         </label>
                         <input type="number"
@@ -510,6 +526,7 @@
             userId: parseInt(getCurrentUserId()),
             name: formData.get('name').trim(),
             prompt: formData.get('description').trim(), // description -> prompt для соответствия DTO
+            questionNumber: parseInt(formData.get('questionNumber')),
             timeLimit: parseInt(formData.get('timeLimit')),
             isPrivate: formData.get('visibility') === 'private',
             isStatic: formData.get('contentType') === 'static'

@@ -146,6 +146,7 @@ public class QuizController {
                     request.userId(),
                     request.name(),
                     request.prompt(),
+                    request.questionNumber(),
                     request.timeLimit(),
                     request.isPrivate(),
                     request.isStatic()

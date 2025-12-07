@@ -12,6 +12,7 @@ public record QuizDetailsDTO(
   String author,
   List<QuestionDTO> questions,
   List<QuizMaterial> materials,
+  Integer questionNumber,
   Integer timeLimit,
   Boolean isPublic,
   Boolean isStatic,
