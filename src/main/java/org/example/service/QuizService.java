@@ -80,17 +80,17 @@ public class QuizService {
 
         if (request.prompt() != null && !request.prompt().trim().isEmpty()) {
             try {
-                int questionCount = request.questionNumber() != null && request.questionNumber() > 0 
-                    ? request.questionNumber() 
-                    : 10;
+                // Всегда генерируем 100 вопросов в базу данных для квиза
+                // questionNumber - это количество вопросов для сессии, а не для генерации
+                int questionCountForGeneration = 100;
                 
                 org.example.dto.request.generation.QuestionGenerationRequest genRequest = 
                     new org.example.dto.request.generation.QuestionGenerationRequest(
                         quiz.getId(),
                         request.prompt(),
                         request.materials(),
-                        request.questionNumber(),
-                        questionCount
+                        request.questionNumber(), // Количество вопросов для сессии
+                        questionCountForGeneration // Всегда генерируем 100 вопросов
                     );
                 
                 questionGenerationService.generateQuizQuestions(genRequest);
@@ -239,11 +239,9 @@ public class QuizService {
         // Если промпт изменился, перегенерируем вопросы
         if (promptChanged) {
             try {
-                // Определяем количество вопросов для генерации (берем текущее количество или дефолт 10)
-                int questionCount = (int) questionRepository.countByQuizId(request.quizId());
-                if (questionCount == 0) {
-                    questionCount = quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 10;
-                }
+                // Всегда генерируем 100 вопросов в базу данных при изменении промпта
+                // questionNumber - это количество вопросов для сессии, а не для генерации
+                int questionCountForGeneration = 100;
 
                 // Сначала обнуляем ссылки на answer_options в user_answers, чтобы избежать foreign key constraint
                 userAnswerRepository.nullifySelectedAnswerReferences(request.quizId());
@@ -254,14 +252,14 @@ public class QuizService {
                 // Затем удаляем старые вопросы (каскадно удалятся и варианты ответов)
                 questionRepository.deleteByQuizId(request.quizId());
 
-                // Генерируем новые вопросы на основе нового промпта
+                // Генерируем новые вопросы на основе нового промпта (всегда 100 вопросов)
                 org.example.dto.request.generation.QuestionGenerationRequest genRequest =
                         new org.example.dto.request.generation.QuestionGenerationRequest(
                                 request.quizId(),
                                 request.prompt(),
                                 null, // materials
-                                quiz.getQuestionNumber(),
-                                questionCount
+                                quiz.getQuestionNumber(), // Количество вопросов для сессии
+                                questionCountForGeneration // Всегда генерируем 100 вопросов
                         );
                 questionGenerationService.generateQuizQuestions(genRequest);
             } catch (Exception e) {
