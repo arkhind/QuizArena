@@ -164,6 +164,51 @@
             color: #999;
         }
 
+        .option-item.correct-answer {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .option-item.correct-answer label {
+            color: #155724;
+            font-weight: bold;
+        }
+
+        .option-item.selected-wrong {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+        }
+
+        .option-item.selected-wrong label {
+            color: #721c24;
+        }
+
+        .explanation-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e7f3ff;
+            border: 2px solid #0066cc;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .explanation-section.show {
+            display: block;
+        }
+
+        .explanation-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0066cc;
+            margin-bottom: 10px;
+        }
+
+        .explanation-text {
+            font-size: 16px;
+            color: #333;
+            line-height: 1.6;
+        }
+
         .option-item input[type="radio"] {
             margin-right: 10px;
             width: 20px;
@@ -322,9 +367,14 @@
                         </ul>
                     </div>
 
+                    <div class="explanation-section" id="explanationSection">
+                        <div class="explanation-title">📚 Объяснение:</div>
+                        <div class="explanation-text" id="explanationText"></div>
+                    </div>
+
                     <div class="button-group">
                         <div id="errorMessage" class="error-message"></div>
-                        <button type="submit" class="submit-btn">Ответить</button>
+                        <button type="submit" class="submit-btn" id="submitButton">Ответить</button>
                     </div>
                 </form>
             </div>
@@ -476,20 +526,28 @@
                 if (response.ok) {
                     const result = await response.json();
 
-                    if (result.nextQuestion) {
-                        if (sessionId) {
-                            checkMultiplayerProgress();
-                        }
-                        updateQuestionOnPage(result.nextQuestion);
-                        updateQuestionsCounter();
-                        resetTimer();
-                    } else {
-                        if (sessionId) {
-                            await finishMultiplayerAttempt();
+                    // Показываем результат ответа: подсвечиваем правильный ответ и показываем объяснение
+                    showAnswerResult(result);
+
+                    // Ждём 3 секунды перед переходом к следующему вопросу
+                    setTimeout(() => {
+                        if (result.nextQuestion) {
+                            if (sessionId) {
+                                checkMultiplayerProgress();
+                            }
+                            // Сбрасываем состояние перед следующим вопросом
+                            resetAnswerState();
+                            updateQuestionOnPage(result.nextQuestion);
+                            updateQuestionsCounter();
+                            resetTimer();
                         } else {
-                            window.location.href = '/quiz/attempt/' + attemptId + '/question';
+                            if (sessionId) {
+                                finishMultiplayerAttempt();
+                            } else {
+                                window.location.href = '/quiz/attempt/' + attemptId + '/finish?quizId=' + (document.getElementById('quizId')?.value || '');
+                            }
                         }
-                    }
+                    }, 3000);
                 } else {
                     const error = await response.json().catch(() => ({}));
                     alert('Ошибка: ' + (error.message || 'Не удалось отправить ответ'));
@@ -497,6 +555,66 @@
             } catch (error) {
                 console.error('Error:', error);
                 alert('Ошибка сети');
+            }
+        }
+
+        function showAnswerResult(result) {
+            // Отключаем все радиокнопки
+            document.querySelectorAll('input[name="answer"]').forEach(radio => {
+                radio.disabled = true;
+            });
+
+            // Находим правильный ответ и подсвечиваем его зелёным
+            if (result.correctAnswerId) {
+                document.querySelectorAll('input[name="answer"]').forEach(radio => {
+                    const optionItem = radio.closest('.option-item');
+                    if (parseInt(radio.value) === result.correctAnswerId) {
+                        optionItem.classList.add('correct-answer');
+                    } else if (radio.checked && parseInt(radio.value) !== result.correctAnswerId) {
+                        // Если выбран неправильный ответ, подсвечиваем его красным
+                        optionItem.classList.add('selected-wrong');
+                    }
+                });
+            }
+
+            // Показываем объяснение
+            const explanationSection = document.getElementById('explanationSection');
+            const explanationText = document.getElementById('explanationText');
+            if (explanationSection && explanationText) {
+                if (result.explanation) {
+                    explanationText.textContent = result.explanation;
+                    explanationSection.classList.add('show');
+                } else {
+                    explanationText.textContent = 'Объяснение отсутствует';
+                    explanationSection.classList.add('show');
+                }
+            }
+
+            // Меняем кнопку на "Следующий вопрос"
+            const submitButton = document.getElementById('submitButton');
+            if (submitButton) {
+                submitButton.textContent = result.nextQuestion ? 'Следующий вопрос...' : 'Завершить квиз...';
+                submitButton.disabled = true;
+            }
+        }
+
+        function resetAnswerState() {
+            // Убираем подсветку
+            document.querySelectorAll('.option-item').forEach(item => {
+                item.classList.remove('correct-answer', 'selected-wrong');
+            });
+
+            // Скрываем объяснение
+            const explanationSection = document.getElementById('explanationSection');
+            if (explanationSection) {
+                explanationSection.classList.remove('show');
+            }
+
+            // Восстанавливаем кнопку
+            const submitButton = document.getElementById('submitButton');
+            if (submitButton) {
+                submitButton.textContent = 'Ответить';
+                submitButton.disabled = false;
             }
         }
 

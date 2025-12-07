@@ -284,8 +284,11 @@ public class QuestionParser {
                 explanation = explanation.replaceAll("^\\*+|\\*+$", "").trim();
                 explanation = explanation.replaceAll(" +", " ").replaceAll("\\n+", " ").trim();
                 question.setExplanation(explanation);
+                System.out.println("QuestionParser: Извлечено объяснение для вопроса " + (blockIndex + 1) + 
+                        " (длина: " + explanation.length() + " символов)");
             } else {
                 question.setExplanation("Объяснение отсутствует");
+                System.out.println("QuestionParser: Объяснение не найдено для вопроса " + (blockIndex + 1) + ", установлено значение по умолчанию");
             }
             
             // Проверяем валидность

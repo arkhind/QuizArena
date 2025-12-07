@@ -324,7 +324,10 @@ public class AttemptService {
         // 9. Формируем ответ
         String explanation = question.getExplanation() != null
                 ? question.getExplanation()
-                : "";
+                : "Объяснение отсутствует";
+        
+        System.out.println("AttemptService: Возвращаем объяснение для вопроса ID " + questionId + 
+                ": " + (explanation.length() > 50 ? explanation.substring(0, 50) + "..." : explanation));
 
         return new AnswerResponse(
                 isCorrect,
