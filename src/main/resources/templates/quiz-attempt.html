@@ -287,7 +287,7 @@
             <header class="header">
                 <h1 th:text="${quizName}">Название квиза</h1>
                 <div class="quiz-info">
-                    <span>Вопрос <span id="currentQuestionNum">1</span> из <span id="totalQuestions">10</span></span>
+                    <span>Вопрос <span id="currentQuestionNum">1</span> из <span id="totalQuestions" th:text="${totalQuestions != null ? totalQuestions : 10}">10</span></span>
                 </div>
             </header>
 
@@ -415,6 +415,17 @@
             const questionIdInput = document.getElementById('currentQuestionId');
             if (questionIdInput && questionIdInput.value) {
                 currentQuestionId = parseInt(questionIdInput.value);
+            }
+            
+            // Инициализируем номер текущего вопроса
+            const totalQuestionsElement = document.getElementById('totalQuestions');
+            const currentQuestionNumElement = document.getElementById('currentQuestionNum');
+            const questionsRemainingElement = document.getElementById('questionsRemaining');
+            if (totalQuestionsElement && currentQuestionNumElement && questionsRemainingElement) {
+                const totalQuestions = parseInt(totalQuestionsElement.textContent) || 10;
+                const questionsRemaining = parseInt(questionsRemainingElement.textContent) || 0;
+                const currentQuestionNum = totalQuestions - questionsRemaining + 1;
+                currentQuestionNumElement.textContent = currentQuestionNum;
             }
             
             // Добавляем обработчики на радиокнопки для скрытия ошибки при выборе
@@ -684,6 +695,16 @@
                     remainingElement.textContent = newValue;
                     questionsRemaining = newValue;
                 }
+            }
+            
+            // Обновляем номер текущего вопроса
+            const totalQuestionsElement = document.getElementById('totalQuestions');
+            const currentQuestionNumElement = document.getElementById('currentQuestionNum');
+            if (totalQuestionsElement && currentQuestionNumElement) {
+                const totalQuestions = parseInt(totalQuestionsElement.textContent) || 10;
+                const questionsRemaining = parseInt(document.getElementById('questionsRemaining')?.textContent) || 0;
+                const currentQuestionNum = totalQuestions - questionsRemaining + 1;
+                currentQuestionNumElement.textContent = currentQuestionNum;
             }
         }
 

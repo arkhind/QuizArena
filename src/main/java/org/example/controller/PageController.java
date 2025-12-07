@@ -143,6 +143,7 @@ public class PageController {
                     quizDetails.author(),
                     quizDetails.questions() != null ? quizDetails.questions().size() : 0,
                     quizDetails.timeLimit(),
+                    quizDetails.timePerQuestion(),
                     quizDetails.isPublic(),
                     quizDetails.isStatic(),
                     quizDetails.createdAt()
@@ -230,6 +231,7 @@ public class PageController {
                 quizDetails.author(),
                 quizDetails.questions() != null ? quizDetails.questions().size() : 0,
                 quizDetails.timeLimit(),
+                quizDetails.timePerQuestion(),
                 quizDetails.isPublic(),
                 quizDetails.isStatic(),
                 quizDetails.createdAt()
@@ -460,6 +462,7 @@ public class PageController {
         model.addAttribute("currentQuestion", response.currentQuestion());
         model.addAttribute("timeRemaining", response.timeRemaining());
         model.addAttribute("questionsRemaining", response.questionsRemaining());
+        model.addAttribute("totalQuestions", response.totalQuestions());
         model.addAttribute("quizName", response.quizName());
         model.addAttribute("quizId", response.quizId());
         model.addAttribute("defaultTimeLimit", response.timeRemaining());

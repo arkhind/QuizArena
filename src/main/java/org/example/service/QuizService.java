@@ -175,6 +175,12 @@ public class QuizService {
             // TODO: Загрузка материалов
         }
 
+        Integer timePerQuestionSeconds = quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null;
+        Integer totalTimeSeconds = null;
+        if (timePerQuestionSeconds != null && quiz.getQuestionNumber() != null && quiz.getQuestionNumber() > 0) {
+            totalTimeSeconds = timePerQuestionSeconds * quiz.getQuestionNumber();
+        }
+        
         return new QuizDetailsDTO(
                 quiz.getId(),
                 quiz.getName(),
@@ -183,7 +189,8 @@ public class QuizService {
                 questions,
                 materials,
                 quiz.getQuestionNumber(),
-                quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null,
+                totalTimeSeconds,
+                timePerQuestionSeconds,
                 !quiz.isPrivate(),
                 quiz.isStatic(),
                 String.valueOf(quiz.getId()),
@@ -485,8 +492,10 @@ public class QuizService {
         
         // Вычисляем общее время на весь квиз в секундах (время на вопрос * количество вопросов)
         Integer totalTimeSeconds = null;
+        Integer timePerQuestionSeconds = null;
         if (quiz.getTimePerQuestion() != null && quiz.getTimePerQuestion().getSeconds() > 0) {
             long secondsPerQuestion = quiz.getTimePerQuestion().getSeconds();
+            timePerQuestionSeconds = (int) secondsPerQuestion;
             int questions = questionCount > 0 ? questionCount : (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
             if (questions > 0) {
                 totalTimeSeconds = (int) (secondsPerQuestion * questions);
@@ -499,6 +508,7 @@ public class QuizService {
                 quiz.getCreatedBy().getLogin(),
                 questionCount,
                 totalTimeSeconds,
+                timePerQuestionSeconds,
                 !quiz.isPrivate(),
                 quiz.isStatic(),
                 toLocalDateTime(quiz.getCreatedAt())
