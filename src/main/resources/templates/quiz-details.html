@@ -115,7 +115,9 @@
             </div>
             <div class="info-item">
                 <div class="info-label">Время на вопрос</div>
-                <div class="info-value" th:text="${quiz != null and quiz.timeLimit != null ? (quiz.timeLimit + ' сек') : '-'}">-</div>
+                <div class="info-value" th:if="${quiz != null and quiz.timePerQuestion != null and quiz.timePerQuestion > 0}" 
+                     th:text="${quiz.timePerQuestion + ' сек'}">- сек</div>
+                <div class="info-value" th:if="${quiz == null or quiz.timePerQuestion == null or quiz.timePerQuestion == 0}">не ограничено</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Тип</div>
@@ -134,9 +136,19 @@
 </div>
 
 <script>
+    function getQuizId() {
+        const path = window.location.pathname;
+        const match = path.match(/\/quiz\/(\d+)/);
+        return match ? match[1] : null;
+    }
+
     function goBack() {
-        // Возвращаемся на главную страницу со списком квизов
-        window.location.href = '/home';
+        const quizId = getQuizId();
+        if (quizId) {
+            window.location.href = '/quiz/' + quizId;
+        } else {
+            window.location.href = '/quiz';
+        }
     }
 </script>
 </body>
