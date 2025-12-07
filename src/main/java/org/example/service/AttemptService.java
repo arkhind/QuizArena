@@ -334,7 +334,8 @@ public class AttemptService {
                 explanation,
                 correctAnswerId,
                 scoreEarned,
-                nextQuestion
+                nextQuestion,
+                attempt.getQuiz().getId()
         );
     }
 

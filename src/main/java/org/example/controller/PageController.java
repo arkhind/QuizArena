@@ -412,9 +412,18 @@ public class PageController {
 
     @GetMapping("/quiz/attempt/{attemptId}/finish")
     public String finishQuizPage(@PathVariable Long attemptId,
-                                 @RequestParam Long quizId,
+                                 @RequestParam(required = false) Long quizId,
                                  Model model) {
         QuizResultDTO result = apiController.finishQuizAttempt(attemptId);
+        
+        // Если quizId не передан, получаем его из attemptId
+        if (quizId == null) {
+            quizId = attemptRepository.findQuizIdByAttemptId(attemptId);
+            if (quizId == null) {
+                model.addAttribute("errorMessage", "Не удалось определить квиз для попытки");
+                return "error";
+            }
+        }
         
         String quizName = "Квиз";
         try {

@@ -7,5 +7,6 @@ public record AnswerResponse(
   String explanation,
   Long correctAnswerId,
   Integer scoreEarned,
-  QuestionDTO nextQuestion
+  QuestionDTO nextQuestion,
+  Long quizId
 ) {}
