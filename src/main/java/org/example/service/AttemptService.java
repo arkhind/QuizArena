@@ -98,8 +98,14 @@ public class AttemptService {
                     return new IllegalArgumentException("Квиз не найден");
                 });
 
+        // Проверяем доступ к приватному квизу: разрешаем доступ создателю
         if (quiz.isPrivate()) {
-            throw new SecurityException("Доступ к приватному квизу запрещен");
+            // Проверяем, является ли пользователь создателем квиза
+            if (!quizRepository.isCreator(request.quizId(), request.userId())) {
+                System.err.println("AttemptService: Попытка доступа к приватному квизу. UserId: " + request.userId() + ", QuizId: " + request.quizId());
+                throw new SecurityException("Доступ к приватному квизу запрещен");
+            }
+            System.out.println("AttemptService: Разрешен доступ к приватному квизу для создателя. UserId: " + request.userId() + ", QuizId: " + request.quizId());
         }
 
         List<Question> allQuestions = questionRepository.findByQuizId(request.quizId());
