@@ -93,6 +93,12 @@ public class QuestionGenerationService {
                 
                 question = questionRepository.save(question);
                 
+                // Логируем сохранение объяснения
+                System.out.println("QuestionGenerationService: Сохранён вопрос ID " + question.getId() + 
+                        " с объяснением: " + (question.getExplanation() != null && !question.getExplanation().isEmpty() 
+                        ? question.getExplanation().substring(0, Math.min(50, question.getExplanation().length())) + "..." 
+                        : "отсутствует"));
+                
                 for (AnswerOption option : pq.answerOptions) {
                     option.setQuestion(question);
                     answerOptionRepository.save(option);
