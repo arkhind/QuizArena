@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "user_quiz_attempts")
@@ -35,6 +37,9 @@ public class UserQuizAttempt {
 
   @Column(name = "session_id", length = 100)
   private String sessionId; // null для одиночных попыток, UUID для мультиплеера
+
+  @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<AttemptQuestion> attemptQuestions = new ArrayList<>();
 
   public UserQuizAttempt() {}
 

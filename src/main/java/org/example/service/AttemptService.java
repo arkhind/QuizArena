@@ -43,6 +43,7 @@ public class AttemptService {
     private final AnswerOptionRepository answerOptionRepository;
     private final UserAnswerRepository userAnswerRepository;
     private final org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository;
+    private final org.example.repository.AttemptQuestionRepository attemptQuestionRepository;
 
     @Autowired
     public AttemptService(
@@ -52,7 +53,8 @@ public class AttemptService {
             QuestionRepository questionRepository,
             AnswerOptionRepository answerOptionRepository,
             UserAnswerRepository userAnswerRepository,
-            org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository) {
+            org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository,
+            org.example.repository.AttemptQuestionRepository attemptQuestionRepository) {
         this.attemptRepository = attemptRepository;
         this.quizRepository = quizRepository;
         this.userRepository = userRepository;
@@ -60,6 +62,7 @@ public class AttemptService {
         this.answerOptionRepository = answerOptionRepository;
         this.userAnswerRepository = userAnswerRepository;
         this.multiplayerSessionRepository = multiplayerSessionRepository;
+        this.attemptQuestionRepository = attemptQuestionRepository;
     }
 
     /**
@@ -99,9 +102,9 @@ public class AttemptService {
             throw new SecurityException("Доступ к приватному квизу запрещен");
         }
 
-        List<Question> questions = questionRepository.findByQuizId(request.quizId());
+        List<Question> allQuestions = questionRepository.findByQuizId(request.quizId());
         
-        if (questions.isEmpty()) {
+        if (allQuestions.isEmpty()) {
             System.err.println("AttemptService: Квиз ID " + request.quizId() + " не содержит вопросов!");
             throw new IllegalStateException("Квиз не содержит вопросов");
         }
@@ -123,18 +126,28 @@ public class AttemptService {
                 attempt.setScore(null);
                 attempt.setSessionId(request.sessionId());
                 attempt = attemptRepository.save(attempt);
+                
+                // Выбираем вопросы для новой попытки
+                selectQuestionsForAttempt(attempt, quiz, allQuestions);
             } else {
                 System.err.println("AttemptService: Используем существующую попытку ID " + attempt.getId() + " для мультиплеера");
+                // Проверяем, есть ли уже выбранные вопросы для этой попытки
+                if (attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attempt.getId()).isEmpty()) {
+                    selectQuestionsForAttempt(attempt, quiz, allQuestions);
+                }
             }
         } else {
             attempt = new UserQuizAttempt();
-        attempt.setUser(user);
-        attempt.setQuiz(quiz);
-        attempt.setStartTime(Instant.now());
-        attempt.setCompleted(false);
-        attempt.setScore(null);
+            attempt.setUser(user);
+            attempt.setQuiz(quiz);
+            attempt.setStartTime(Instant.now());
+            attempt.setCompleted(false);
+            attempt.setScore(null);
             attempt.setSessionId(null);
-        attempt = attemptRepository.save(attempt);
+            attempt = attemptRepository.save(attempt);
+            
+            // Выбираем вопросы для новой попытки
+            selectQuestionsForAttempt(attempt, quiz, allQuestions);
         }
 
         // Получаем текущий вопрос (первый неотвеченный)
@@ -143,7 +156,9 @@ public class AttemptService {
             throw new IllegalStateException("Все вопросы уже отвечены");
         }
 
-        int totalQuestions = questions.size();
+        // Получаем количество выбранных вопросов для этой попытки
+        List<AttemptQuestion> attemptQuestions = attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attempt.getId());
+        int totalQuestions = attemptQuestions.size();
         List<UserAnswer> answeredQuestions = userAnswerRepository.findByAttemptId(attempt.getId());
         int questionsRemaining = totalQuestions - answeredQuestions.size();
 
@@ -174,10 +189,11 @@ public class AttemptService {
             throw new IllegalStateException("Попытка уже завершена");
         }
 
-        // 2. Получаем все вопросы квиза
-        List<Question> allQuestions = questionRepository.findByQuizId(attempt.getQuiz().getId());
+        // 2. Получаем выбранные вопросы для этой попытки (в порядке questionOrder)
+        List<AttemptQuestion> attemptQuestions = attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attemptId);
         
-        if (allQuestions.isEmpty()) {
+        if (attemptQuestions.isEmpty()) {
+            // Если вопросов нет, возвращаем null (не должно происходить, но на всякий случай)
             return null;
         }
 
@@ -191,9 +207,10 @@ public class AttemptService {
                 .filter(id -> id != null)
                 .collect(Collectors.toList());
 
-        // 4. Находим первый неотвеченный вопрос
-        Question nextQuestion = allQuestions.stream()
-                .filter(q -> !answeredQuestionIds.contains(q.getId()))
+        // 4. Находим первый неотвеченный вопрос из выбранных для попытки
+        Question nextQuestion = attemptQuestions.stream()
+                .map(AttemptQuestion::getQuestion)
+                .filter(q -> q != null && !answeredQuestionIds.contains(q.getId()))
                 .findFirst()
                 .orElse(null);
 
@@ -345,7 +362,9 @@ public class AttemptService {
         List<UserAnswer> answers = userAnswerRepository.findByAttemptId(attemptId);
 
         // 4. Подсчитываем статистику
-        int totalQuestions = questionRepository.findByQuizId(attempt.getQuiz().getId()).size();
+        // Используем количество выбранных вопросов для попытки, а не всех вопросов квиза
+        List<AttemptQuestion> attemptQuestions = attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attemptId);
+        int totalQuestions = attemptQuestions.size();
         int correctAnswers = (int) userAnswerRepository.countByAttemptIdAndIsCorrectTrue(attemptId);
         int finalScore = attempt.getScore() != null ? attempt.getScore().intValue() : 0;
 
@@ -502,5 +521,72 @@ public class AttemptService {
         return instant != null
                 ? LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
                 : null;
+    }
+
+    /**
+     * Выбирает вопросы для попытки в зависимости от типа квиза.
+     * Для статичного квиза: берутся первые N вопросов в фиксированном порядке.
+     * Для обновляемого квиза: берутся случайные N вопросов из всех доступных.
+     * 
+     * @param attempt попытка прохождения
+     * @param quiz квиз
+     * @param allQuestions все вопросы квиза
+     */
+    private void selectQuestionsForAttempt(UserQuizAttempt attempt, Quiz quiz, List<Question> allQuestions) {
+        // Фильтруем валидные вопросы (исключаем дубликаты и невалидные)
+        List<Question> validQuestions = allQuestions.stream()
+                .filter(q -> q != null 
+                        && q.getText() != null 
+                        && !q.getText().trim().isEmpty()
+                        && (q.getIsValid() == null || q.getIsValid())
+                        && (q.getIsDuplicate() == null || !q.getIsDuplicate()))
+                .collect(Collectors.toList());
+        
+        // Если нет валидных вопросов, используем все вопросы
+        if (validQuestions.isEmpty()) {
+            validQuestions = allQuestions.stream()
+                    .filter(q -> q != null && q.getText() != null && !q.getText().trim().isEmpty())
+                    .collect(Collectors.toList());
+        }
+        
+        if (validQuestions.isEmpty()) {
+            throw new IllegalStateException("Нет доступных вопросов для выбора");
+        }
+
+        // Определяем количество вопросов для попытки
+        int questionNumber = quiz.getQuestionNumber() != null && quiz.getQuestionNumber() > 0 
+                ? quiz.getQuestionNumber() 
+                : validQuestions.size(); // Если не указано, берем все
+        
+        // Ограничиваем количеством доступных вопросов
+        questionNumber = Math.min(questionNumber, validQuestions.size());
+
+        List<Question> selectedQuestions;
+        
+        if (quiz.isStatic()) {
+            // Статичный квиз: берем первые N вопросов в фиксированном порядке (по ID)
+            selectedQuestions = validQuestions.stream()
+                    .sorted((q1, q2) -> Long.compare(q1.getId(), q2.getId()))
+                    .limit(questionNumber)
+                    .collect(Collectors.toList());
+        } else {
+            // Обновляемый квиз: берем случайные N вопросов
+            Collections.shuffle(validQuestions);
+            selectedQuestions = validQuestions.stream()
+                    .limit(questionNumber)
+                    .collect(Collectors.toList());
+        }
+
+        // Сохраняем выбранные вопросы для попытки
+        for (int i = 0; i < selectedQuestions.size(); i++) {
+            AttemptQuestion attemptQuestion = new AttemptQuestion();
+            attemptQuestion.setAttempt(attempt);
+            attemptQuestion.setQuestion(selectedQuestions.get(i));
+            attemptQuestion.setQuestionOrder(i);
+            attemptQuestionRepository.save(attemptQuestion);
+        }
+        
+        System.out.println("AttemptService: Выбрано " + selectedQuestions.size() + " вопросов для попытки ID " + attempt.getId() + 
+                " (тип квиза: " + (quiz.isStatic() ? "статичный" : "обновляемый") + ")");
     }
 }
