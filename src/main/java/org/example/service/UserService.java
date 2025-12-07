@@ -149,12 +149,23 @@ public class UserService {
         // Иначе показываем реальное количество
         int questionCount = actualQuestionCount > 0 ? actualQuestionCount : 
                            (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
+        
+        // Вычисляем общее время на весь квиз в секундах (время на вопрос * количество вопросов)
+        Integer totalTimeSeconds = null;
+        if (quiz.getTimePerQuestion() != null && quiz.getTimePerQuestion().getSeconds() > 0) {
+            long secondsPerQuestion = quiz.getTimePerQuestion().getSeconds();
+            int questions = questionCount > 0 ? questionCount : (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
+            if (questions > 0) {
+                totalTimeSeconds = (int) (secondsPerQuestion * questions);
+            }
+        }
+        
         return new QuizDTO(
                 quiz.getId(),
                 quiz.getName(),
                 quiz.getCreatedBy().getLogin(),
                 questionCount,
-                quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null,
+                totalTimeSeconds,
                 !quiz.isPrivate(),
                 quiz.isStatic(),
                 toLocalDateTime(quiz.getCreatedAt())
