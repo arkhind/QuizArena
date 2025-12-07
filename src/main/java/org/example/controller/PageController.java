@@ -66,12 +66,19 @@ public class PageController {
     }
 
     @GetMapping("/home")
-    public String home(Model model) {
-        QuizSearchRequest request = new QuizSearchRequest("", "popularity", true, 0, 20);
+    public String home(@RequestParam(required = false) String search,
+                       @RequestParam(required = false, defaultValue = "0") Integer page,
+                       Model model) {
+        String searchQuery = search != null ? search : "";
+        int pageNumber = page != null ? page : 0;
+        
+        QuizSearchRequest request = new QuizSearchRequest(searchQuery, "popularity", true, pageNumber, 20);
         QuizSearchResponse response = apiService.searchPublicQuizzes(request);
+        
         model.addAttribute("quizzes", response.content());
         model.addAttribute("totalPages", response.totalPages());
         model.addAttribute("currentPage", response.currentPage());
+        model.addAttribute("search", searchQuery);
         return "home";
     }
 
