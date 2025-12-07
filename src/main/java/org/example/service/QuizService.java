@@ -80,9 +80,21 @@ public class QuizService {
 
         if (request.prompt() != null && !request.prompt().trim().isEmpty()) {
             try {
-                // Всегда генерируем 100 вопросов в базу данных для квиза
+                // Всегда генерируем ровно 13 вопросов в базу данных для квиза
                 // questionNumber - это количество вопросов для сессии, а не для генерации
-                int questionCountForGeneration = 100;
+                int questionCountForGeneration = 13;
+                
+                // Удаляем старые вопросы, если они есть (чтобы всегда было ровно 13)
+                long existingQuestionCount = questionRepository.countByQuizId(quiz.getId());
+                if (existingQuestionCount > 0) {
+                    System.out.println("QuizService: Удаляем " + existingQuestionCount + " старых вопросов перед генерацией новых");
+                    // Обнуляем ссылки на answer_options в user_answers
+                    userAnswerRepository.nullifySelectedAnswerReferences(quiz.getId());
+                    // Удаляем ответы пользователей
+                    userAnswerRepository.deleteByQuestionQuizId(quiz.getId());
+                    // Удаляем старые вопросы
+                    questionRepository.deleteByQuizId(quiz.getId());
+                }
                 
                 org.example.dto.request.generation.QuestionGenerationRequest genRequest = 
                     new org.example.dto.request.generation.QuestionGenerationRequest(
@@ -90,7 +102,7 @@ public class QuizService {
                         request.prompt(),
                         request.materials(),
                         request.questionNumber(), // Количество вопросов для сессии
-                        questionCountForGeneration // Всегда генерируем 100 вопросов
+                        questionCountForGeneration // Всегда генерируем 13 вопросов
                     );
                 
                 questionGenerationService.generateQuizQuestions(genRequest);
@@ -242,9 +254,9 @@ public class QuizService {
         // Если промпт изменился, перегенерируем вопросы
         if (promptChanged) {
             try {
-                // Всегда генерируем 100 вопросов в базу данных при изменении промпта
+                // Всегда генерируем 13 вопросов в базу данных при изменении промпта
                 // questionNumber - это количество вопросов для сессии, а не для генерации
-                int questionCountForGeneration = 100;
+                int questionCountForGeneration = 13;
 
                 // Сначала обнуляем ссылки на answer_options в user_answers, чтобы избежать foreign key constraint
                 userAnswerRepository.nullifySelectedAnswerReferences(request.quizId());
@@ -255,14 +267,14 @@ public class QuizService {
                 // Затем удаляем старые вопросы (каскадно удалятся и варианты ответов)
                 questionRepository.deleteByQuizId(request.quizId());
 
-                // Генерируем новые вопросы на основе нового промпта (всегда 100 вопросов)
+                // Генерируем новые вопросы на основе нового промпта (всегда 13 вопросов)
                 org.example.dto.request.generation.QuestionGenerationRequest genRequest =
                         new org.example.dto.request.generation.QuestionGenerationRequest(
                                 request.quizId(),
                                 request.prompt(),
                                 null, // materials
                                 quiz.getQuestionNumber(), // Количество вопросов для сессии
-                                questionCountForGeneration // Всегда генерируем 100 вопросов
+                                questionCountForGeneration // Всегда генерируем 13 вопросов
                         );
                 questionGenerationService.generateQuizQuestions(genRequest);
             } catch (Exception e) {
@@ -274,27 +286,45 @@ public class QuizService {
         } else if (staticChanged && !promptChanged) {
             // Если изменилась только статичность (без изменения промпта),
             // проверяем наличие вопросов в БД и генерируем их, если их нет или недостаточно
+            // Важно: всегда должно быть ровно 13 вопросов в БД
             long existingQuestionCount = questionRepository.countByQuizId(request.quizId());
-            int requiredQuestionCount = 100;
+            int requiredQuestionCount = 13;
             
-            if (existingQuestionCount < requiredQuestionCount) {
+            if (existingQuestionCount != requiredQuestionCount) {
                 try {
-                    System.out.println("QuizService: Изменена статичность квиза. " +
-                            "В БД найдено " + existingQuestionCount + " вопросов, требуется " + requiredQuestionCount + 
-                            ". Генерируем недостающие вопросы.");
+                    if (existingQuestionCount > requiredQuestionCount) {
+                        // Если вопросов больше 13, удаляем лишние и оставляем ровно 13
+                        System.out.println("QuizService: Изменена статичность квиза. " +
+                                "В БД найдено " + existingQuestionCount + " вопросов, требуется " + requiredQuestionCount + 
+                                ". Удаляем лишние вопросы.");
+                        
+                        // Обнуляем ссылки на answer_options в user_answers
+                        userAnswerRepository.nullifySelectedAnswerReferences(request.quizId());
+                        // Удаляем ответы пользователей
+                        userAnswerRepository.deleteByQuestionQuizId(request.quizId());
+                        // Удаляем все старые вопросы
+                        questionRepository.deleteByQuizId(request.quizId());
+                        existingQuestionCount = 0;
+                    }
                     
-                    // Генерируем недостающие вопросы (всего должно быть 100)
-                    int questionsToGenerate = requiredQuestionCount - (int) existingQuestionCount;
-                    
-                    org.example.dto.request.generation.QuestionGenerationRequest genRequest =
-                            new org.example.dto.request.generation.QuestionGenerationRequest(
-                                    request.quizId(),
-                                    quiz.getPrompt(), // Используем текущий промпт (не изменился)
-                                    null, // materials
-                                    quiz.getQuestionNumber(), // Количество вопросов для сессии
-                                    questionsToGenerate // Генерируем недостающие вопросы
-                            );
-                    questionGenerationService.generateQuizQuestions(genRequest);
+                    if (existingQuestionCount < requiredQuestionCount) {
+                        System.out.println("QuizService: Изменена статичность квиза. " +
+                                "В БД найдено " + existingQuestionCount + " вопросов, требуется " + requiredQuestionCount + 
+                                ". Генерируем недостающие вопросы.");
+                        
+                        // Генерируем недостающие вопросы (всего должно быть 13)
+                        int questionsToGenerate = requiredQuestionCount - (int) existingQuestionCount;
+                        
+                        org.example.dto.request.generation.QuestionGenerationRequest genRequest =
+                                new org.example.dto.request.generation.QuestionGenerationRequest(
+                                        request.quizId(),
+                                        quiz.getPrompt(), // Используем текущий промпт (не изменился)
+                                        null, // materials
+                                        quiz.getQuestionNumber(), // Количество вопросов для сессии
+                                        questionsToGenerate // Генерируем недостающие вопросы
+                                );
+                        questionGenerationService.generateQuizQuestions(genRequest);
+                    }
                 } catch (Exception e) {
                     System.err.println("Ошибка при генерации недостающих вопросов после изменения статичности: " + e.getMessage());
                     e.printStackTrace();
@@ -302,7 +332,7 @@ public class QuizService {
                 }
             } else {
                 System.out.println("QuizService: Изменена статичность квиза. " +
-                        "В БД уже есть " + existingQuestionCount + " вопросов. " +
+                        "В БД уже есть ровно " + existingQuestionCount + " вопросов. " +
                         "Используем существующие вопросы из БД без перегенерации.");
             }
         }
