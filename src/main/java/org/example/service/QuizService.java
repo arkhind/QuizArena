@@ -213,10 +213,13 @@ public class QuizService {
             throw new SecurityException("Только создатель может редактировать квиз");
         }
 
-        // Сохраняем старый промпт для проверки изменения
+        // Сохраняем старые значения для проверки изменений
         String oldPrompt = quiz.getPrompt();
+        boolean oldIsStatic = quiz.isStatic();
         boolean promptChanged = request.prompt() != null && 
                                 (oldPrompt == null || !request.prompt().equals(oldPrompt));
+        boolean staticChanged = request.isStatic() != null && 
+                                request.isStatic() != oldIsStatic;
 
         if (request.name() != null) {
             quiz.setName(request.name());
@@ -267,6 +270,40 @@ public class QuizService {
                 e.printStackTrace();
                 // Не прерываем обновление квиза, если генерация вопросов не удалась
                 // Пользователь сможет сгенерировать вопросы вручную позже
+            }
+        } else if (staticChanged && !promptChanged) {
+            // Если изменилась только статичность (без изменения промпта),
+            // проверяем наличие вопросов в БД и генерируем их, если их нет или недостаточно
+            long existingQuestionCount = questionRepository.countByQuizId(request.quizId());
+            int requiredQuestionCount = 100;
+            
+            if (existingQuestionCount < requiredQuestionCount) {
+                try {
+                    System.out.println("QuizService: Изменена статичность квиза. " +
+                            "В БД найдено " + existingQuestionCount + " вопросов, требуется " + requiredQuestionCount + 
+                            ". Генерируем недостающие вопросы.");
+                    
+                    // Генерируем недостающие вопросы (всего должно быть 100)
+                    int questionsToGenerate = requiredQuestionCount - (int) existingQuestionCount;
+                    
+                    org.example.dto.request.generation.QuestionGenerationRequest genRequest =
+                            new org.example.dto.request.generation.QuestionGenerationRequest(
+                                    request.quizId(),
+                                    quiz.getPrompt(), // Используем текущий промпт (не изменился)
+                                    null, // materials
+                                    quiz.getQuestionNumber(), // Количество вопросов для сессии
+                                    questionsToGenerate // Генерируем недостающие вопросы
+                            );
+                    questionGenerationService.generateQuizQuestions(genRequest);
+                } catch (Exception e) {
+                    System.err.println("Ошибка при генерации недостающих вопросов после изменения статичности: " + e.getMessage());
+                    e.printStackTrace();
+                    // Не прерываем обновление квиза, если генерация вопросов не удалась
+                }
+            } else {
+                System.out.println("QuizService: Изменена статичность квиза. " +
+                        "В БД уже есть " + existingQuestionCount + " вопросов. " +
+                        "Используем существующие вопросы из БД без перегенерации.");
             }
         }
 
