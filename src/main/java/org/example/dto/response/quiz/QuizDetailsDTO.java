@@ -14,6 +14,7 @@ public record QuizDetailsDTO(
   List<QuizMaterial> materials,
   Integer questionNumber,
   Integer timeLimit,
+  Integer timePerQuestion,
   Boolean isPublic,
   Boolean isStatic,
   String shareableId,

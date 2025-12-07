@@ -178,6 +178,7 @@ public class AttemptService {
                 quiz.getName(),
                 currentQuestion,
                 questionsRemaining,
+                totalQuestions,
                 timeRemaining
         );
   }

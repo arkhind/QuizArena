@@ -258,7 +258,9 @@
                     <div class="quiz-meta">
                         <span th:text="'Автор: ' + ${quiz.author}">Автор</span>
                         <span th:text="'Вопросов: ' + ${quiz.questionCount}">Вопросов</span>
-                        <span th:text="${quiz.timeLimit != null and quiz.timeLimit > 0 ? 'Время: ' + quiz.timeLimit + ' сек' : 'Время: не ограничено'}">Время</span>
+                        <span th:if="${quiz.timePerQuestion != null and quiz.timePerQuestion > 0}" 
+                              th:text="'Время: ' + ${quiz.timePerQuestion} + ' сек'">Время</span>
+                        <span th:if="${quiz.timePerQuestion == null or quiz.timePerQuestion == 0}">Время: не ограничено</span>
                     </div>
                 </li>
             </ul>
@@ -302,6 +304,7 @@
             performSearch();
         }
     });
+
 
 </script>
 </body>
