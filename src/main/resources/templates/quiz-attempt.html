@@ -311,6 +311,7 @@
 
                 <form id="answerForm" onsubmit="submitAnswer(event)">
                     <input type="hidden" id="attemptIdInput" th:value="${attemptId}">
+                    <input type="hidden" id="quizId" th:value="${quizId}">
                     <input type="hidden" id="currentQuestionId" th:value="${currentQuestion != null ? currentQuestion.id : ''}">
                     <div class="question-section">
                         <div class="question-field">
@@ -544,7 +545,23 @@
                             if (sessionId) {
                                 finishMultiplayerAttempt();
                             } else {
-                                window.location.href = '/quiz/attempt/' + attemptId + '/finish?quizId=' + (document.getElementById('quizId')?.value || '');
+                                // Получаем quizId из скрытого поля или из ответа API
+                                const quizIdElement = document.getElementById('quizId');
+                                let quizId = '';
+                                if (quizIdElement && quizIdElement.value) {
+                                    quizId = quizIdElement.value;
+                                } else if (result.quizId) {
+                                    quizId = result.quizId;
+                                } else {
+                                    // Если quizId не найден, пытаемся получить из attemptId через API
+                                    console.warn('QuizId не найден, используем attemptId для получения quizId');
+                                }
+                                if (quizId) {
+                                    window.location.href = '/quiz/attempt/' + attemptId + '/finish?quizId=' + quizId;
+                                } else {
+                                    // Если quizId всё ещё не найден, редиректим без quizId (контроллер попытается получить его из attemptId)
+                                    window.location.href = '/quiz/attempt/' + attemptId + '/finish';
+                                }
                             }
                         }
                     }, 3000);
