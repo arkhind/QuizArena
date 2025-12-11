@@ -541,41 +541,61 @@
                     // Показываем результат ответа: подсвечиваем правильный ответ и показываем объяснение
                     showAnswerResult(result);
 
-                    // Ждём 3 секунды перед переходом к следующему вопросу
-                    setTimeout(() => {
+                    // Останавливаем таймер, чтобы пользователь мог читать объяснение
+                    if (timerInterval) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                    }
+
+                    // Меняем кнопку на "Следующий вопрос" или "Завершить квиз" для ручного перехода
+                    const submitButton = document.getElementById('submitButton');
+                    if (submitButton) {
                         if (result.nextQuestion) {
-                            if (sessionId) {
-                                checkMultiplayerProgress();
-                            }
-                            // Сбрасываем состояние перед следующим вопросом
-                            resetAnswerState();
-                            updateQuestionOnPage(result.nextQuestion);
-                            updateQuestionsCounter();
-                            resetTimer();
+                            submitButton.textContent = 'Следующий вопрос';
+                            submitButton.onclick = function(e) {
+                                e.preventDefault();
+                                if (sessionId) {
+                                    checkMultiplayerProgress();
+                                }
+                                // Сбрасываем состояние перед следующим вопросом
+                                resetAnswerState();
+                                updateQuestionOnPage(result.nextQuestion);
+                                updateQuestionsCounter();
+                                resetTimer();
+                                // Восстанавливаем обработчик submit
+                                submitButton.onclick = null;
+                                submitButton.type = 'submit';
+                            };
+                            submitButton.type = 'button';
                         } else {
-                            if (sessionId) {
-                                finishMultiplayerAttempt();
-                            } else {
-                                // Получаем quizId из скрытого поля или из ответа API
-                                const quizIdElement = document.getElementById('quizId');
-                                let quizId = '';
-                                if (quizIdElement && quizIdElement.value) {
-                                    quizId = quizIdElement.value;
-                                } else if (result.quizId) {
-                                    quizId = result.quizId;
+                            submitButton.textContent = 'Завершить квиз';
+                            submitButton.onclick = function(e) {
+                                e.preventDefault();
+                                if (sessionId) {
+                                    finishMultiplayerAttempt();
                                 } else {
-                                    // Если quizId не найден, пытаемся получить из attemptId через API
-                                    console.warn('QuizId не найден, используем attemptId для получения quizId');
+                                    // Получаем quizId из скрытого поля или из ответа API
+                                    const quizIdElement = document.getElementById('quizId');
+                                    let quizId = '';
+                                    if (quizIdElement && quizIdElement.value) {
+                                        quizId = quizIdElement.value;
+                                    } else if (result.quizId) {
+                                        quizId = result.quizId;
+                                    } else {
+                                        // Если quizId не найден, пытаемся получить из attemptId через API
+                                        console.warn('QuizId не найден, используем attemptId для получения quizId');
+                                    }
+                                    if (quizId) {
+                                        window.location.href = '/quiz/attempt/' + attemptId + '/finish?quizId=' + quizId;
+                                    } else {
+                                        // Если quizId всё ещё не найден, редиректим без quizId (контроллер попытается получить его из attemptId)
+                                        window.location.href = '/quiz/attempt/' + attemptId + '/finish';
+                                    }
                                 }
-                                if (quizId) {
-                                    window.location.href = '/quiz/attempt/' + attemptId + '/finish?quizId=' + quizId;
-                                } else {
-                                    // Если quizId всё ещё не найден, редиректим без quizId (контроллер попытается получить его из attemptId)
-                                    window.location.href = '/quiz/attempt/' + attemptId + '/finish';
-                                }
-                            }
+                            };
+                            submitButton.type = 'button';
                         }
-                    }, 3000);
+                    }
                 } else {
                     const error = await response.json().catch(() => ({}));
                     alert('Ошибка: ' + (error.message || 'Не удалось отправить ответ'));
@@ -618,12 +638,7 @@
                 }
             }
 
-            // Меняем кнопку на "Следующий вопрос"
-            const submitButton = document.getElementById('submitButton');
-            if (submitButton) {
-                submitButton.textContent = result.nextQuestion ? 'Следующий вопрос...' : 'Завершить квиз...';
-                submitButton.disabled = true;
-            }
+            // Кнопка будет изменена в submitAnswer после показа результата
         }
 
         function resetAnswerState() {
