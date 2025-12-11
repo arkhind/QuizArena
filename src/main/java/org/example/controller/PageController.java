@@ -342,7 +342,7 @@ public class PageController {
         model.addAttribute("description", quiz.description());
         model.addAttribute("questions", quiz.questions());
         model.addAttribute("materials", quiz.materials());
-        model.addAttribute("timeLimit", quiz.timeLimit());
+        model.addAttribute("timeLimit", quiz.timePerQuestion());
         model.addAttribute("isPublic", quiz.isPublic());
         model.addAttribute("isStatic", quiz.isStatic());
 
