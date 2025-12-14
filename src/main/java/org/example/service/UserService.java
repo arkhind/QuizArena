@@ -143,12 +143,7 @@ public class UserService {
     }
 
     private QuizDTO toQuizDTO(org.example.model.Quiz quiz) {
-        // Считаем реальное количество вопросов в БД
-        int actualQuestionCount = (int) questionRepository.countByQuizId(quiz.getId());
-        // Если вопросов еще нет, но есть запланированное количество, показываем его
-        // Иначе показываем реальное количество
-        int questionCount = actualQuestionCount > 0 ? actualQuestionCount : 
-                           (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
+        int questionCount = quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0;
         
         // Вычисляем общее время на весь квиз в секундах (время на вопрос * количество вопросов)
         Integer totalTimeSeconds = null;
@@ -156,9 +151,8 @@ public class UserService {
         if (quiz.getTimePerQuestion() != null && quiz.getTimePerQuestion().getSeconds() > 0) {
             long secondsPerQuestion = quiz.getTimePerQuestion().getSeconds();
             timePerQuestionSeconds = (int) secondsPerQuestion;
-            int questions = questionCount > 0 ? questionCount : (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
-            if (questions > 0) {
-                totalTimeSeconds = (int) (secondsPerQuestion * questions);
+            if (questionCount > 0) {
+                totalTimeSeconds = (int) (secondsPerQuestion * questionCount);
             }
         }
         

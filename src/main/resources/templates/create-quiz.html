@@ -276,7 +276,7 @@
                        max="200"
                        required>
                 <small style="color: #666; display: block; margin-top: 5px;">
-                    Максимум 13 вопросов (из 13 доступных в базе данных)
+                    Максимум 30 вопросов (из 200 доступных в базе данных)
                 </small>
             </div>
 
@@ -427,13 +427,27 @@
             } else {
                 let errorText = 'Ошибка';
                 try {
-                    const error = await response.json();
-                    errorText = error.message || errorText;
+                    const error = await response.text();
+                    try {
+                        const errorJson = JSON.parse(error);
+                        errorText = errorJson.message || errorJson.error || errorText;
+                    } catch (e) {
+                        errorText = error;
+                    }
                 } catch (e) {
                     errorText = 'Ошибка : ' + response.status;
                 }
-                errorMessage.textContent = 'Ошибка при создании квиза: ' + errorText;
-                errorMessage.classList.add('show');
+                
+                // Проверяем статус код и текст ошибки для определения неэтичного промпта
+                // BAD_REQUEST (400) с текстом о неэтичности или любой ответ с текстом о неэтичности
+                if (response.status === 400 && (errorText.includes('неэтичн') || errorText.includes('неэтичными'))) {
+                    alert('Данные для создания квиза являются неэтичными');
+                } else if (errorText.includes('неэтичн') || errorText.includes('неэтичными') || errorText.includes('UNETHICAL_PROMPT')) {
+                    alert('Данные для создания квиза являются неэтичными');
+                } else {
+                    errorMessage.textContent = 'Ошибка при создании квиза: ' + errorText;
+                    errorMessage.classList.add('show');
+                }
             }
         } catch (error) {
             errorMessage.textContent = 'Ошибка сети.';

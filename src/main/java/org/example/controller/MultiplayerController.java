@@ -106,9 +106,18 @@ public class MultiplayerController {
 
     @GetMapping("/sessions/{sessionId}/progress")
     public ResponseEntity<Map<String, Object>> getProgress(@PathVariable String sessionId,
-                                                           @RequestParam(required = false) Long questionId) {
+                                                           @RequestParam(required = false) Long questionId,
+                                                           @RequestParam(required = false) Long userId,
+                                                           jakarta.servlet.http.HttpServletRequest request) {
         try {
-            Map<String, Object> progress = multiplayerService.getSessionProgress(sessionId, questionId);
+            // Если userId не передан в параметрах, пытаемся извлечь из токена
+            Long currentUserId = userId;
+            if (currentUserId == null) {
+                currentUserId = org.example.util.TokenUtil.extractUserIdFromRequest(request);
+            }
+            
+            Map<String, Object> progress = multiplayerService.getSessionProgress(
+                    sessionId, questionId, currentUserId);
             return ResponseEntity.ok(progress);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();

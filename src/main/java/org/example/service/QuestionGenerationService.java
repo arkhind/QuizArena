@@ -55,11 +55,62 @@ public class QuestionGenerationService {
         List<Question> generatedQuestions = new ArrayList<>();
 
         try {
+            System.out.println("QuestionGenerationService: Начинаем генерацию вопросов для промпта: " + prompt.substring(0, Math.min(50, prompt.length())));
             String apiResponse = fastApiClient.getQuestionsByPrompt(prompt, questionCount);
+            System.out.println("QuestionGenerationService: Получен ответ от ML сервера, длина: " + (apiResponse != null ? apiResponse.length() : 0));
+            
+            // Проверяем ответ на наличие признаков ошибки этичности ДО парсинга
+            if (apiResponse == null || apiResponse.trim().isEmpty()) {
+                System.err.println("QuestionGenerationService: Пустой ответ от ML сервера");
+                // Если ответ пустой, это может быть признаком ошибки этичности
+                // Проверяем этичность промпта еще раз
+                try {
+                    System.out.println("QuestionGenerationService: Повторная проверка этичности из-за пустого ответа");
+                    boolean isUnethical = fastApiClient.checkPromptEthics(prompt);
+                    System.out.println("QuestionGenerationService: Результат повторной проверки этичности: " + isUnethical);
+                    if (isUnethical) {
+                        throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
+                    }
+                } catch (UnethicalPromptException e) {
+                    throw e;
+                } catch (Exception e) {
+                    System.err.println("QuestionGenerationService: Ошибка при повторной проверке этичности: " + e.getMessage());
+                    // Игнорируем ошибку проверки этичности, пробрасываем исходную ошибку
+                }
+                throw new RuntimeException("Пустой ответ от ML сервера");
+            }
+            
+            // Проверяем ответ на наличие признаков ошибки этичности в тексте
+            String lowerResponse = apiResponse.toLowerCase();
+            if (lowerResponse.contains("unethical_prompt") || lowerResponse.contains("неэтичн") || 
+                lowerResponse.contains("неэтичными") || lowerResponse.contains("cringe") ||
+                lowerResponse.contains("не могу") || lowerResponse.contains("не могу сгенерировать")) {
+                System.err.println("QuestionGenerationService: Обнаружены признаки ошибки этичности в ответе ML сервера");
+                throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
+            }
+            
             List<QuestionParser.ParsedQuestion> parsedQuestions = QuestionParser.parse(apiResponse);
             
             if (parsedQuestions.isEmpty()) {
                 System.err.println("QuestionGenerationService: Парсер не нашел вопросов в ответе FastAPI");
+                System.err.println("QuestionGenerationService: Ответ ML сервера (первые 500 символов): " + apiResponse.substring(0, Math.min(500, apiResponse.length())));
+                
+                // Если парсер не нашел вопросов, это может быть признаком ошибки этичности
+                // Проверяем этичность промпта еще раз
+                try {
+                    System.out.println("QuestionGenerationService: Повторная проверка этичности из-за отсутствия вопросов в парсере");
+                    boolean isUnethical = fastApiClient.checkPromptEthics(prompt);
+                    System.out.println("QuestionGenerationService: Результат повторной проверки этичности: " + isUnethical);
+                    if (isUnethical) {
+                        throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
+                    }
+                } catch (UnethicalPromptException e) {
+                    throw e;
+                } catch (Exception e) {
+                    System.err.println("QuestionGenerationService: Ошибка при повторной проверке этичности: " + e.getMessage());
+                    // Игнорируем ошибку проверки этичности, пробрасываем исходную ошибку
+                }
+                
                 throw new RuntimeException("Парсер не нашел вопросов в ответе FastAPI");
             }
             
@@ -120,35 +171,39 @@ public class QuestionGenerationService {
                 throw new RuntimeException("Не удалось сохранить ни одного вопроса из распарсенных");
             }
             
+        } catch (UnethicalPromptException e) {
+            // Если промпт не прошел VibeCheck, не создаем квиз и пробрасываем исключение дальше
+            System.err.println("QuestionGenerationService: Промпт не прошел проверку на этичность: " + e.getMessage());
+            questionSet.setStatus("FAILED");
+            generationSetRepository.save(questionSet);
+            throw e;
         } catch (Exception e) {
+            // Для всех остальных ошибок также не создаем заглушки
             System.err.println("QuestionGenerationService: Ошибка при генерации вопросов: " + e.getMessage());
             e.printStackTrace();
             
-            if (generatedQuestions.isEmpty()) {
-        for (int i = 0; i < questionCount; i++) {
-                    Question question = new Question();
-                    question.setQuiz(quiz);
-                    question.setText("Вопрос " + (i + 1) + " по теме \"" + prompt + "\"");
-                    question.setType(QuestionType.SINGLE_CHOICE);
-                    question.setExplanation("Это правильный ответ");
-                    question.setIsGenerated(true);
-                    question.setGenerationSetId(questionSet.getId());
-                    question.setIsValid(true);
-                    question.setIsDuplicate(false);
-                    question = questionRepository.save(question);
-
-            for (int j = 0; j < 4; j++) {
-                        AnswerOption option = new AnswerOption();
-                        option.setQuestion(question);
-                        option.setText("Вариант " + (j + 1));
-                        option.setCorrect(j == 0);
-                option.setNaOption(false);
-                answerOptionRepository.save(option);
-            }
-
-                    generatedQuestions.add(question);
+            // Проверяем, не является ли это ошибкой этичности, обернутой в другое исключение
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                if (cause instanceof UnethicalPromptException) {
+                    questionSet.setStatus("FAILED");
+                    generationSetRepository.save(questionSet);
+                    throw (UnethicalPromptException) cause;
                 }
+                cause = cause.getCause();
             }
+            
+            // Проверяем сообщение об ошибке на наличие упоминания об этичности
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && (errorMessage.contains("неэтичн") || errorMessage.contains("UNETHICAL_PROMPT") || errorMessage.contains("неэтичными"))) {
+                questionSet.setStatus("FAILED");
+                generationSetRepository.save(questionSet);
+                throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
+            }
+            
+            questionSet.setStatus("FAILED");
+            generationSetRepository.save(questionSet);
+            throw new RuntimeException("Ошибка при генерации вопросов: " + e.getMessage(), e);
         }
 
         questionSet.setGeneratedCount(generatedQuestions.size());
