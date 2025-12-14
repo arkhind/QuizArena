@@ -22,10 +22,12 @@ def PromptVibeCheck(prompt):
       {
         'role': 'user',
         'content': ("Определи, является ли данная тема приемлемой с моральной и этической точки зрения, т.е. не нарушает ли её обсуждение законодотельство или общие моральные принципы\n"
-"Тема: " + prompt + "/nВ качестве ответа выведи только да, если тема приемлима, иначе выведи только нет"),
+"Тема: " + prompt + "\nВ качестве ответа выведи только да, если тема приемлима, иначе выведи только нет"),
       },
     ])
-    return (response['message']['content'] == "нет")
+    response_text = response['message']['content'].strip().lower()
+    # Проверяем, содержит ли ответ "нет" (может быть "нет", "нет.", "нет,", и т.д.)
+    return "нет" in response_text and "да" not in response_text
 
 
 
@@ -194,9 +196,10 @@ def RAGChatResponse(prompt, number):
     return response['message']['content']
 
 def ChatResponse(prompt, number):
-    '''
+    # Проверка на этичность промпта
     if PromptVibeCheck(prompt):
-        return "You have submitted some cringe" '''
+        raise ValueError("UNETHICAL_PROMPT")
+    
     if os.path.exists("docs"):
         return RAGChatResponse(prompt, number)
 

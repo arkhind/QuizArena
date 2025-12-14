@@ -771,7 +771,18 @@
 
             try {
                 const currentQuestionId = document.getElementById('currentQuestionId')?.value;
-                const url = `/api/multiplayer/sessions/${sessionId}/progress${currentQuestionId ? '?questionId=' + currentQuestionId : ''}`;
+                const userId = localStorage.getItem('userId');
+                let url = `/api/multiplayer/sessions/${sessionId}/progress`;
+                const params = [];
+                if (currentQuestionId) {
+                    params.push(`questionId=${currentQuestionId}`);
+                }
+                if (userId) {
+                    params.push(`userId=${userId}`);
+                }
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
+                }
                 
                 const response = await fetch(url, {
                     method: 'GET',

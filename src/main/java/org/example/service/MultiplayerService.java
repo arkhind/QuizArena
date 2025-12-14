@@ -40,6 +40,7 @@ public class MultiplayerService {
     private final UserRepository userRepository;
     private final UserQuizAttemptRepository attemptRepository;
     private final UserAnswerRepository userAnswerRepository;
+    private final AttemptQuestionRepository attemptQuestionRepository;
 
     @Autowired
     public MultiplayerService(
@@ -48,13 +49,15 @@ public class MultiplayerService {
             QuizRepository quizRepository,
             UserRepository userRepository,
             UserQuizAttemptRepository attemptRepository,
-            UserAnswerRepository userAnswerRepository) {
+            UserAnswerRepository userAnswerRepository,
+            AttemptQuestionRepository attemptQuestionRepository) {
         this.attemptService = attemptService;
         this.sessionRepository = sessionRepository;
         this.quizRepository = quizRepository;
         this.userRepository = userRepository;
         this.attemptRepository = attemptRepository;
         this.userAnswerRepository = userAnswerRepository;
+        this.attemptQuestionRepository = attemptQuestionRepository;
     }
 
     /**
@@ -425,7 +428,7 @@ public class MultiplayerService {
     /**
      * Получает прогресс игроков в сессии для текущего вопроса.
      */
-    public Map<String, Object> getSessionProgress(String sessionId, Long questionId) {
+    public Map<String, Object> getSessionProgress(String sessionId, Long questionId, Long currentUserId) {
         MultiplayerSession session = sessionRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Сессия не найдена"));
 
@@ -438,20 +441,48 @@ public class MultiplayerService {
             );
         }
 
-        boolean bothAnswered = true;
+        // Находим попытку текущего игрока и попытку соперника
+        UserQuizAttempt currentPlayerAttempt = null;
+        UserQuizAttempt opponentAttempt = null;
+        
+        for (UserQuizAttempt attempt : attempts) {
+            if (attempt.getUser() != null && attempt.getUser().getId().equals(currentUserId)) {
+                currentPlayerAttempt = attempt;
+            } else {
+                opponentAttempt = attempt;
+            }
+        }
+
+        if (currentPlayerAttempt == null || opponentAttempt == null) {
+            return Map.of(
+                    "bothAnswered", false,
+                    "currentQuestionAnswered", false,
+                    "currentQuestionId", questionId != null ? questionId : 0L
+            );
+        }
+
+        boolean bothAnswered = false;
         boolean currentQuestionAnswered = false;
 
-        for (UserQuizAttempt attempt : attempts) {
-            if (questionId != null) {
-                boolean answered = userAnswerRepository.existsByAttemptIdAndQuestionId(attempt.getId(), questionId);
-                if (!answered) {
-                    bothAnswered = false;
-                } else {
-                    currentQuestionAnswered = true;
-                }
-            } else {
-                bothAnswered = false;
-            }
+        if (questionId != null) {
+            // Проверяем, ответил ли текущий игрок на текущий вопрос
+            boolean currentPlayerAnswered = userAnswerRepository.existsByAttemptIdAndQuestionId(
+                    currentPlayerAttempt.getId(), questionId);
+            
+            // Проверяем, ответил ли соперник на текущий вопрос
+            boolean opponentAnsweredOnCurrent = userAnswerRepository.existsByAttemptIdAndQuestionId(
+                    opponentAttempt.getId(), questionId);
+            
+            bothAnswered = currentPlayerAnswered && opponentAnsweredOnCurrent;
+            
+            // Проверяем количество ответов обоих игроков
+            long currentPlayerAnswersCount = userAnswerRepository.countByAttemptId(currentPlayerAttempt.getId());
+            long opponentAnswersCount = userAnswerRepository.countByAttemptId(opponentAttempt.getId());
+            
+            // Соперник ответил, если:
+            // 1. Он ответил на текущий вопрос, ИЛИ
+            // 2. Он впереди (ответил на больше вопросов, чем текущий игрок)
+            currentQuestionAnswered = opponentAnsweredOnCurrent || (opponentAnswersCount > currentPlayerAnswersCount);
         }
 
         return Map.of(

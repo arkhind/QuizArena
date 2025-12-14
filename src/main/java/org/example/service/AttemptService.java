@@ -385,8 +385,8 @@ public class AttemptService {
             timeSpent = java.time.Duration.between(attempt.getStartTime(), attempt.getFinishTime()).getSeconds();
         }
 
-        // 6. Вычисляем позицию в рейтинге
-        int position = calculatePosition(attempt.getQuiz().getId(), finalScore, timeSpent);
+        // 6. Вычисляем позицию в рейтинге (по лучшим попыткам каждого пользователя)
+        int position = calculatePosition(attempt.getQuiz().getId(), attempt.getUser().getId(), finalScore, timeSpent);
 
         return new QuizResultDTO(
                 attemptId,
@@ -501,28 +501,101 @@ public class AttemptService {
         return 1;
     }
 
-    private int calculatePosition(Long quizId, int score, long timeSpent) {
-        // Получаем все завершенные попытки для этого квиза, отсортированные по счету
-        Pageable pageable = PageRequest.of(0, 1000);
-        Page<UserQuizAttempt> attempts = attemptRepository
+    private int calculatePosition(Long quizId, Long currentUserId, int score, long timeSpent) {
+        // Получаем все завершенные попытки для этого квиза
+        Pageable pageable = PageRequest.of(0, 10000); // Увеличиваем лимит для учета всех попыток
+        Page<UserQuizAttempt> allAttempts = attemptRepository
                 .findCompletedByQuizIdOrderByScoreDesc(quizId, pageable);
 
-        int position = 1;
-        for (UserQuizAttempt attempt : attempts.getContent()) {
-            if (attempt.getScore() != null && attempt.getScore() > score) {
-                position++;
-            } else if (attempt.getScore() != null && attempt.getScore().equals((long) score)) {
-                // При одинаковом счете учитываем время
-                if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
-                    long attemptTime = java.time.Duration.between(
-                            attempt.getStartTime(),
-                            attempt.getFinishTime()
-                    ).getSeconds();
-                    if (attemptTime < timeSpent) {
-                        position++;
+        // Группируем попытки по пользователям и выбираем лучшую для каждого
+        Map<Long, UserQuizAttempt> bestAttemptsByUser = new java.util.HashMap<>();
+        
+        for (UserQuizAttempt attempt : allAttempts.getContent()) {
+            if (attempt.getUser() == null || attempt.getScore() == null) {
+                continue;
+            }
+            
+            Long userId = attempt.getUser().getId();
+            UserQuizAttempt bestAttempt = bestAttemptsByUser.get(userId);
+            
+            if (bestAttempt == null) {
+                // Первая попытка пользователя
+                bestAttemptsByUser.put(userId, attempt);
+            } else {
+                // Сравниваем с текущей лучшей попыткой
+                Long bestScore = bestAttempt.getScore();
+                Long currentScore = attempt.getScore();
+                
+                if (currentScore > bestScore) {
+                    // Текущая попытка лучше по счету
+                    bestAttemptsByUser.put(userId, attempt);
+                } else if (currentScore.equals(bestScore)) {
+                    // Одинаковый счет, сравниваем по времени
+                    long bestTime = 0;
+                    long currentTime = 0;
+                    
+                    if (bestAttempt.getStartTime() != null && bestAttempt.getFinishTime() != null) {
+                        bestTime = java.time.Duration.between(
+                                bestAttempt.getStartTime(),
+                                bestAttempt.getFinishTime()
+                        ).getSeconds();
+                    }
+                    
+                    if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
+                        currentTime = java.time.Duration.between(
+                                attempt.getStartTime(),
+                                attempt.getFinishTime()
+                        ).getSeconds();
+                    }
+                    
+                    // Выбираем попытку с меньшим временем (быстрее = лучше)
+                    if (currentTime > 0 && (bestTime == 0 || currentTime < bestTime)) {
+                        bestAttemptsByUser.put(userId, attempt);
                     }
                 }
             }
+        }
+
+        // Сортируем лучшие попытки: сначала по счету (убывание), затем по времени (возрастание)
+        List<UserQuizAttempt> sortedBestAttempts = new ArrayList<>(bestAttemptsByUser.values());
+        sortedBestAttempts.sort((a, b) -> {
+            Long scoreA = a.getScore() != null ? a.getScore() : 0L;
+            Long scoreB = b.getScore() != null ? b.getScore() : 0L;
+            
+            int scoreCompare = scoreB.compareTo(scoreA);
+            if (scoreCompare != 0) {
+                return scoreCompare;
+            }
+            
+            // При одинаковом счете сравниваем по времени
+            long timeA = 0;
+            long timeB = 0;
+            
+            if (a.getStartTime() != null && a.getFinishTime() != null) {
+                timeA = java.time.Duration.between(a.getStartTime(), a.getFinishTime()).getSeconds();
+            }
+            if (b.getStartTime() != null && b.getFinishTime() != null) {
+                timeB = java.time.Duration.between(b.getStartTime(), b.getFinishTime()).getSeconds();
+            }
+            
+            return Long.compare(timeA, timeB); // Меньшее время = лучше
+        });
+
+        // Находим позицию лучшей попытки текущего пользователя
+        int position = 1;
+        boolean found = false;
+        for (UserQuizAttempt bestAttempt : sortedBestAttempts) {
+            if (bestAttempt.getUser() != null && bestAttempt.getUser().getId().equals(currentUserId)) {
+                // Нашли лучшую попытку текущего пользователя
+                found = true;
+                break;
+            }
+            position++;
+        }
+        
+        // Если не нашли (не должно произойти, но на всякий случай)
+        if (!found) {
+            position = sortedBestAttempts.size() + 1;
         }
 
         return position;

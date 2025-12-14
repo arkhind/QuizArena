@@ -3,6 +3,7 @@ package org.example.controller;
 import org.example.dto.request.generation.QuestionGenerationRequest;
 import org.example.dto.response.generation.*;
 import org.example.service.QuestionGenerationService;
+import org.example.service.UnethicalPromptException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,14 +21,18 @@ public class QuestionGenerationController {
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<QuestionGenerationResponse> generateQuestions(@RequestBody QuestionGenerationRequest request) {
+    public ResponseEntity<?> generateQuestions(@RequestBody QuestionGenerationRequest request) {
         try {
             QuestionGenerationResponse response = questionGenerationService.generateQuizQuestions(request);
             return ResponseEntity.ok(response);
+        } catch (UnethicalPromptException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Данные квиза являются неэтичными");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Ошибка при генерации вопросов: " + e.getMessage());
         }
     }
 

@@ -111,7 +111,7 @@
         <div class="info-content">
             <div class="info-item">
                 <div class="info-label">Количество вопросов</div>
-                <div class="info-value" th:text="${quiz != null and quiz.questions != null ? quiz.questions.size() : '-'}">-</div>
+                <div class="info-value" th:text="${quiz != null and quiz.questionNumber != null ? quiz.questionNumber : '-'}">-</div>
             </div>
             <div class="info-item">
                 <div class="info-label">Время на вопрос</div>

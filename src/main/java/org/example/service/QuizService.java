@@ -35,6 +35,7 @@ public class QuizService {
     private final org.example.repository.UserRepository userRepository;
     private final FileStorageService fileStorageService;
     private final QuestionGenerationService questionGenerationService;
+    private final FastApiClient fastApiClient;
 
     @Autowired
     public QuizService(QuizRepository quizRepository,
@@ -46,7 +47,8 @@ public class QuizService {
                       MultiplayerSessionRepository multiplayerSessionRepository,
                       org.example.repository.UserRepository userRepository,
                       FileStorageService fileStorageService,
-                      QuestionGenerationService questionGenerationService) {
+                      QuestionGenerationService questionGenerationService,
+                      FastApiClient fastApiClient) {
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
@@ -57,11 +59,28 @@ public class QuizService {
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
         this.questionGenerationService = questionGenerationService;
+        this.fastApiClient = fastApiClient;
     }
 
     public QuizResponseDTO createQuiz(CreateQuizRequest request) {
         User creator = userRepository.findById(request.createdBy())
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + request.createdBy()));
+
+        // Проверяем этичность промпта ДО создания квиза в базе данных
+        if (request.prompt() != null && !request.prompt().trim().isEmpty()) {
+            try {
+                boolean isUnethical = fastApiClient.checkPromptEthics(request.prompt());
+                if (isUnethical) {
+                    throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
+                }
+            } catch (UnethicalPromptException e) {
+                throw e;
+            } catch (Exception e) {
+                System.err.println("QuizService: Ошибка при проверке этичности промпта: " + e.getMessage());
+                // Если проверка этичности не удалась, все равно пробрасываем ошибку, чтобы не создавать квиз
+                throw new RuntimeException("Ошибка при проверке этичности промпта: " + e.getMessage(), e);
+            }
+        }
 
         Quiz quiz = new Quiz();
         quiz.setName(request.name());
@@ -106,9 +125,26 @@ public class QuizService {
                     );
                 
                 questionGenerationService.generateQuizQuestions(genRequest);
+            } catch (UnethicalPromptException e) {
+                // Пробрасываем исключение для неэтичных промптов, чтобы его можно было обработать в контроллере
+                System.err.println("QuizService: Промпт не прошел проверку на этичность при генерации: " + e.getMessage());
+                // Удаляем созданный квиз, так как он не должен был быть создан
+                quizRepository.deleteById(quiz.getId());
+                throw e;
             } catch (Exception e) {
                 System.err.println("QuizService: Ошибка при генерации вопросов: " + e.getMessage());
                 e.printStackTrace();
+                // Проверяем, не является ли это ошибкой этичности, обернутой в RuntimeException
+                String errorMessage = e.getMessage();
+                if (errorMessage != null && (errorMessage.contains("неэтичн") || errorMessage.contains("UNETHICAL_PROMPT"))) {
+                    // Удаляем созданный квиз
+                    quizRepository.deleteById(quiz.getId());
+                    throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
+                }
+                // Удаляем созданный квиз при любой другой ошибке генерации
+                quizRepository.deleteById(quiz.getId());
+                // Пробрасываем исключение, чтобы контроллер мог его обработать
+                throw new RuntimeException("Ошибка при генерации вопросов: " + e.getMessage(), e);
             }
         }
 
@@ -241,6 +277,21 @@ public class QuizService {
         boolean staticChanged = request.isStatic() != null && 
                                 request.isStatic() != oldIsStatic;
 
+        // Проверяем этичность нового промпта ДО обновления квиза, если промпт изменился
+        if (promptChanged && request.prompt() != null && !request.prompt().trim().isEmpty()) {
+            try {
+                boolean isUnethical = fastApiClient.checkPromptEthics(request.prompt());
+                if (isUnethical) {
+                    throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
+                }
+            } catch (UnethicalPromptException e) {
+                throw e;
+            } catch (Exception e) {
+                System.err.println("QuizService: Ошибка при проверке этичности промпта при обновлении: " + e.getMessage());
+                throw new RuntimeException("Ошибка при проверке этичности промпта: " + e.getMessage(), e);
+            }
+        }
+
         if (request.name() != null) {
             quiz.setName(request.name());
         }
@@ -290,11 +341,15 @@ public class QuizService {
                                 questionCountForGeneration // Всегда генерируем 200 вопросов
                         );
                 questionGenerationService.generateQuizQuestions(genRequest);
+            } catch (UnethicalPromptException e) {
+                // Пробрасываем исключение для неэтичных промптов
+                System.err.println("QuizService: Промпт не прошел проверку на этичность при обновлении: " + e.getMessage());
+                throw e;
             } catch (Exception e) {
                 System.err.println("Ошибка при перегенерации вопросов после изменения промпта: " + e.getMessage());
                 e.printStackTrace();
-                // Не прерываем обновление квиза, если генерация вопросов не удалась
-                // Пользователь сможет сгенерировать вопросы вручную позже
+                // Пробрасываем исключение, чтобы контроллер мог его обработать
+                throw new RuntimeException("Ошибка при генерации вопросов: " + e.getMessage(), e);
             }
         } else if (staticChanged && !promptChanged) {
             // Если изменилась только статичность (без изменения промпта),
@@ -338,9 +393,15 @@ public class QuizService {
                                 );
                         questionGenerationService.generateQuizQuestions(genRequest);
                     }
+                } catch (UnethicalPromptException e) {
+                    // Пробрасываем исключение для неэтичных промптов
+                    System.err.println("QuizService: Промпт не прошел проверку на этичность при обновлении: " + e.getMessage());
+                    throw e;
                 } catch (Exception e) {
                     System.err.println("Ошибка при генерации недостающих вопросов после изменения статичности: " + e.getMessage());
                     e.printStackTrace();
+                    // Пробрасываем исключение, чтобы контроллер мог его обработать
+                    throw new RuntimeException("Ошибка при генерации вопросов: " + e.getMessage(), e);
                     // Не прерываем обновление квиза, если генерация вопросов не удалась
                 }
             } else {
@@ -486,9 +547,7 @@ public class QuizService {
     }
 
     private QuizDTO toQuizDTO(Quiz quiz) {
-        int actualQuestionCount = (int) questionRepository.countByQuizId(quiz.getId());
-        int questionCount = actualQuestionCount > 0 ? actualQuestionCount : 
-                           (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
+        int questionCount = quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0;
         
         // Вычисляем общее время на весь квиз в секундах (время на вопрос * количество вопросов)
         Integer totalTimeSeconds = null;
@@ -496,9 +555,8 @@ public class QuizService {
         if (quiz.getTimePerQuestion() != null && quiz.getTimePerQuestion().getSeconds() > 0) {
             long secondsPerQuestion = quiz.getTimePerQuestion().getSeconds();
             timePerQuestionSeconds = (int) secondsPerQuestion;
-            int questions = questionCount > 0 ? questionCount : (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
-            if (questions > 0) {
-                totalTimeSeconds = (int) (secondsPerQuestion * questions);
+            if (questionCount > 0) {
+                totalTimeSeconds = (int) (secondsPerQuestion * questionCount);
             }
         }
         

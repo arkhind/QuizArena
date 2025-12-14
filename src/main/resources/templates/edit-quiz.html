@@ -375,7 +375,7 @@
                                max="200"
                                required>
                         <small style="color: #666; display: block; margin-top: 5px;">
-                            Максимум 13 вопросов (из 13 доступных в базе данных)
+                            Максимум 30 вопросов (из 200 доступных в базе данных)
                         </small>
                     </div>
 
@@ -557,11 +557,25 @@
                 alert('Квиз успешно обновлен!');
                 window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
             } else {
-
-                const error = await response.json().catch(() => ({}));
-                const errorMessage = error.message || error.error ||
-                                   `Ошибка ${response.status}: ${response.statusText}`;
-                alert('Ошибка при обновлении квиза: ' + errorMessage);
+                let errorText = '';
+                try {
+                    const error = await response.text();
+                    try {
+                        const errorJson = JSON.parse(error);
+                        errorText = errorJson.message || errorJson.error || `Ошибка ${response.status}: ${response.statusText}`;
+                    } catch (e) {
+                        errorText = error || `Ошибка ${response.status}: ${response.statusText}`;
+                    }
+                } catch (e) {
+                    errorText = `Ошибка ${response.status}: ${response.statusText}`;
+                }
+                
+                // Проверяем, является ли ошибка связанной с неэтичным промптом
+                if (errorText.includes('неэтичн') || errorText.includes('неэтичными')) {
+                    alert('Данные для создания квиза являются неэтичными');
+                } else {
+                    alert('Ошибка при обновлении квиза: ' + errorText);
+                }
             }
         } catch (error) {
 

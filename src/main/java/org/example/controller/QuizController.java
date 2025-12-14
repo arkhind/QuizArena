@@ -4,6 +4,7 @@ import org.example.dto.request.quiz.*;
 import org.example.dto.response.quiz.*;
 import org.example.service.FileStorageService;
 import org.example.service.QuizService;
+import org.example.service.UnethicalPromptException;
 import org.example.util.TokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -40,11 +41,31 @@ public class QuizController {
             
             QuizResponseDTO response = quizService.createQuiz(request);
             return ResponseEntity.ok(response);
+        } catch (UnethicalPromptException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Данные квиза являются неэтичными");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
+            // Проверяем, не является ли это ошибкой этичности, обернутой в другое исключение
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                if (cause instanceof UnethicalPromptException) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Данные квиза являются неэтичными");
+                }
+                cause = cause.getCause();
+            }
+            
+            // Проверяем сообщение об ошибке на наличие упоминания об этичности
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && (errorMessage.contains("неэтичн") || errorMessage.contains("UNETHICAL_PROMPT") || errorMessage.contains("неэтичными"))) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Данные квиза являются неэтичными");
+            }
+            
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Внутренняя ошибка сервера");
+                    .body("Внутренняя ошибка сервера: " + e.getMessage());
         }
     }
 
@@ -136,7 +157,7 @@ public class QuizController {
     }
 
     @PutMapping("/{quizId}")
-    public ResponseEntity<QuizResponseDTO> updateQuiz(
+    public ResponseEntity<?> updateQuiz(
             @PathVariable Long quizId,
             @RequestBody UpdateQuizRequest request) {
         try {
@@ -153,10 +174,16 @@ public class QuizController {
             );
             QuizResponseDTO response = quizService.updateQuiz(updatedRequest);
             return ResponseEntity.ok(response);
+        } catch (UnethicalPromptException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Данные квиза являются неэтичными");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Ошибка при обновлении квиза: " + e.getMessage());
         }
     }
 
