@@ -1,4 +1,5 @@
 from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import JSONResponse
 
 import shutil
 import os
@@ -38,7 +39,7 @@ async def root(prompt : str, number : int):
     Result = LLM_functions.ChatResponse(prompt, number)
     if os.path.exists("docs"):
         shutil.rmtree("docs")
-    return Result
+    return JSONResponse(content={"questions": Result})
 #http://127.0.0.1:8000/Математический анализ/4
 '''
 fastapi dev main.py

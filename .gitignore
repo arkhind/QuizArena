@@ -41,3 +41,4 @@ build/
 
 ### Python ###
 python/.venv/
+python/__pycache__/
