@@ -1,24 +1,45 @@
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, File, UploadFile
 
+import shutil
+import os
 import LLM_functions
 
 app = FastAPI()
 
+UPLOAD_DIRECTORY = "docs"
+
+@app.post("/uploadfile/")
+async def create_upload_file(file: UploadFile = File(...)):
+    """
+    Принимает загруженный файл и сохраняет его в папку 'docs'.
+    """
+
+    # Создаем директорию, если ее нет
+    if not os.path.exists(UPLOAD_DIRECTORY):
+        os.makedirs(UPLOAD_DIRECTORY)
+
+    file_path = os.path.join(UPLOAD_DIRECTORY, file.filename)
+
+    # Сохраняем файл
+    try:
+        with open(file_path, "wb") as buffer:
+            # Читаем файл порциями и записываем в буфер
+            # shutil.copyfileobj - более эффективный способ для больших файлов
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        return {"message": f"Произошла ошибка при сохранении файла: {e}"}
+    finally:
+        # Важно: закрываем файл после использования (shutil.copyfileobj это делает)
+        await file.close()
+
+
 @app.get("/question/{prompt}/{number}")
 async def root(prompt : str, number : int):
-    print(f"=== ЭТАП 5: FastAPI endpoint /question/{prompt}/{number} - Начало ===")
-    print(f"ЭТАП 5.1: Получены параметры - prompt='{prompt}', number={number}")
-    
-    print("ЭТАП 5.2: Вызов LLM_functions.ChatResponse()")
-    result = LLM_functions.ChatResponse(prompt, number)
-    print(f"ЭТАП 5.2 ЗАВЕРШЕН: Получен ответ от LLM, длина: {len(result)} символов")
-    print(f"ЭТАП 5.2: Первые 200 символов ответа: {result[:200]}")
-    
-    print("ЭТАП 5.3: Возврат ответа как JSON")
-    print("=== ЭТАП 5 ЗАВЕРШЕН: FastAPI endpoint ===")
-    return JSONResponse(content={"questions": result})
-
+    Result = LLM_functions.ChatResponse(prompt, number)
+    if os.path.exists("docs"):
+        shutil.rmtree("docs")
+    return Result
+#http://127.0.0.1:8000/Математический анализ/4
 '''
 fastapi dev main.py
 '''
