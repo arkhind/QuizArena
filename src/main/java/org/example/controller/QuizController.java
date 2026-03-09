@@ -4,6 +4,7 @@ import org.example.dto.request.quiz.*;
 import org.example.dto.response.quiz.*;
 import org.example.service.FileStorageService;
 import org.example.service.QuizService;
+import org.example.service.TextExtractorService;
 import org.example.service.UnethicalPromptException;
 import org.example.util.TokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,11 +23,13 @@ public class QuizController {
 
     private final QuizService quizService;
     private final FileStorageService fileStorageService;
+    private final TextExtractorService textExtractorService;
 
     @Autowired
-    public QuizController(QuizService quizService, FileStorageService fileStorageService) {
+    public QuizController(QuizService quizService, FileStorageService fileStorageService, TextExtractorService textExtractorService) {
         this.quizService = quizService;
         this.fileStorageService = fileStorageService;
+        this.textExtractorService = textExtractorService;
     }
 
     @PostMapping
@@ -56,14 +59,14 @@ public class QuizController {
                 }
                 cause = cause.getCause();
             }
-            
+
             // Проверяем сообщение об ошибке на наличие упоминания об этичности
             String errorMessage = e.getMessage();
             if (errorMessage != null && (errorMessage.contains("неэтичн") || errorMessage.contains("UNETHICAL_PROMPT") || errorMessage.contains("неэтичными"))) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body("Данные квиза являются неэтичными");
             }
-            
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Внутренняя ошибка сервера: " + e.getMessage());
         }
@@ -89,6 +92,8 @@ public class QuizController {
             if (!fileUrls.isEmpty()) {
                 quizService.updateQuizMaterialUrl(quizId, fileUrls.get(0));
             }
+            String materialText = textExtractorService.extractText(files[0]);
+            quizService.regenerateWithMaterial(quizId, materialText);
 
             return ResponseEntity.ok(fileUrls);
         } catch (IllegalArgumentException e) {

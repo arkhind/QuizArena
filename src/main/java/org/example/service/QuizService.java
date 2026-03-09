@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.dto.request.generation.QuestionGenerationRequest;
 import org.example.dto.request.quiz.*;
 import org.example.dto.response.quiz.*;
 import org.example.dto.common.LeaderboardEntry;
@@ -418,6 +419,26 @@ public class QuizService {
                 toLocalDateTime(quiz.getCreatedAt()),
                 String.valueOf(quiz.getId())
         );
+    }
+
+    public void regenerateWithMaterial(Long quizId, String materialText) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
+
+        // Удаляем старые вопросы ,сгенерированные только по промпту
+        userAnswerRepository.nullifySelectedAnswerReferences(quizId);
+        userAnswerRepository.deleteByQuestionQuizId(quizId);
+        questionRepository.deleteByQuizId(quizId);
+
+        // Склеиваем промпт + текст из файла
+        String enrichedPrompt = quiz.getPrompt() + " " + materialText;
+
+        QuestionGenerationRequest genRequest = new QuestionGenerationRequest(
+                quizId, enrichedPrompt, null, null, 200
+        );
+
+        //Пока что синхронная генерация
+        questionGenerationService.generateQuizQuestions(genRequest);
     }
 
     public void updateQuizMaterialUrl(Long quizId, String materialUrl) {
