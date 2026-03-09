@@ -454,6 +454,20 @@
             errorMessage.classList.add('show');
             console.error('Error:', error);
         }
+
+        if(fileInput.files.length > 0 && fileInput.files[0].size > 0){
+        const fileFormData = new FormData();
+        fileFormData.append('files', fileInput.files[0]);
+
+        const uploadResponse = await fetch('/api/quizzes/' + quizId + '/materials', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                body: fileFormData
+            });
+        }
+        window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
     }
 </script>
 </body>
