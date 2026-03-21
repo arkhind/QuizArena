@@ -122,7 +122,8 @@ public class QuizService {
                         request.prompt(),
                         request.materials(),
                         request.questionNumber(), // Количество вопросов для сессии
-                        questionCountForGeneration // Всегда генерируем 200 вопросов
+                        questionCountForGeneration, // Всегда генерируем 200 вопросов
+                        null
                     );
                 
                 questionGenerationService.generateQuizQuestions(genRequest);
@@ -339,7 +340,8 @@ public class QuizService {
                                 request.prompt(),
                                 null, // materials
                                 quiz.getQuestionNumber(), // Количество вопросов для сессии
-                                questionCountForGeneration // Всегда генерируем 200 вопросов
+                                questionCountForGeneration, // Всегда генерируем 200 вопросов
+                                null
                         );
                 questionGenerationService.generateQuizQuestions(genRequest);
             } catch (UnethicalPromptException e) {
@@ -390,7 +392,8 @@ public class QuizService {
                                         quiz.getPrompt(), // Используем текущий промпт (не изменился)
                                         null, // materials
                                         quiz.getQuestionNumber(), // Количество вопросов для сессии
-                                        questionsToGenerate // Генерируем недостающие вопросы
+                                        questionsToGenerate, // Генерируем недостающие вопросы
+                                        null
                                 );
                         questionGenerationService.generateQuizQuestions(genRequest);
                     }
@@ -434,7 +437,7 @@ public class QuizService {
         String enrichedPrompt = quiz.getPrompt() + " " + materialText;
 
         QuestionGenerationRequest genRequest = new QuestionGenerationRequest(
-                quizId, enrichedPrompt, null, null, 200
+                quizId, enrichedPrompt, null, null, 200, null
         );
 
         //Пока что синхронная генерация
@@ -609,6 +612,7 @@ public class QuizService {
                 question.getId(),
                 question.getText(),
                 dtoOptions,
+                question.getType(),
                 timeLimit,
                 null,
                 question.getExplanation(),

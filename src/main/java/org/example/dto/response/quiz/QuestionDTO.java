@@ -1,6 +1,7 @@
 package org.example.dto.response.quiz;
 
 import org.example.dto.common.AnswerOption;
+import org.example.model.QuestionType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -9,6 +10,7 @@ public record QuestionDTO(
   Long id,
   String text,
   List<AnswerOption> options,
+  QuestionType type,
   Integer timeLimit,
   String materialReference,
   String explanation,
