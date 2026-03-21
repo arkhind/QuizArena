@@ -77,7 +77,7 @@ public class AttemptService {
         Map<Long, Long> answers;
         Map<Long, Boolean> answerResults;
         Instant startTime;
-        int score;
+        double score;
     }
 
     /**
@@ -266,58 +266,50 @@ public class AttemptService {
         }
 
         // 5. Обрабатываем ответ (может быть null при таймауте)
-        Long selectedAnswerId = request.selectedAnswerId();
+        List<Long> selectedIds = request.getEffectiveSelectedIds();
         Boolean isCorrect = null;
         Long correctAnswerId = null;
-        Integer scoreEarned = 0;
+        int scoreEarned = 0;
         org.example.model.AnswerOption selectedOption = null;
 
-        if (selectedAnswerId != null) {
-            // Пользователь выбрал ответ
-            selectedOption = answerOptionRepository.findById(selectedAnswerId)
-                    .orElseThrow(() -> new IllegalArgumentException("Вариант ответа не найден"));
+        // Получаем все правильные варианты для вопроса
+        List<org.example.model.AnswerOption> allOptions = answerOptionRepository.findByQuestionId(questionId);
+        java.util.Set<Long> correctIds = allOptions.stream()
+                .filter(org.example.model.AnswerOption::isCorrect)
+                .map(org.example.model.AnswerOption::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        correctAnswerId = correctIds.isEmpty() ? null : correctIds.iterator().next();
 
-            // Проверяем, что вариант принадлежит вопросу
-            if (!selectedOption.getQuestion().getId().equals(questionId)) {
-                throw new IllegalArgumentException("Вариант ответа не принадлежит этому вопросу");
-            }
+        if (!selectedIds.isEmpty()) {
+            // Берём первый выбранный для сохранения в UserAnswer (обратная совместимость)
+            selectedOption = answerOptionRepository.findById(selectedIds.get(0)).orElse(null);
 
-            Optional<org.example.model.AnswerOption> correctOptionOpt = answerOptionRepository
-                    .findByQuestionIdAndIsCorrectTrue(questionId);
-
-            if (correctOptionOpt.isPresent()) {
-                org.example.model.AnswerOption correctOption = correctOptionOpt.get();
-                correctAnswerId = correctOption.getId();
-                isCorrect = selectedAnswerId.equals(correctAnswerId);
-
-                if (isCorrect) {
-                    scoreEarned = calculateScore(question, attempt);
-                }
+            if (question.getType() == QuestionType.MULTIPLE_CHOICE) {
+                int A = (int) selectedIds.stream().filter(correctIds::contains).count();
+                int B = (int) selectedIds.stream().filter(id -> !correctIds.contains(id)).count();
+                int C = correctIds.size();
+                double points = C > 0 ? 2.0 * Math.max(A - B, 0) / C : 0;
+                scoreEarned = (int) Math.round(points);
+                isCorrect = points > 0;
             } else {
-                System.err.println("AttemptService: Не найден правильный ответ для вопроса ID=" + questionId);
+                // SINGLE_CHOICE и прочие
+                isCorrect = selectedIds.size() == 1 && correctIds.contains(selectedIds.get(0));
+                scoreEarned = isCorrect ? calculateScore(question, attempt) : 0;
             }
         } else {
-            // ТАЙМАУТ: selectedAnswerId == null
-            // Находим правильный ответ для информации
-            Optional<org.example.model.AnswerOption> correctOptionOpt = answerOptionRepository
-                    .findByQuestionIdAndIsCorrectTrue(questionId);
-
-            if (correctOptionOpt.isPresent()) {
-                correctAnswerId = correctOptionOpt.get().getId();
-            }
-
-            isCorrect = false;  // При таймауте ответ считается неверным
-            scoreEarned = 0;    // Очки не начисляются
+            // ТАЙМАУТ: ничего не выбрано
+            isCorrect = false;
+            scoreEarned = 0;
         }
 
         // 6. Сохраняем ответ пользователя
         UserAnswer userAnswer = new UserAnswer();
         userAnswer.setAttempt(attempt);
         userAnswer.setQuestion(question);
-        userAnswer.setSelectedAnswer(selectedOption); // null при таймауте
+        userAnswer.setSelectedAnswer(selectedOption);
         userAnswer.setIsCorrect(isCorrect);
         userAnswer.setAnsweredAt(Instant.now());
-        userAnswer.setTimeSpentSeconds(null); // TODO: Вычислить на основе времени начала вопроса
+        userAnswer.setTimeSpentSeconds(null);
         userAnswerRepository.save(userAnswer);
 
         // 7. Обновляем счет попытки
@@ -485,6 +477,7 @@ public class AttemptService {
                 question.getId(),
                 question.getText(),
                 dtoOptions,
+                question.getType(),
                 timeLimit,
                 null,
                 question.getExplanation(),

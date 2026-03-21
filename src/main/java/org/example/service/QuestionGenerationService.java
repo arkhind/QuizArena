@@ -279,6 +279,7 @@ public class QuestionGenerationService {
                             q.getId(),
                             q.getText(),
                             dtoOptions,
+                            q.getType(),
                             q.getQuiz().getTimePerQuestion() != null ? 
                                     (int) q.getQuiz().getTimePerQuestion().getSeconds() : null,
                             null,
