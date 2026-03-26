@@ -4,6 +4,7 @@ import org.example.dto.common.AnswerOption;
 import org.example.dto.request.attempt.StartAttemptRequest;
 import org.example.dto.request.attempt.SubmitAnswerRequest;
 import org.example.dto.response.attempt.AnswerResponse;
+import org.example.dto.response.attempt.AttemptPageProgress;
 import org.example.dto.response.attempt.AttemptResponse;
 import org.example.dto.response.attempt.QuizResultDTO;
 import org.example.dto.response.quiz.QuestionDTO;
@@ -229,6 +230,27 @@ public class AttemptService {
     }
 
     /**
+     * Прогресс попытки для страницы /quiz/attempt/{id}/question
+     */
+    public AttemptPageProgress getAttemptPageProgress(Long attemptId) {
+        UserQuizAttempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new IllegalArgumentException("Попытка не найдена"));
+        if (attempt.isCompleted()) {
+            throw new IllegalStateException("Попытка уже завершена");
+        }
+        List<AttemptQuestion> attemptQuestions =
+                attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attemptId);
+        int total = attemptQuestions.size();
+        int answered = userAnswerRepository.findByAttemptId(attemptId).size();
+        int remaining = Math.max(0, total - answered);
+        Quiz quiz = attempt.getQuiz();
+        int seconds = quiz.getTimePerQuestion() != null
+                ? (int) quiz.getTimePerQuestion().getSeconds()
+                : 60;
+        return new AttemptPageProgress(total, remaining, seconds);
+    }
+
+    /**
      * Отправляет ответ на вопрос.
      * Обрабатывает как обычные ответы, так и таймауты (selectedAnswerId = null).
      */
@@ -328,10 +350,15 @@ public class AttemptService {
         System.out.println("AttemptService: Возвращаем объяснение для вопроса ID " + questionId + 
                 ": " + (explanation.length() > 50 ? explanation.substring(0, 50) + "..." : explanation));
 
+        java.util.List<Long> correctAnswerIds = correctIds.isEmpty()
+                ? java.util.List.of()
+                : correctIds.stream().sorted().toList();
+
         return new AnswerResponse(
                 isCorrect,
                 explanation,
                 correctAnswerId,
+                correctAnswerIds,
                 scoreEarned,
                 nextQuestion,
                 attempt.getQuiz().getId()

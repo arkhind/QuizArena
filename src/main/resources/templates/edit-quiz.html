@@ -441,6 +441,23 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- defaultQuestionType-->
+                    <div class="type-category">
+                        <span class="type-category-label">3. Тип вопросов:</span>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="editDefSingle" name="defaultQuestionType" value="SINGLE_CHOICE"
+                                       th:checked="${quiz.defaultQuestionType == null or quiz.defaultQuestionType.name() == 'SINGLE_CHOICE'}">
+                                <label for="editDefSingle">Одиночный выбор</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="editDefMulti" name="defaultQuestionType" value="MULTIPLE_CHOICE"
+                                       th:checked="${quiz.defaultQuestionType != null and quiz.defaultQuestionType.name() == 'MULTIPLE_CHOICE'}">
+                                <label for="editDefMulti">Множественный выбор</label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="button-group">
@@ -529,7 +546,8 @@
             questionNumber: parseInt(formData.get('questionNumber')),
             timeLimit: parseInt(formData.get('timeLimit')),
             isPrivate: formData.get('visibility') === 'private',
-            isStatic: formData.get('contentType') === 'static'
+            isStatic: formData.get('contentType') === 'static',
+            defaultQuestionType: formData.get('defaultQuestionType')
         };
 
         try {

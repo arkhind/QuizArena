@@ -15,6 +15,7 @@ import org.example.dto.response.generation.*;
 import org.example.dto.common.*;
 import org.example.repository.*;
 import org.example.model.UserQuizAttempt;
+import org.example.service.AttemptService;
 import org.example.service.QuizService;
 import org.example.service.ApiService;
 import org.example.util.TokenUtil;
@@ -38,9 +39,10 @@ public class PageController {
     private final org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository;
     private final org.example.repository.UserRepository userRepository;
     private final org.example.repository.QuizRepository quizRepository;
+    private final AttemptService attemptService;
 
     @Autowired
-    public PageController(ApiController apiController, QuizService quizService, UserQuizAttemptRepository attemptRepository, ApiService apiService, org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository, org.example.repository.UserRepository userRepository, org.example.repository.QuizRepository quizRepository) {
+    public PageController(ApiController apiController, QuizService quizService, UserQuizAttemptRepository attemptRepository, ApiService apiService, org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository, org.example.repository.UserRepository userRepository, org.example.repository.QuizRepository quizRepository, AttemptService attemptService) {
         this.apiController = apiController;
         this.quizService = quizService;
         this.attemptRepository = attemptRepository;
@@ -48,6 +50,7 @@ public class PageController {
         this.multiplayerSessionRepository = multiplayerSessionRepository;
         this.userRepository = userRepository;
         this.quizRepository = quizRepository;
+        this.attemptService = attemptService;
     }
     
     @GetMapping("/")
@@ -508,16 +511,16 @@ public class PageController {
 
             QuizDetailsDTO quiz = quizService.getQuiz(quizId, null);
             String quizName = quiz.name();
-            Integer timeLimit = quiz.timeLimit() != null ? quiz.timeLimit() : 60;
-            Integer questionsRemaining = 10;
+            AttemptPageProgress progress = attemptService.getAttemptPageProgress(attemptId);
             
+            model.addAttribute("questionsRemaining", progress.questionsRemaining());
+            model.addAttribute("totalQuestions", progress.totalQuestions());
+            model.addAttribute("timeRemaining", progress.timePerQuestionSeconds());
+            model.addAttribute("defaultTimeLimit", progress.timePerQuestionSeconds());
             model.addAttribute("attemptId", attemptId);
             model.addAttribute("currentQuestion", nextQuestion);
             model.addAttribute("quizName", quizName);
             model.addAttribute("quizId", quizId);
-            model.addAttribute("timeRemaining", timeLimit);
-            model.addAttribute("defaultTimeLimit", timeLimit);
-            model.addAttribute("questionsRemaining", questionsRemaining);
             
             return "quiz-attempt";
             

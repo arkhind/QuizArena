@@ -5,6 +5,7 @@ import org.example.dto.request.quiz.*;
 import org.example.dto.response.quiz.*;
 import org.example.dto.common.LeaderboardEntry;
 import org.example.dto.common.QuizMaterial;
+import org.example.model.QuestionType;
 import org.example.model.Quiz;
 import org.example.model.User;
 import org.example.repository.*;
@@ -95,6 +96,7 @@ public class QuizService {
         quiz.setPrivate(request.isPrivate() != null && request.isPrivate());
         quiz.setStatic(request.isStatic() != null && request.isStatic());
         quiz.setCreatedAt(Instant.now());
+        quiz.setDefaultQuestionType(resolveDefaultQuestionType(request.defaultQuestionType()));
 
         quiz = quizRepository.save(quiz);
 
@@ -116,14 +118,14 @@ public class QuizService {
                     questionRepository.deleteByQuizId(quiz.getId());
                 }
                 
-                org.example.dto.request.generation.QuestionGenerationRequest genRequest = 
+                org.example.dto.request.generation.QuestionGenerationRequest genRequest =
                     new org.example.dto.request.generation.QuestionGenerationRequest(
                         quiz.getId(),
                         request.prompt(),
                         request.materials(),
                         request.questionNumber(), // Количество вопросов для сессии
                         questionCountForGeneration, // Всегда генерируем 200 вопросов
-                        null
+                        resolveDefaultQuestionType(quiz.getDefaultQuestionType())
                     );
                 
                 questionGenerationService.generateQuizQuestions(genRequest);
@@ -232,8 +234,13 @@ public class QuizService {
                 !quiz.isPrivate(),
                 quiz.isStatic(),
                 String.valueOf(quiz.getId()),
-                toLocalDateTime(quiz.getCreatedAt())
+                toLocalDateTime(quiz.getCreatedAt()),
+                resolveDefaultQuestionType(quiz.getDefaultQuestionType())
         );
+    }
+
+    private QuestionType resolveDefaultQuestionType(QuestionType defaultQuestionType) {
+        return defaultQuestionType != null ? defaultQuestionType : QuestionType.SINGLE_CHOICE;
     }
 
     public boolean deleteQuiz(DeleteQuizRequest request) {
@@ -314,6 +321,9 @@ public class QuizService {
         if (request.isStatic() != null) {
             quiz.setStatic(request.isStatic());
         }
+        if (request.defaultQuestionType() != null) {
+            quiz.setDefaultQuestionType(request.defaultQuestionType());
+        }
 
         quiz = quizRepository.save(quiz);
 
@@ -341,7 +351,7 @@ public class QuizService {
                                 null, // materials
                                 quiz.getQuestionNumber(), // Количество вопросов для сессии
                                 questionCountForGeneration, // Всегда генерируем 200 вопросов
-                                null
+                                resolveDefaultQuestionType(quiz.getDefaultQuestionType())
                         );
                 questionGenerationService.generateQuizQuestions(genRequest);
             } catch (UnethicalPromptException e) {
@@ -393,7 +403,7 @@ public class QuizService {
                                         null, // materials
                                         quiz.getQuestionNumber(), // Количество вопросов для сессии
                                         questionsToGenerate, // Генерируем недостающие вопросы
-                                        null
+                                        resolveDefaultQuestionType(quiz.getDefaultQuestionType())
                                 );
                         questionGenerationService.generateQuizQuestions(genRequest);
                     }
@@ -437,7 +447,8 @@ public class QuizService {
         String enrichedPrompt = quiz.getPrompt() + " " + materialText;
 
         QuestionGenerationRequest genRequest = new QuestionGenerationRequest(
-                quizId, enrichedPrompt, null, null, 200, null
+                quizId, enrichedPrompt, null, null, 200,
+                resolveDefaultQuestionType(quiz.getDefaultQuestionType())
         );
 
         //Пока что синхронная генерация
@@ -521,6 +532,7 @@ public class QuizService {
         copiedQuiz.setTimePerQuestion(originalQuiz.getTimePerQuestion());
         copiedQuiz.setPrivate(originalQuiz.isPrivate());
         copiedQuiz.setStatic(originalQuiz.isStatic());
+        copiedQuiz.setDefaultQuestionType(originalQuiz.getDefaultQuestionType());
         copiedQuiz.setCreatedAt(Instant.now());
 
         copiedQuiz = quizRepository.save(copiedQuiz);
