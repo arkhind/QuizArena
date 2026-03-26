@@ -342,6 +342,21 @@
                     </div>
                 </div>
             </div>
+
+            <!--Тип вопросов(поле defaultQuestionType в API)-->
+            <div class="type-category">
+                <span class="type-category-label">3. Тип вопросов:</span>
+                <div class="radio-group">
+                    <div class="radio-option">
+                        <input type="radio" id="defSingle" name="defaultQuestionType" value="SINGLE_CHOICE" checked>
+                        <label for="defSingle">Одиночный выбор</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="defMulti" name="defaultQuestionType" value="MULTIPLE_CHOICE">
+                        <label for="defMulti">Множественный выбор</label>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="error-message" id="errorMessage"></div>
@@ -385,6 +400,7 @@
         const fileNameDiv = document.getElementById('fileName');
         label.textContent = 'Файл выбран: ' + fileName;
         fileNameDiv.textContent = fileName;
+        fileNameDiv.style.display = 'block';
     }
 
     async function handleSubmit(event) {
@@ -405,9 +421,9 @@
             questionNumber: parseInt(formData.get('questionNumber')),
             timeLimit: parseInt(formData.get('timeLimit')),
             isPrivate: formData.get('visibility') === 'private',
-            isStatic: formData.get('contentType') === 'static'
+            isStatic: formData.get('contentType') === 'static',
+            defaultQuestionType: formData.get('defaultQuestionType')
         };
-
 
         try {
             const response = await fetch('/api/quizzes', {
@@ -419,12 +435,7 @@
                 body: JSON.stringify(quizData)
             });
 
-            if (response.ok) {
-                const result = await response.json();
-                alert('Квиз успешно создан!');
-                const userId = getCurrentUserId();
-                window.location.href = '/my-quizzes' + (userId ? '?userId=' + userId : '');
-            } else {
+            if (!response.ok) {
                 let errorText = 'Ошибка';
                 try {
                     const error = await response.text();
@@ -437,9 +448,6 @@
                 } catch (e) {
                     errorText = 'Ошибка : ' + response.status;
                 }
-                
-                // Проверяем статус код и текст ошибки для определения неэтичного промпта
-                // BAD_REQUEST (400) с текстом о неэтичности или любой ответ с текстом о неэтичности
                 if (response.status === 400 && (errorText.includes('неэтичн') || errorText.includes('неэтичными'))) {
                     alert('Данные для создания квиза являются неэтичными');
                 } else if (errorText.includes('неэтичн') || errorText.includes('неэтичными') || errorText.includes('UNETHICAL_PROMPT')) {
@@ -448,26 +456,32 @@
                     errorMessage.textContent = 'Ошибка при создании квиза: ' + errorText;
                     errorMessage.classList.add('show');
                 }
+                return;
             }
+
+            const result = await response.json();
+            const quizId = result.id ?? result.quizId;
+
+            if (fileInput.files.length > 0 && fileInput.files[0].size > 0) {
+                const fileFormData = new FormData();
+                fileFormData.append('files', fileInput.files[0]);
+                await fetch('/api/quizzes/' + quizId + '/materials', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    },
+                    body: fileFormData
+                });
+            }
+
+            alert('Квиз успешно создан!');
+            const userId = getCurrentUserId();
+            window.location.href = '/my-quizzes' + (userId ? '?userId=' + userId : '');
         } catch (error) {
             errorMessage.textContent = 'Ошибка сети.';
             errorMessage.classList.add('show');
             console.error('Error:', error);
         }
-
-        if(fileInput.files.length > 0 && fileInput.files[0].size > 0){
-        const fileFormData = new FormData();
-        fileFormData.append('files', fileInput.files[0]);
-
-        const uploadResponse = await fetch('/api/quizzes/' + quizId + '/materials', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
-                body: fileFormData
-            });
-        }
-        window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
     }
 </script>
 </body>

@@ -133,7 +133,9 @@ public class QuestionGenerationService {
                 question.setIsDuplicate(false);
                 
                 if (question.getType() == null) {
-                    question.setType(QuestionType.MULTIPLE_CHOICE);
+                    question.setType(request.preferredQuestionType() != null
+                            ? request.preferredQuestionType()
+                            : QuestionType.SINGLE_CHOICE);
                 }
                 
                 if (question.getExplanation() == null || question.getExplanation().trim().isEmpty()) {

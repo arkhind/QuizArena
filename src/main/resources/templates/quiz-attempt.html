@@ -153,12 +153,14 @@
             cursor: pointer;
         }
 
-        .option-item input[type="radio"]:disabled {
+        .option-item input[type="radio"]:disabled,
+        .option-item input[type="checkbox"]:disabled {
             cursor: not-allowed;
             opacity: 0.5;
         }
 
-        .option-item input[type="radio"]:disabled + label {
+        .option-item input[type="radio"]:disabled + label,
+        .option-item input[type="checkbox"]:disabled + label {
             cursor: not-allowed;
             opacity: 0.6;
             color: #999;
@@ -209,7 +211,8 @@
             line-height: 1.6;
         }
 
-        .option-item input[type="radio"] {
+        .option-item input[type="radio"],
+        .option-item input[type="checkbox"] {
             margin-right: 10px;
             width: 20px;
             height: 20px;
@@ -309,7 +312,8 @@
                     </div>
                 </div>
 
-                <form id="answerForm" onsubmit="submitAnswer(event)">
+                <form id="answerForm" onsubmit="submitAnswer(event)"
+                      th:data-question-type="${currentQuestion != null and currentQuestion.type != null ? currentQuestion.type.name() : 'SINGLE_CHOICE'}">
                     <input type="hidden" id="attemptIdInput" th:value="${attemptId}">
                     <input type="hidden" id="quizId" th:value="${quizId}">
                     <input type="hidden" id="currentQuestionId" th:value="${currentQuestion != null ? currentQuestion.id : ''}">
@@ -320,47 +324,53 @@
                             </div>
                         </div>
 
+                        <!-- Варианты только на выбор (клик по строке или по переключателю), затем «Ответить» -->
                         <ul class="options-list" id="optionsList">
                             <li class="option-item">
-                                <input type="radio" 
-                                       name="answer" 
+                                <!-- Без статического type="radio" при непройденном Thymeleaf браузер рисует type=text -->
+                                <input type="radio"
+                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                       name="answer"
                                        id="option-0"
                                        th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].id : ''}"
                                        th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() == 0}">
-                                <label for="option-0" 
+                                <label for="option-0"
                                        th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].text : 'Загрузка варианта ответа...'}">
                                     Вариант ответа 1
                                 </label>
                             </li>
                             <li class="option-item">
-                                <input type="radio" 
-                                       name="answer" 
+                                <input type="radio"
+                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                       name="answer"
                                        id="option-1"
                                        th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].id : ''}"
                                        th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 1}">
-                                <label for="option-1" 
+                                <label for="option-1"
                                        th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].text : 'Загрузка варианта ответа...'}">
                                     Вариант ответа 2
                                 </label>
                             </li>
                             <li class="option-item">
-                                <input type="radio" 
-                                       name="answer" 
+                                <input type="radio"
+                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                       name="answer"
                                        id="option-2"
                                        th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].id : ''}"
                                        th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 2}">
-                                <label for="option-2" 
+                                <label for="option-2"
                                        th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].text : 'Загрузка варианта ответа...'}">
                                     Вариант ответа 3
                                 </label>
                             </li>
                             <li class="option-item">
-                                <input type="radio" 
-                                       name="answer" 
+                                <input type="radio"
+                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                       name="answer"
                                        id="option-3"
                                        th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].id : ''}"
                                        th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 3}">
-                                <label for="option-3" 
+                                <label for="option-3"
                                        th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].text : 'Загрузка варианта ответа...'}">
                                     Вариант ответа 4
                                 </label>
@@ -428,13 +438,37 @@
                 currentQuestionNumElement.textContent = currentQuestionNum;
             }
             
-            // Добавляем обработчики на радиокнопки для скрытия ошибки при выборе
-            const radioButtons = document.querySelectorAll('input[name="answer"]');
-            radioButtons.forEach(radio => {
-                radio.addEventListener('change', function() {
-                    hideError();
+            const answerForm = document.getElementById('answerForm');
+            if (answerForm) {
+                answerForm.addEventListener('change', function (e) {
+                    if (e.target && e.target.matches && e.target.matches('input[name="answer"]')) {
+                        hideError();
+                    }
                 });
-            });
+            }
+
+            var optionsList = document.getElementById('optionsList');
+            if (optionsList) {
+                optionsList.addEventListener('click', function (e) {
+                    if (e.target.closest('label') || e.target.tagName === 'INPUT') {
+                        return;
+                    }
+                    var li = e.target.closest('.option-item');
+                    if (!li) {
+                        return;
+                    }
+                    var input = li.querySelector('input[name="answer"]');
+                    if (!input || input.disabled) {
+                        return;
+                    }
+                    if (input.type === 'radio') {
+                        input.checked = true;
+                    } else {
+                        input.checked = !input.checked;
+                    }
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            }
         });
 
         function showError(message) {
@@ -484,41 +518,49 @@
                 return;
             }
 
+            const form = document.getElementById('answerForm');
+            const questionType = (form && form.dataset.questionType) ? form.dataset.questionType : 'SINGLE_CHOICE';
+            const isMultiple = questionType === 'MULTIPLE_CHOICE';
+
             let selectedAnswer = answerId;
-            if (!selectedAnswer && event) {
-                const form = document.getElementById('answerForm');
+            let selectedAnswerIds = [];
+
+            if (isMultiple) {
+                const checked = form ? form.querySelectorAll('input[name="answer"]:checked') : [];
+                selectedAnswerIds = Array.from(checked).map(function (el) { return parseInt(el.value, 10); });
+            } else if (!selectedAnswer && event) {
                 const formData = new FormData(form);
                 selectedAnswer = formData.get('answer');
             }
 
-            // Валидация: если это не таймаут (вызов не из таймера), проверяем выбор ответа
-            // Таймаут вызывается как submitAnswer(null, null) без event
             const isTimeout = answerId === null && !event;
-            
+
             if (!isTimeout) {
-                // Если это обычная отправка формы, проверяем выбор
-            if (!selectedAnswer) {
+                const hasSelection = isMultiple ? selectedAnswerIds.length > 0 : !!selectedAnswer;
+                if (!hasSelection) {
                     showError('Пожалуйста, выберите вариант ответа перед отправкой.');
                     return;
-                } else {
-                    hideError();
                 }
+                hideError();
             } else {
                 hideError();
             }
-            
-            // Если это таймаут, selectedAnswer может быть null (пропуск вопроса)
-            
-            // Если currentQuestionId не установлен, получаем его из первого варианта ответа
+
             if (!currentQuestionId) {
-                const firstOption = document.querySelector('input[name="answer"]');
-                if (firstOption && firstOption.value) {
-                    // Получаем questionId из скрытого поля или из данных вопроса
-                    const questionIdInput = document.getElementById('currentQuestionId');
-                    if (questionIdInput) {
-                        currentQuestionId = questionIdInput.value;
-                    }
+                const questionIdInput = document.getElementById('currentQuestionId');
+                if (questionIdInput && questionIdInput.value) {
+                    currentQuestionId = questionIdInput.value;
                 }
+            }
+
+            const payload = {
+                attemptId: parseInt(attemptId, 10),
+                questionId: currentQuestionId ? parseInt(currentQuestionId, 10) : null
+            };
+            if (isMultiple) {
+                payload.selectedAnswerIds = isTimeout ? null : selectedAnswerIds;
+            } else {
+                payload.selectedAnswerId = selectedAnswer ? parseInt(selectedAnswer, 10) : null;
             }
 
             try {
@@ -528,11 +570,7 @@
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({
-                        attemptId: parseInt(attemptId),
-                        questionId: currentQuestionId ? parseInt(currentQuestionId) : null,
-                        selectedAnswerId: selectedAnswer ? parseInt(selectedAnswer) : null
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
@@ -606,24 +644,31 @@
             }
         }
 
+        function getCorrectAnswerIds(result) {
+            if (result.correctAnswerIds && result.correctAnswerIds.length > 0) {
+                return result.correctAnswerIds.map(function (id) { return parseInt(id, 10); });
+            }
+            if (result.correctAnswerId != null) {
+                return [parseInt(result.correctAnswerId, 10)];
+            }
+            return [];
+        }
+
         function showAnswerResult(result) {
-            // Отключаем все радиокнопки
-            document.querySelectorAll('input[name="answer"]').forEach(radio => {
-                radio.disabled = true;
+            document.querySelectorAll('#optionsList input[name="answer"]').forEach(function (input) {
+                input.disabled = true;
             });
 
-            // Находим правильный ответ и подсвечиваем его зелёным
-            if (result.correctAnswerId) {
-                document.querySelectorAll('input[name="answer"]').forEach(radio => {
-                    const optionItem = radio.closest('.option-item');
-                    if (parseInt(radio.value) === result.correctAnswerId) {
-                        optionItem.classList.add('correct-answer');
-                    } else if (radio.checked && parseInt(radio.value) !== result.correctAnswerId) {
-                        // Если выбран неправильный ответ, подсвечиваем его красным
-                        optionItem.classList.add('selected-wrong');
-                    }
-                });
-            }
+            var correctIds = getCorrectAnswerIds(result);
+            document.querySelectorAll('#optionsList input[name="answer"]').forEach(function (input) {
+                var optionItem = input.closest('.option-item');
+                var id = parseInt(input.value, 10);
+                if (correctIds.indexOf(id) !== -1) {
+                    optionItem.classList.add('correct-answer');
+                } else if (input.checked && correctIds.indexOf(id) === -1) {
+                    optionItem.classList.add('selected-wrong');
+                }
+            });
 
             // Показываем объяснение
             const explanationSection = document.getElementById('explanationSection');
@@ -647,6 +692,10 @@
                 item.classList.remove('correct-answer', 'selected-wrong');
             });
 
+            document.querySelectorAll('#optionsList input[name="answer"]').forEach(function (input) {
+                input.disabled = false;
+            });
+
             // Скрываем объяснение
             const explanationSection = document.getElementById('explanationSection');
             if (explanationSection) {
@@ -666,7 +715,6 @@
                 return;
             }
 
-            // Сохраняем ID текущего вопроса
             if (question.id) {
                 currentQuestionId = question.id;
                 const questionIdInput = document.getElementById('currentQuestionId');
@@ -675,30 +723,44 @@
                 }
             }
 
-            const questionTextElement = document.getElementById('questionText');
+            var qType = 'SINGLE_CHOICE';
+            if (question.type) {
+                qType = typeof question.type === 'string' ? question.type : (question.type.name || question.type);
+            }
+            var form = document.getElementById('answerForm');
+            if (form) {
+                form.dataset.questionType = qType;
+            }
+            var isMultiple = qType === 'MULTIPLE_CHOICE';
+
+            var questionTextElement = document.getElementById('questionText');
             if (questionTextElement && question.text) {
                 questionTextElement.textContent = question.text;
             }
 
-            const options = question.options || [];
-            for (let i = 0; i < 4; i++) {
-                const input = document.getElementById('option-' + i);
-                const label = input ? input.nextElementSibling : null;
-
-                if (input && label && options[i]) {
+            var options = question.options || [];
+            for (var i = 0; i < 4; i++) {
+                var input = document.getElementById('option-' + i);
+                var label = input ? input.nextElementSibling : null;
+                if (!input || !label) {
+                    continue;
+                }
+                input.type = isMultiple ? 'checkbox' : 'radio';
+                input.name = 'answer';
+                if (options[i]) {
                     input.value = options[i].id || '';
                     input.disabled = false;
-                    label.textContent = options[i].text || 'Загрузка варианта ответа...';
                     input.style.opacity = '1';
                     label.style.opacity = '1';
                     input.style.cursor = 'pointer';
                     label.style.cursor = 'pointer';
+                } else {
+                    input.value = '';
+                    label.textContent = '—';
+                    input.disabled = true;
                 }
+                input.checked = false;
             }
-
-            document.querySelectorAll('input[name="answer"]').forEach(radio => {
-                radio.checked = false;
-            });
         }
 
         function updateQuestionsCounter() {

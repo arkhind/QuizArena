@@ -175,7 +175,8 @@ public class QuizController {
                     request.questionNumber(),
                     request.timeLimit(),
                     request.isPrivate(),
-                    request.isStatic()
+                    request.isStatic(),
+                    request.defaultQuestionType()
             );
             QuizResponseDTO response = quizService.updateQuiz(updatedRequest);
             return ResponseEntity.ok(response);
