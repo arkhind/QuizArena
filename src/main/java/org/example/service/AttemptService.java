@@ -48,6 +48,7 @@ public class AttemptService {
     private final UserAnswerRepository userAnswerRepository;
     private final org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository;
     private final org.example.repository.AttemptQuestionRepository attemptQuestionRepository;
+    private final LeaderboardService leaderboardService;
 
     @Autowired
     public AttemptService(
@@ -58,7 +59,8 @@ public class AttemptService {
             AnswerOptionRepository answerOptionRepository,
             UserAnswerRepository userAnswerRepository,
             org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository,
-            org.example.repository.AttemptQuestionRepository attemptQuestionRepository) {
+            org.example.repository.AttemptQuestionRepository attemptQuestionRepository,
+            LeaderboardService leaderboardService) {
         this.attemptRepository = attemptRepository;
         this.quizRepository = quizRepository;
         this.userRepository = userRepository;
@@ -67,6 +69,7 @@ public class AttemptService {
         this.userAnswerRepository = userAnswerRepository;
         this.multiplayerSessionRepository = multiplayerSessionRepository;
         this.attemptQuestionRepository = attemptQuestionRepository;
+        this.leaderboardService = leaderboardService;
     }
 
     /**
@@ -456,7 +459,16 @@ public class AttemptService {
             timeSpent = java.time.Duration.between(attempt.getStartTime(), attempt.getFinishTime()).getSeconds();
         }
 
-        // 6. Вычисляем позицию в рейтинге (по лучшим попыткам каждого пользователя)
+        // 6. Обновляем лидерборд в Redis
+        leaderboardService.updateLeaderboard(
+                attempt.getQuiz().getId(),
+                attempt.getUser().getId(),
+                attempt.getUser().getLogin(),
+                finalScore,
+                timeSpent
+        );
+
+        // 7. Вычисляем позицию в рейтинге (по лучшим попыткам каждого пользователя)
         int position = calculatePosition(attempt.getQuiz().getId(), attempt.getUser().getId(), finalScore, timeSpent);
 
         return new QuizResultDTO(
