@@ -324,7 +324,6 @@
                             </div>
                         </div>
 
-                        <!-- Варианты только на выбор (клик по строке или по переключателю), затем «Ответить» -->
                         <ul class="options-list" id="optionsList">
                             <li class="option-item">
                                 <!-- Без статического type="radio" при непройденном Thymeleaf браузер рисует type=text -->
@@ -373,6 +372,58 @@
                                 <label for="option-3"
                                        th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].text : 'Загрузка варианта ответа...'}">
                                     Вариант ответа 4
+                                </label>
+                            </li>
+                            <li class="option-item"
+                                th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 4} ? 'display:none' : ''">
+                                <input type="radio"
+                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                       name="answer"
+                                       id="option-4"
+                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 4 ? currentQuestion.options[4].id : ''}"
+                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 4}">
+                                <label for="option-4"
+                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 4 ? currentQuestion.options[4].text : 'Загрузка варианта ответа...'}">
+                                    Вариант ответа 5
+                                </label>
+                            </li>
+                            <li class="option-item"
+                                th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6} ? 'display:none' : ''">
+                                <input type="radio"
+                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                       name="answer"
+                                       id="option-5"
+                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 5 ? currentQuestion.options[5].id : ''}"
+                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 5}">
+                                <label for="option-5"
+                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 5 ? currentQuestion.options[5].text : 'Загрузка варианта ответа...'}">
+                                    Вариант ответа 6
+                                </label>
+                            </li>
+                            <li class="option-item"
+                                th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7} ? 'display:none' : ''">
+                                <input type="radio"
+                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                       name="answer"
+                                       id="option-6"
+                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 6 ? currentQuestion.options[6].id : ''}"
+                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6}">
+                                <label for="option-6"
+                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 6 ? currentQuestion.options[6].text : 'Загрузка варианта ответа...'}">
+                                    Вариант ответа 7
+                                </label>
+                            </li>
+                            <li class="option-item"
+                                th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7} ? 'display:none' : ''">
+                                <input type="radio"
+                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                       name="answer"
+                                       id="option-7"
+                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 7 ? currentQuestion.options[7].id : ''}"
+                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7}">
+                                <label for="option-7"
+                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 7 ? currentQuestion.options[7].text : 'Загрузка варианта ответа...'}">
+                                    Вариант ответа 8
                                 </label>
                             </li>
                         </ul>
@@ -739,24 +790,31 @@
             }
 
             var options = question.options || [];
-            for (var i = 0; i < 4; i++) {
+            for (var i = 0; i < 8; i++) {
                 var input = document.getElementById('option-' + i);
                 var label = input ? input.nextElementSibling : null;
-                if (!input || !label) {
+                 var li = input ? input.closest('.option-item') : null;
+
+                if (!input || !label || !li) {
                     continue;
                 }
+
                 input.type = isMultiple ? 'checkbox' : 'radio';
                 input.name = 'answer';
+
                 if (options[i]) {
+                    li.style.display = '';
                     input.value = options[i].id || '';
+                    label.textContent = options[i].text || '';
                     input.disabled = false;
                     input.style.opacity = '1';
                     label.style.opacity = '1';
                     input.style.cursor = 'pointer';
                     label.style.cursor = 'pointer';
                 } else {
+                    li.style.display = 'none';
                     input.value = '';
-                    label.textContent = '—';
+                    label.textContent = '';
                     input.disabled = true;
                 }
                 input.checked = false;
