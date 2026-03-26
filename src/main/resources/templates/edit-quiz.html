@@ -456,6 +456,11 @@
                                        th:checked="${quiz.defaultQuestionType != null and quiz.defaultQuestionType.name() == 'MULTIPLE_CHOICE'}">
                                 <label for="editDefMulti">Множественный выбор</label>
                             </div>
+                            <div class="radio-option">
+                                <input type="radio" id="edit100to1" name="defaultQuestionType" value="HUNDRED_TO_ONE"
+                                       th:checked="${quiz.defaultQuestionType != null and quiz.defaultQuestionType.name() == 'HUNDRED_TO_ONE'}">
+                                <label for="editDefMulti">Множественный выбор</label>
+                            </div>
                         </div>
                     </div>
                 </div>
