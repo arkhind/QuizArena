@@ -34,7 +34,8 @@ CREATE TABLE answer_options(
     question_id BIGINT NOT NULL,
     text TEXT NOT NULL,
     is_correct BOOLEAN NOT NULL,
-    is_na_option BOOLEAN NOT NULL,
+  is_na_option BOOLEAN NOT NULL,
+  nominal DECIMAL(10,2),
     CONSTRAINT answer_options_question_id_fk FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
