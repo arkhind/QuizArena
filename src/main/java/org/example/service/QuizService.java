@@ -100,7 +100,10 @@ public class QuizService {
 
         quiz = quizRepository.save(quiz);
 
-        if (request.prompt() != null && !request.prompt().trim().isEmpty()) {
+        // Если пользователь выбрал файл, генерация пойдёт в regenerateWithMaterial после POST .../materials
+        boolean hasFile = Boolean.TRUE.equals(request.hasMaterial());
+
+        if (request.prompt() != null && !request.prompt().trim().isEmpty() && !hasFile) {
             try {
                 // Всегда генерируем ровно 200 вопросов в базу данных для квиза
                 // questionNumber - это количество вопросов для сессии, а не для генерации
@@ -212,7 +215,9 @@ public class QuizService {
 
         List<QuizMaterial> materials = new ArrayList<>();
         if (quiz.isHasMaterial() && quiz.getMaterialUrl() != null) {
-            // TODO: Загрузка материалов
+            String url = quiz.getMaterialUrl();
+            String name = url.substring(url.lastIndexOf('/') + 1);
+            materials = List.of(new QuizMaterial(name, url, null, null));
         }
 
         Integer timePerQuestionSeconds = quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null;
@@ -438,13 +443,19 @@ public class QuizService {
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
 
+        String prompt = quiz.getPrompt() == null ? "" : quiz.getPrompt().trim();
+        String material = materialText == null ? "" : materialText.trim();
+        // Склеиваем промпт + текст из файла
+        String enrichedPrompt = prompt.isEmpty() ? material : (material.isEmpty() ? prompt : prompt + " " + material);
+
+        if (enrichedPrompt.isBlank()) {
+            throw new IllegalArgumentException("Нет текста для генерации");
+        }
+
         // Удаляем старые вопросы ,сгенерированные только по промпту
         userAnswerRepository.nullifySelectedAnswerReferences(quizId);
         userAnswerRepository.deleteByQuestionQuizId(quizId);
         questionRepository.deleteByQuizId(quizId);
-
-        // Склеиваем промпт + текст из файла
-        String enrichedPrompt = quiz.getPrompt() + " " + materialText;
 
         QuestionGenerationRequest genRequest = new QuestionGenerationRequest(
                 quizId, enrichedPrompt, null, null, 200,
