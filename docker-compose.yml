@@ -7,10 +7,17 @@ services:
       POSTGRES_USER: quizuser
       POSTGRES_PASSWORD: quizpass
     ports:
-      - "5432:5432"
-    # volumes:
-    #   - postgres_data:/var/lib/postgresql/data
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
-# volumes:
-#   postgres_data:
+  redis:
+    image: redis:7-alpine
+    container_name: quizarena_redis
+    ports:
+      - "6380:6379"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

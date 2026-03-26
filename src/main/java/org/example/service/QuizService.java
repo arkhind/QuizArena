@@ -1,5 +1,6 @@
 package org.example.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.dto.request.generation.QuestionGenerationRequest;
 import org.example.dto.request.quiz.*;
 import org.example.dto.response.quiz.*;
@@ -14,9 +15,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -27,6 +30,10 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class QuizService {
+
+    private static final String QUIZ_CACHE_KEY = "quiz:%d";
+    private static final Duration QUIZ_CACHE_TTL = Duration.ofMinutes(30);
+
     private final QuizRepository quizRepository;
     private final QuestionRepository questionRepository;
     private final AnswerOptionRepository answerOptionRepository;
@@ -38,6 +45,9 @@ public class QuizService {
     private final FileStorageService fileStorageService;
     private final QuestionGenerationService questionGenerationService;
     private final FastApiClient fastApiClient;
+    private final LeaderboardService leaderboardService;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     @Autowired
     public QuizService(QuizRepository quizRepository,
@@ -50,7 +60,10 @@ public class QuizService {
                       org.example.repository.UserRepository userRepository,
                       FileStorageService fileStorageService,
                       QuestionGenerationService questionGenerationService,
-                      FastApiClient fastApiClient) {
+                      FastApiClient fastApiClient,
+                      LeaderboardService leaderboardService,
+                      RedisTemplate<String, String> redisTemplate,
+                      ObjectMapper objectMapper) {
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
@@ -62,6 +75,9 @@ public class QuizService {
         this.fileStorageService = fileStorageService;
         this.questionGenerationService = questionGenerationService;
         this.fastApiClient = fastApiClient;
+        this.leaderboardService = leaderboardService;
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
 
     public QuizResponseDTO createQuiz(CreateQuizRequest request) {
@@ -195,6 +211,21 @@ public class QuizService {
     }
 
     public QuizDetailsDTO getQuiz(Long quizId, Long userId) {
+        // Пробуем получить из кэша (только публичные квизы)
+        String cacheKey = String.format(QUIZ_CACHE_KEY, quizId);
+        try {
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                QuizDetailsDTO dto = objectMapper.readValue(cached, QuizDetailsDTO.class);
+                if (Boolean.TRUE.equals(dto.isPublic())) {
+                    return dto;
+                }
+                // Приватный квиз в кэше — всё равно идём в БД для проверки доступа
+            }
+        } catch (Exception e) {
+            System.err.println("QuizService: ошибка чтения кэша квиза: " + e.getMessage());
+        }
+
         Quiz quiz = quizRepository.findById(quizId)
                 .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
 
@@ -220,8 +251,8 @@ public class QuizService {
         if (timePerQuestionSeconds != null && quiz.getQuestionNumber() != null && quiz.getQuestionNumber() > 0) {
             totalTimeSeconds = timePerQuestionSeconds * quiz.getQuestionNumber();
         }
-        
-        return new QuizDetailsDTO(
+
+        QuizDetailsDTO dto = new QuizDetailsDTO(
                 quiz.getId(),
                 quiz.getName(),
                 quiz.getPrompt(),
@@ -237,6 +268,17 @@ public class QuizService {
                 toLocalDateTime(quiz.getCreatedAt()),
                 resolveDefaultQuestionType(quiz.getDefaultQuestionType())
         );
+
+        // Кэшируем только публичные квизы
+        if (!quiz.isPrivate()) {
+            try {
+                redisTemplate.opsForValue().set(cacheKey, objectMapper.writeValueAsString(dto), QUIZ_CACHE_TTL);
+            } catch (Exception e) {
+                System.err.println("QuizService: ошибка записи кэша квиза: " + e.getMessage());
+            }
+        }
+
+        return dto;
     }
 
     private QuestionType resolveDefaultQuestionType(QuestionType defaultQuestionType) {
@@ -267,6 +309,11 @@ public class QuizService {
             // Игнорируем ошибки при удалении файлов
         }
         quizRepository.deleteById(quizId);
+
+        // Инвалидируем кэш
+        evictQuizCache(quizId);
+        leaderboardService.evict(quizId);
+
         return true;
     }
 
@@ -425,6 +472,9 @@ public class QuizService {
             }
         }
 
+        // Инвалидируем кэш квиза после обновления
+        evictQuizCache(quiz.getId());
+
         return new QuizResponseDTO(
                 quiz.getId(),
                 quiz.getName(),
@@ -453,6 +503,9 @@ public class QuizService {
 
         //Пока что синхронная генерация
         questionGenerationService.generateQuizQuestions(genRequest);
+
+        // Инвалидируем кэш — вопросы изменились
+        evictQuizCache(quizId);
     }
 
     public void updateQuizMaterialUrl(Long quizId, String materialUrl) {
@@ -485,6 +538,13 @@ public class QuizService {
             throw new IllegalArgumentException("Квиз не найден");
         }
 
+        // Пробуем получить из Redis
+        LeaderboardDTO redisLeaderboard = leaderboardService.getLeaderboard(quizId, userId);
+        if (redisLeaderboard != null) {
+            return redisLeaderboard;
+        }
+
+        // Fallback на БД
         Pageable pageable = PageRequest.of(0, 100);
         Page<org.example.model.UserQuizAttempt> attempts = attemptRepository.findBestAttemptsByQuizId(quizId, pageable);
 
@@ -639,5 +699,13 @@ public class QuizService {
         return instant != null
                 ? LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
                 : null;
-            }
+    }
+
+    private void evictQuizCache(Long quizId) {
+        try {
+            redisTemplate.delete(String.format(QUIZ_CACHE_KEY, quizId));
+        } catch (Exception e) {
+            System.err.println("QuizService: ошибка инвалидации кэша квиза: " + e.getMessage());
+        }
+    }
 }
