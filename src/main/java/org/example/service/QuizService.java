@@ -612,7 +612,7 @@ public class QuizService {
     private QuestionDTO toQuestionDTO(org.example.model.Question question) {
         List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(question.getId());
         List<org.example.dto.common.AnswerOption> dtoOptions = options.stream()
-                .map(opt -> new org.example.dto.common.AnswerOption(opt.getId(), opt.getText()))
+                .map(opt -> new org.example.dto.common.AnswerOption(opt.getId(), opt.getText(), opt.getNominal()))
                 .collect(Collectors.toList());
 
         Integer timeLimit = null;

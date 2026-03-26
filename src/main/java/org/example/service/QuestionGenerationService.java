@@ -132,14 +132,29 @@ public class QuestionGenerationService {
                 question.setIsValid(true);
                 question.setIsDuplicate(false);
                 
-                if (question.getType() == null) {
-                    question.setType(request.preferredQuestionType() != null
-                            ? request.preferredQuestionType()
-                            : QuestionType.SINGLE_CHOICE);
-                }
+                // Переопределяем тип вопроса согласно настройке квиза.
+                // Это важно, потому что парсер из FastAPI может заполнять type "по умолчанию".
+                question.setType(request.preferredQuestionType() != null
+                        ? request.preferredQuestionType()
+                        : QuestionType.SINGLE_CHOICE);
                 
                 if (question.getExplanation() == null || question.getExplanation().trim().isEmpty()) {
                     question.setExplanation("Объяснение отсутствует");
+                }
+
+                // Валидация структуры вопроса 100к1
+                if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
+                    long optionCount = pq.answerOptions.stream().filter(o -> o != null && o.getText() != null).count();
+                    long correctCount = pq.answerOptions.stream().filter(o -> o != null && o.isCorrect()).count();
+                    long wrongCount = optionCount - correctCount;
+
+                    if (optionCount != 8 || correctCount != 5 || wrongCount != 3) {
+                        System.err.println(
+                                "QuestionGenerationService: Пропуск вопроса 100к1 (ID ще не задан): " +
+                                        "ожидалось 8 вариантов и 5/3 правильных, получено " +
+                                        optionCount + " вариантов и " + correctCount + "/" + wrongCount + " правильных/неправильных");
+                        continue;
+                    }
                 }
                 
                 if (question.getText() == null || question.getText().trim().isEmpty()) {
@@ -274,7 +289,7 @@ public class QuestionGenerationService {
                 .map(q -> {
                     List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(q.getId());
                     List<org.example.dto.common.AnswerOption> dtoOptions = options.stream()
-                            .map(opt -> new org.example.dto.common.AnswerOption(opt.getId(), opt.getText()))
+                            .map(opt -> new org.example.dto.common.AnswerOption(opt.getId(), opt.getText(), opt.getNominal()))
                             .collect(java.util.stream.Collectors.toList());
 
                     return new org.example.dto.response.quiz.QuestionDTO(

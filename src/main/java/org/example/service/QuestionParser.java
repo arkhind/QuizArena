@@ -171,8 +171,19 @@ public class QuestionParser {
                 }
                 
                 AnswerOption option = new AnswerOption();
+                // Пытаемся угадать корректность по маркерам в тексте варианта.
+                // Это нужно для форматов FastAPI, где каждый вариант помечен как "правильный/неправильный".
+                String optionLower = optionText.toLowerCase();
+                boolean hasIncorrectMarker = optionLower.contains("неправильн")
+                        || optionLower.contains("неверн")
+                        || optionLower.contains("не верн");
+                boolean hasCorrectMarker = !hasIncorrectMarker
+                        && (optionLower.contains("правильн")
+                        || optionLower.contains("верн")
+                        || optionLower.contains("верный"));
+
                 option.setText(optionText);
-                option.setCorrect(false);
+                option.setCorrect(hasCorrectMarker);
                 option.setNaOption(false);
                 
                 optionsByNumber.put(optionNumber, option);
@@ -184,24 +195,61 @@ public class QuestionParser {
                 continue;
             }
             
-            // Извлекаем правильный ответ - пробуем несколько паттернов
-            int correctNum = -1;
-            
-            // Паттерн 1: "*правильный ответ*" на отдельной строке, число на следующей
-            Pattern correctPattern = Pattern.compile("(?i)\\*правильный ответ\\*\\s*\\n\\s*(\\d+)", Pattern.DOTALL | Pattern.MULTILINE);
-            Matcher correctMatcher = correctPattern.matcher(block);
-            if (correctMatcher.find()) {
-                try {
-                    correctNum = Integer.parseInt(correctMatcher.group(1).trim());
-                } catch (NumberFormatException e) {
-                    // Игнорируем
+            // Извлекаем правильные ответы (для 100к1 их несколько).
+            // Варианты:
+            // - FastAPI пишет "правильные ответы: 1 2 3 ..."
+            // - Варианты помечены словами "правильный/неправильный" прямо в строке
+            // - Иначе используем старые паттерны на "правильный ответ".
+            List<Integer> correctNums = new ArrayList<>();
+            java.util.Set<Integer> correctNumsSet = new java.util.LinkedHashSet<>();
+
+            String lowerBlock = block.toLowerCase();
+            int startPos = -1;
+            String[] pluralKeywords = new String[]{
+                    "правильные ответы",
+                    "верные ответы",
+                    "правильные варианты",
+                    "верные варианты"
+            };
+            for (String kw : pluralKeywords) {
+                int pos = lowerBlock.indexOf(kw);
+                if (pos >= 0) {
+                    startPos = pos;
+                    break;
                 }
             }
+
+            if (startPos >= 0) {
+                int endPos = block.length();
+                int explPos = lowerBlock.indexOf("объяснение", startPos);
+                if (explPos > startPos) {
+                    endPos = Math.min(endPos, explPos);
+                }
+                int nextQPos = lowerBlock.indexOf("следующий вопрос", startPos);
+                if (nextQPos > startPos) {
+                    endPos = Math.min(endPos, nextQPos);
+                }
+
+                String pluralSection = block.substring(startPos, endPos);
+                Matcher numberMatcher = Pattern.compile("\\d+").matcher(pluralSection);
+                while (numberMatcher.find()) {
+                    try {
+                        correctNumsSet.add(Integer.parseInt(numberMatcher.group()));
+                    } catch (NumberFormatException ignored) {
+                        // ignore
+                    }
+                }
+            }
+
+            correctNums.addAll(correctNumsSet);
+
+            // Если не нашли "правильные ответы", пробуем старые паттерны для единственного ответа.
+            int correctNum = correctNums.isEmpty() ? -1 : -2;
             
-            // Паттерн 2: "*правильный ответ*" и число на той же или следующей строке
-            if (correctNum < 0) {
-                correctPattern = Pattern.compile("(?i)\\*правильный ответ\\*[\\s\\n]+(\\d+)", Pattern.DOTALL | Pattern.MULTILINE);
-                correctMatcher = correctPattern.matcher(block);
+            if (correctNum == -1) {
+                // Паттерн 1: "*правильный ответ*" на отдельной строке, число на следующей
+                Pattern correctPattern = Pattern.compile("(?i)\\*правильный ответ\\*\\s*\\n\\s*(\\d+)", Pattern.DOTALL | Pattern.MULTILINE);
+                Matcher correctMatcher = correctPattern.matcher(block);
                 if (correctMatcher.find()) {
                     try {
                         correctNum = Integer.parseInt(correctMatcher.group(1).trim());
@@ -209,69 +257,109 @@ public class QuestionParser {
                         // Игнорируем
                     }
                 }
-            }
             
-            // Паттерн 3: "правильный ответ" без звездочек
-            if (correctNum < 0) {
-                correctPattern = Pattern.compile("(?i)правильный ответ[\\s\\n]+(\\d+)", Pattern.DOTALL | Pattern.MULTILINE);
-                correctMatcher = correctPattern.matcher(block);
-                if (correctMatcher.find()) {
-                    try {
-                        correctNum = Integer.parseInt(correctMatcher.group(1).trim());
-                    } catch (NumberFormatException e) {
-                        // Игнорируем
-                    }
-                }
-            }
-            
-            // Паттерн 4: Ищем число после "*правильный ответ*" в любом месте (более гибкий)
-            if (correctNum < 0) {
-                int correctAnswerKeywordPos = block.toLowerCase().indexOf("правильный ответ");
-                if (correctAnswerKeywordPos >= 0) {
-                    String afterKeyword = block.substring(correctAnswerKeywordPos);
-                    Pattern numberPattern = Pattern.compile("\\d+");
-                    Matcher numberMatcher = numberPattern.matcher(afterKeyword);
-                    if (numberMatcher.find()) {
+                // Паттерн 2: "*правильный ответ*" и число на той же или следующей строке
+                if (correctNum < 0) {
+                    correctPattern = Pattern.compile("(?i)\\*правильный ответ\\*[\\s\\n]+(\\d+)", Pattern.DOTALL | Pattern.MULTILINE);
+                    correctMatcher = correctPattern.matcher(block);
+                    if (correctMatcher.find()) {
                         try {
-                            correctNum = Integer.parseInt(numberMatcher.group());
+                            correctNum = Integer.parseInt(correctMatcher.group(1).trim());
                         } catch (NumberFormatException e) {
                             // Игнорируем
                         }
                     }
                 }
+            
+                // Паттерн 3: "правильный ответ" без звездочек
+                if (correctNum < 0) {
+                    correctPattern = Pattern.compile("(?i)правильный ответ[\\s\\n]+(\\d+)", Pattern.DOTALL | Pattern.MULTILINE);
+                    correctMatcher = correctPattern.matcher(block);
+                    if (correctMatcher.find()) {
+                        try {
+                            correctNum = Integer.parseInt(correctMatcher.group(1).trim());
+                        } catch (NumberFormatException e) {
+                            // Игнорируем
+                        }
+                    }
+                }
+            
+                // Паттерн 4: Ищем число после "*правильный ответ*" в любом месте (более гибкий)
+                if (correctNum < 0) {
+                    int correctAnswerKeywordPos = block.toLowerCase().indexOf("правильный ответ");
+                    if (correctAnswerKeywordPos >= 0) {
+                        String afterKeyword = block.substring(correctAnswerKeywordPos);
+                        Pattern numberPattern = Pattern.compile("\\d+");
+                        Matcher numberMatcher = numberPattern.matcher(afterKeyword);
+                        if (numberMatcher.find()) {
+                            try {
+                                correctNum = Integer.parseInt(numberMatcher.group());
+                            } catch (NumberFormatException e) {
+                                // Игнорируем
+                            }
+                        }
+                    }
+                }
             }
             
-            // Устанавливаем правильный ответ
-            if (correctNum > 0) {
-                AnswerOption correctOption = optionsByNumber.get(correctNum);
-                if (correctOption != null) {
-                    correctOption.setCorrect(true);
+            // Устанавливаем правильные ответы
+            if (!correctNums.isEmpty()) {
+                // Перезаписываем корректность строго по извлеченному списку.
+                for (AnswerOption opt : pq.answerOptions) {
+                    opt.setCorrect(false);
+                }
+
+                for (Integer num : correctNums) {
+                    if (num == null) continue;
+                    AnswerOption correctOption = optionsByNumber.get(num);
+                    if (correctOption != null) {
+                        correctOption.setCorrect(true);
+                    }
+                }
+
+                // Если почему-то ни один номер не совпал — fallback на "первый вариант"
+                boolean hasAnyCorrect = pq.answerOptions.stream().anyMatch(AnswerOption::isCorrect);
+                if (!hasAnyCorrect && !pq.answerOptions.isEmpty()) {
+                    pq.answerOptions.get(0).setCorrect(true);
+                }
+            } else {
+                // Старый сценарий: один правильный ответ
+                if (correctNum > 0) {
+                    for (AnswerOption opt : pq.answerOptions) {
+                        opt.setCorrect(false);
+                    }
+                    AnswerOption correctOption = optionsByNumber.get(correctNum);
+                    if (correctOption != null) {
+                        correctOption.setCorrect(true);
+                    } else {
+                        System.err.println("QuestionParser: Не найден вариант с номером " + correctNum + " в сохраненных вариантах. Доступные номера: " + optionsByNumber.keySet());
+                        System.err.println("QuestionParser: Фрагмент блока вокруг 'правильный ответ':");
+                        int pos = block.toLowerCase().indexOf("правильный ответ");
+                        if (pos >= 0) {
+                            int start = Math.max(0, pos - 50);
+                            int end = Math.min(block.length(), pos + 100);
+                            System.err.println(block.substring(start, end));
+                        }
+                        if (!pq.answerOptions.isEmpty()) {
+                            pq.answerOptions.get(0).setCorrect(true);
+                        }
+                    }
                 } else {
-                    System.err.println("QuestionParser: Не найден вариант с номером " + correctNum + " в сохраненных вариантах. Доступные номера: " + optionsByNumber.keySet());
+                    System.err.println("QuestionParser: Не найден правильный ответ в блоке " + (blockIndex + 1));
                     System.err.println("QuestionParser: Фрагмент блока вокруг 'правильный ответ':");
                     int pos = block.toLowerCase().indexOf("правильный ответ");
                     if (pos >= 0) {
                         int start = Math.max(0, pos - 50);
                         int end = Math.min(block.length(), pos + 100);
                         System.err.println(block.substring(start, end));
+                    } else {
+                        System.err.println("QuestionParser: Строка 'правильный ответ' не найдена в блоке");
                     }
-                    if (!pq.answerOptions.isEmpty()) {
+                    // Не перетираем возможные корректности, распознанные по маркерам в тексте вариантов.
+                    boolean hasAnyCorrect = pq.answerOptions.stream().anyMatch(AnswerOption::isCorrect);
+                    if (!hasAnyCorrect && !pq.answerOptions.isEmpty()) {
                         pq.answerOptions.get(0).setCorrect(true);
                     }
-                }
-            } else {
-                System.err.println("QuestionParser: Не найден правильный ответ в блоке " + (blockIndex + 1));
-                System.err.println("QuestionParser: Фрагмент блока вокруг 'правильный ответ':");
-                int pos = block.toLowerCase().indexOf("правильный ответ");
-                if (pos >= 0) {
-                    int start = Math.max(0, pos - 50);
-                    int end = Math.min(block.length(), pos + 100);
-                    System.err.println(block.substring(start, end));
-                } else {
-                    System.err.println("QuestionParser: Строка 'правильный ответ' не найдена в блоке");
-                }
-                if (!pq.answerOptions.isEmpty()) {
-                    pq.answerOptions.get(0).setCorrect(true);
                 }
             }
             
