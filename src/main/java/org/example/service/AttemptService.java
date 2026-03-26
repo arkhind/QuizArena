@@ -17,6 +17,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
@@ -45,6 +48,7 @@ public class AttemptService {
     private final UserAnswerRepository userAnswerRepository;
     private final org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository;
     private final org.example.repository.AttemptQuestionRepository attemptQuestionRepository;
+    private final LeaderboardService leaderboardService;
 
     @Autowired
     public AttemptService(
@@ -55,7 +59,8 @@ public class AttemptService {
             AnswerOptionRepository answerOptionRepository,
             UserAnswerRepository userAnswerRepository,
             org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository,
-            org.example.repository.AttemptQuestionRepository attemptQuestionRepository) {
+            org.example.repository.AttemptQuestionRepository attemptQuestionRepository,
+            LeaderboardService leaderboardService) {
         this.attemptRepository = attemptRepository;
         this.quizRepository = quizRepository;
         this.userRepository = userRepository;
@@ -64,6 +69,7 @@ public class AttemptService {
         this.userAnswerRepository = userAnswerRepository;
         this.multiplayerSessionRepository = multiplayerSessionRepository;
         this.attemptQuestionRepository = attemptQuestionRepository;
+        this.leaderboardService = leaderboardService;
     }
 
     /**
@@ -79,6 +85,9 @@ public class AttemptService {
         Map<Long, Boolean> answerResults;
         Instant startTime;
         double score;
+
+        // Для вопроса типа HUNDRED_TO_ONE: questionId -> (answerOptionId -> nominal)
+        Map<Long, Map<Long, BigDecimal>> hundredToOneNominalsByQuestionId;
     }
 
     /**
@@ -157,6 +166,17 @@ public class AttemptService {
             selectQuestionsForAttempt(attempt, quiz, allQuestions);
         }
 
+        // Инициализируем состояние попытки в памяти (используется для HUNDRED_TO_ONE)
+        attemptStates.computeIfAbsent(attempt.getId(), id -> {
+            AttemptState st = new AttemptState();
+            st.attemptId = id;
+            st.userId = request.userId();
+            st.quizId = quiz.getId();
+            st.hundredToOneNominalsByQuestionId = new java.util.concurrent.ConcurrentHashMap<>();
+            st.score = 0.0;
+            return st;
+        });
+
         // Получаем текущий вопрос (первый неотвеченный)
         QuestionDTO currentQuestion = getNextQuestion(attempt.getId());
         if (currentQuestion == null) {
@@ -226,7 +246,7 @@ public class AttemptService {
             return null; // Все вопросы отвечены
         }
 
-        return toQuestionDTO(nextQuestion);
+        return toQuestionDTO(attemptId, nextQuestion);
     }
 
     /**
@@ -292,6 +312,7 @@ public class AttemptService {
         Boolean isCorrect = null;
         Long correctAnswerId = null;
         int scoreEarned = 0;
+        double scoreEarnedDouble = 0.0;
         org.example.model.AnswerOption selectedOption = null;
 
         // Получаем все правильные варианты для вопроса
@@ -312,16 +333,34 @@ public class AttemptService {
                 int C = correctIds.size();
                 double points = C > 0 ? 2.0 * Math.max(A - B, 0) / C : 0;
                 scoreEarned = (int) Math.round(points);
+                scoreEarnedDouble = points;
                 isCorrect = points > 0;
+            } else if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
+                java.util.Map<Long, BigDecimal> nominals = ensureHundredToOneNominals(request.attemptId(), question);
+                BigDecimal sum = BigDecimal.ZERO;
+                for (Long selectedId : selectedIds) {
+                    if (selectedId == null) continue;
+                    BigDecimal nominal = nominals.get(selectedId);
+                    if (nominal != null) {
+                        sum = sum.add(nominal);
+                    }
+                }
+                scoreEarned = sum.setScale(0, RoundingMode.HALF_UP).intValue();
+                scoreEarnedDouble = sum.doubleValue();
+                // В текущей логике isCorrect используется только для UI-подсветки.
+                // Для 100к1 считаем "корректно" если итоговый балл положительный.
+                isCorrect = scoreEarned > 0;
             } else {
                 // SINGLE_CHOICE и прочие
                 isCorrect = selectedIds.size() == 1 && correctIds.contains(selectedIds.get(0));
                 scoreEarned = isCorrect ? calculateScore(question, attempt) : 0;
+                scoreEarnedDouble = (double) scoreEarned;
             }
         } else {
             // ТАЙМАУТ: ничего не выбрано
             isCorrect = false;
             scoreEarned = 0;
+            scoreEarnedDouble = 0.0;
         }
 
         // 6. Сохраняем ответ пользователя
@@ -334,10 +373,16 @@ public class AttemptService {
         userAnswer.setTimeSpentSeconds(null);
         userAnswerRepository.save(userAnswer);
 
-        // 7. Обновляем счет попытки
-        Long currentScore = attempt.getScore() != null ? attempt.getScore() : 0L;
-        attempt.setScore(currentScore + scoreEarned);
-        attemptRepository.save(attempt);
+        // 7. Накопление счета в памяти (для 100к1 нужны дробные номиналы).
+        AttemptState st = attemptStates.get(request.attemptId());
+        if (st != null) {
+            st.score += scoreEarnedDouble;
+        } else {
+            // fallback на старую логику, если state не был инициализирован
+            Long currentScore = attempt.getScore() != null ? attempt.getScore() : 0L;
+            attempt.setScore(currentScore + scoreEarned);
+            attemptRepository.save(attempt);
+        }
 
         // 8. Получаем следующий вопрос
         QuestionDTO nextQuestion = getNextQuestion(request.attemptId());
@@ -396,7 +441,17 @@ public class AttemptService {
         List<AttemptQuestion> attemptQuestions = attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attemptId);
         int totalQuestions = attemptQuestions.size();
         int correctAnswers = (int) userAnswerRepository.countByAttemptIdAndIsCorrectTrue(attemptId);
-        int finalScore = attempt.getScore() != null ? attempt.getScore().intValue() : 0;
+        // Для HUNDRED_TO_ONE финальный счёт должен считаться из накопленного double в AttemptState.
+        // Для остальных типов допускаем fallback на attempt.getScore().
+        AttemptState st = attemptStates.get(attemptId);
+        double rawScore = st != null
+                ? st.score
+                : (attempt.getScore() != null ? attempt.getScore().doubleValue() : 0.0);
+        long finalScoreLong = Math.round(rawScore);
+
+        attempt.setScore(finalScoreLong);
+        attempt = attemptRepository.save(attempt);
+        int finalScore = (int) finalScoreLong;
 
         // 5. Вычисляем время прохождения
         long timeSpent = 0;
@@ -404,7 +459,16 @@ public class AttemptService {
             timeSpent = java.time.Duration.between(attempt.getStartTime(), attempt.getFinishTime()).getSeconds();
         }
 
-        // 6. Вычисляем позицию в рейтинге (по лучшим попыткам каждого пользователя)
+        // 6. Обновляем лидерборд в Redis
+        leaderboardService.updateLeaderboard(
+                attempt.getQuiz().getId(),
+                attempt.getUser().getId(),
+                attempt.getUser().getLogin(),
+                finalScore,
+                timeSpent
+        );
+
+        // 7. Вычисляем позицию в рейтинге (по лучшим попыткам каждого пользователя)
         int position = calculatePosition(attempt.getQuiz().getId(), attempt.getUser().getId(), finalScore, timeSpent);
 
         return new QuizResultDTO(
@@ -462,12 +526,17 @@ public class AttemptService {
         return validQuestions.get(0);
     }
 
-    private QuestionDTO toQuestionDTO(Question question) {
+    private QuestionDTO toQuestionDTO(Long attemptId, Question question) {
         if (question == null) {
             throw new IllegalArgumentException("Question is null");
         }
         if (question.getText() == null || question.getText().trim().isEmpty()) {
             System.err.println("AttemptService: текст вопроса пустой для ID " + question.getId());
+        }
+
+        java.util.Map<Long, BigDecimal> hundredToOneNominalsByOptionId = null;
+        if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
+            hundredToOneNominalsByOptionId = ensureHundredToOneNominals(attemptId, question);
         }
             
         List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(question.getId());
@@ -487,7 +556,13 @@ public class AttemptService {
                 System.err.println("AttemptService: текст варианта ответа пустой для ID " + opt.getId() + ", пропускаем");
                 continue;
             }
-            dtoOptions.add(new AnswerOption(opt.getId(), optionText));
+            BigDecimal nominal = null;
+            if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
+                nominal = hundredToOneNominalsByOptionId != null ? hundredToOneNominalsByOptionId.get(opt.getId()) : null;
+            } else {
+                nominal = opt.getNominal();
+            }
+            dtoOptions.add(new AnswerOption(opt.getId(), optionText, nominal));
         }
             
         if (dtoOptions.isEmpty()) {
@@ -513,6 +588,88 @@ public class AttemptService {
                 0,
                 quiz != null ? toLocalDateTime(quiz.getCreatedAt()) : null
         );
+    }
+
+    private AttemptState getOrCreateAttemptState(Long attemptId) {
+        AttemptState st = attemptStates.get(attemptId);
+        if (st == null) {
+            UserQuizAttempt attempt = attemptRepository.findById(attemptId)
+                    .orElseThrow(() -> new IllegalArgumentException("Попытка не найдена"));
+
+            st = new AttemptState();
+            st.attemptId = attemptId;
+            st.userId = attempt.getUser() != null ? attempt.getUser().getId() : null;
+            st.quizId = attempt.getQuiz() != null ? attempt.getQuiz().getId() : null;
+            st.hundredToOneNominalsByQuestionId = new ConcurrentHashMap<>();
+            attemptStates.put(attemptId, st);
+        }
+
+        if (st.hundredToOneNominalsByQuestionId == null) {
+            st.hundredToOneNominalsByQuestionId = new ConcurrentHashMap<>();
+        }
+        return st;
+    }
+
+    /**
+     * Назначает (рандомно, но стабильно для одной попытки) номиналы вариантам ответа для вопроса HUNDRED_TO_ONE.
+     */
+    private java.util.Map<Long, BigDecimal> ensureHundredToOneNominals(Long attemptId, Question question) {
+        AttemptState st = getOrCreateAttemptState(attemptId);
+
+        java.util.Map<Long, BigDecimal> existing = st.hundredToOneNominalsByQuestionId.get(question.getId());
+        if (existing != null) {
+            return existing;
+        }
+
+        List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(question.getId());
+        if (options == null || options.isEmpty()) {
+            throw new IllegalStateException("У вопроса ID " + question.getId() + " нет вариантов ответов");
+        }
+
+        java.util.List<Long> correctIds = options.stream()
+                .filter(org.example.model.AnswerOption::isCorrect)
+                .map(org.example.model.AnswerOption::getId)
+                .toList();
+        java.util.List<Long> incorrectIds = options.stream()
+                .filter(o -> !o.isCorrect())
+                .map(org.example.model.AnswerOption::getId)
+                .toList();
+
+        java.util.List<BigDecimal> correctPool = new java.util.ArrayList<>(
+                java.util.List.of(
+                        new BigDecimal("1"),
+                        new BigDecimal("1.5"),
+                        new BigDecimal("2"),
+                        new BigDecimal("2.5"),
+                        new BigDecimal("3")
+                )
+        );
+        java.util.List<BigDecimal> incorrectPool = new java.util.ArrayList<>(
+                java.util.List.of(
+                        new BigDecimal("0"),
+                        new BigDecimal("-1"),
+                        new BigDecimal("-2")
+                )
+        );
+
+        long seed = attemptId * 1000003L + (question.getId() != null ? question.getId() : 0L);
+        Random rnd = new Random(seed);
+        Collections.shuffle(correctPool, rnd);
+        Collections.shuffle(incorrectPool, rnd);
+
+        java.util.Map<Long, BigDecimal> mapping = new java.util.HashMap<>();
+
+        for (int i = 0; i < correctIds.size(); i++) {
+            BigDecimal nominal = correctPool.get(i % correctPool.size());
+            mapping.put(correctIds.get(i), nominal);
+        }
+        for (int i = 0; i < incorrectIds.size(); i++) {
+            BigDecimal nominal = incorrectPool.get(i % incorrectPool.size());
+            mapping.put(incorrectIds.get(i), nominal);
+        }
+
+        st.hundredToOneNominalsByQuestionId.put(question.getId(), mapping);
+        return mapping;
     }
 
     private Integer calculateScore(Question question, UserQuizAttempt attempt) {
