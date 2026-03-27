@@ -1,25 +1,32 @@
 package org.example.service;
 
 import org.example.dto.request.generation.QuestionGenerationRequest;
+import org.example.dto.kafka.QuizGenerationRequestMessage;
+import org.example.kafka.KafkaQuizGenerationProperties;
 import org.example.dto.response.generation.QuestionGenerationResponse;
 import org.example.model.*;
 import org.example.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
-@Transactional
 public class QuestionGenerationService {
+    private static final int MAX_GENERATION_ATTEMPTS = 3;
     private final GenerationSetRepository generationSetRepository;
     private final QuizRepository quizRepository;
     private final QuestionRepository questionRepository;
     private final AnswerOptionRepository answerOptionRepository;
     private final FastApiClient fastApiClient;
+    private final KafkaTemplate<String, QuizGenerationRequestMessage> requestKafkaTemplate;
+    private final String requestTopic;
+    private final QuizCacheEvictService quizCacheEvictService;
 
     @Autowired
     public QuestionGenerationService(
@@ -27,15 +34,28 @@ public class QuestionGenerationService {
             QuizRepository quizRepository,
             QuestionRepository questionRepository,
             AnswerOptionRepository answerOptionRepository,
-            FastApiClient fastApiClient) {
+            FastApiClient fastApiClient,
+            KafkaTemplate<String, QuizGenerationRequestMessage> quizGenerationRequestKafkaTemplate,
+            KafkaQuizGenerationProperties kafkaQuizGenerationProperties,
+            QuizCacheEvictService quizCacheEvictService) {
         this.generationSetRepository = generationSetRepository;
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
         this.fastApiClient = fastApiClient;
+        this.requestKafkaTemplate = quizGenerationRequestKafkaTemplate;
+        this.requestTopic = kafkaQuizGenerationProperties.getRequestTopic();
+        this.quizCacheEvictService = quizCacheEvictService;
     }
 
-    public QuestionGenerationResponse generateQuizQuestions(QuestionGenerationRequest request) {
+    /**
+     * Producer-side: создаёт GenerationSet, отправляет request в Kafka и возвращает questionSetId
+     */
+    public QuestionGenerationResponse generateQuizQuestionsKafka(QuestionGenerationRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is null");
+        }
+
         Quiz quiz = quizRepository.findById(request.quizId())
                 .orElseThrow(() -> new IllegalArgumentException("Квиз не найден: " + request.quizId()));
 
@@ -50,99 +70,180 @@ public class QuestionGenerationService {
         questionSet.setFinalCount(0);
         questionSet = generationSetRepository.save(questionSet);
 
-        int questionCount = request.questionCount() != null ? request.questionCount() : 10;
-        String prompt = request.prompt() != null ? request.prompt() : "Общая тема";
-        List<Question> generatedQuestions = new ArrayList<>();
+        String correlationId = UUID.randomUUID().toString();
+        String preferredQuestionType = request.preferredQuestionType() != null
+                ? request.preferredQuestionType().name()
+                : null;
+
+        QuizGenerationRequestMessage kafkaRequest = new QuizGenerationRequestMessage(
+                correlationId,
+                questionSet.getId(),
+                request.quizId(),
+                request.prompt(),
+                request.questionCount(),
+                preferredQuestionType
+        );
 
         try {
-            System.out.println("QuestionGenerationService: Начинаем генерацию вопросов для промпта: " + prompt.substring(0, Math.min(50, prompt.length())));
-            String apiResponse = fastApiClient.getQuestionsByPrompt(prompt, questionCount);
-            System.out.println("QuestionGenerationService: Получен ответ от ML сервера, длина: " + (apiResponse != null ? apiResponse.length() : 0));
-            
-            // Проверяем ответ на наличие признаков ошибки этичности ДО парсинга
-            if (apiResponse == null || apiResponse.trim().isEmpty()) {
-                System.err.println("QuestionGenerationService: Пустой ответ от ML сервера");
-                // Если ответ пустой, это может быть признаком ошибки этичности
-                // Проверяем этичность промпта еще раз
-                try {
-                    System.out.println("QuestionGenerationService: Повторная проверка этичности из-за пустого ответа");
-                    boolean isUnethical = fastApiClient.checkPromptEthics(prompt);
-                    System.out.println("QuestionGenerationService: Результат повторной проверки этичности: " + isUnethical);
-                    if (isUnethical) {
-                        throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
+            requestKafkaTemplate.send(requestTopic, kafkaRequest.correlationId(), kafkaRequest);
+        } catch (Exception e) {
+            questionSet.setStatus("FAILED");
+            generationSetRepository.save(questionSet);
+            throw new RuntimeException("Kafka send failed", e);
+        }
+
+        return new QuestionGenerationResponse(
+                questionSet.getId(),
+                questionSet.getStatus(),
+                0,
+                0,
+                0,
+                0
+        );
+    }
+
+    /**
+     * Worker-side: вызывается consumer'ом по Kafka request и выполняет генерацию через ML
+     */
+    public void processKafkaQuizGenerationRequest(QuizGenerationRequestMessage kafkaRequest) {
+        if (kafkaRequest == null) {
+            throw new IllegalArgumentException("kafkaRequest is null");
+        }
+        GenerationSet existingSet = null;
+        try {
+            if (kafkaRequest.questionSetId() == null) {
+                throw new IllegalArgumentException("questionSetId is required");
+            }
+
+            existingSet = generationSetRepository.findById(kafkaRequest.questionSetId())
+                    .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
+
+            // Идемпотентность: если сообщение доставлено повторно после успешной обработки,
+            // не запускаем генерацию по второму кругу.
+            if ("READY".equals(existingSet.getStatus())) {
+                return;
+            }
+
+            // Проверка этичности запускается один раз перед генерацией в worker'е.
+            // Это убирает блокировку HTTP createQuiz, когда ML-сервис занят.
+            if (kafkaRequest.prompt() != null && !kafkaRequest.prompt().trim().isEmpty()) {
+                boolean isUnethical = fastApiClient.checkPromptEthics(kafkaRequest.prompt());
+                if (isUnethical) {
+                    existingSet.setStatus("FAILED");
+                    generationSetRepository.save(existingSet);
+                    if (existingSet.getQuiz() != null && existingSet.getQuiz().getId() != null) {
+                        quizCacheEvictService.evictQuizCache(existingSet.getQuiz().getId());
                     }
-                } catch (UnethicalPromptException e) {
-                    throw e;
-                } catch (Exception e) {
-                    System.err.println("QuestionGenerationService: Ошибка при повторной проверке этичности: " + e.getMessage());
-                    // Игнорируем ошибку проверки этичности, пробрасываем исходную ошибку
+                    return;
                 }
-                throw new RuntimeException("Пустой ответ от ML сервера");
             }
-            
-            // Проверяем ответ на наличие признаков ошибки этичности в тексте
-            String lowerResponse = apiResponse.toLowerCase();
-            if (lowerResponse.contains("unethical_prompt") || lowerResponse.contains("неэтичн") || 
-                lowerResponse.contains("неэтичными") || lowerResponse.contains("cringe") ||
-                lowerResponse.contains("не могу") || lowerResponse.contains("не могу сгенерировать")) {
-                System.err.println("QuestionGenerationService: Обнаружены признаки ошибки этичности в ответе ML сервера");
-                throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
-            }
-            
-            List<QuestionParser.ParsedQuestion> parsedQuestions = QuestionParser.parse(apiResponse);
-            
-            if (parsedQuestions.isEmpty()) {
-                System.err.println("QuestionGenerationService: Парсер не нашел вопросов в ответе FastAPI");
-                System.err.println("QuestionGenerationService: Ответ ML сервера (первые 500 символов): " + apiResponse.substring(0, Math.min(500, apiResponse.length())));
-                
-                // Если парсер не нашел вопросов, это может быть признаком ошибки этичности
-                // Проверяем этичность промпта еще раз
+
+            QuestionType preferred = null;
+            if (kafkaRequest.preferredQuestionType() != null && !kafkaRequest.preferredQuestionType().isBlank()) {
                 try {
-                    System.out.println("QuestionGenerationService: Повторная проверка этичности из-за отсутствия вопросов в парсере");
-                    boolean isUnethical = fastApiClient.checkPromptEthics(prompt);
-                    System.out.println("QuestionGenerationService: Результат повторной проверки этичности: " + isUnethical);
-                    if (isUnethical) {
-                        throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
-                    }
-                } catch (UnethicalPromptException e) {
-                    throw e;
-                } catch (Exception e) {
-                    System.err.println("QuestionGenerationService: Ошибка при повторной проверке этичности: " + e.getMessage());
-                    // Игнорируем ошибку проверки этичности, пробрасываем исходную ошибку
+                    preferred = QuestionType.valueOf(kafkaRequest.preferredQuestionType().trim().toUpperCase());
+                } catch (Exception ignored) {
+                    preferred = null;
                 }
-                
-                throw new RuntimeException("Парсер не нашел вопросов в ответе FastAPI");
             }
-            
-            // Ограничиваем количество сохраняемых вопросов до запрошенного количества
-            int maxQuestionsToSave = questionCount;
-            
-            for (int i = 0; i < parsedQuestions.size() && generatedQuestions.size() < maxQuestionsToSave; i++) {
+
+            QuestionGenerationRequest internalRequest = new QuestionGenerationRequest(
+                    kafkaRequest.quizId(),
+                    kafkaRequest.prompt(),
+                    null,
+                    null,
+                    kafkaRequest.questionCount(),
+                    preferred
+            );
+
+            generateExistingQuestionSet(kafkaRequest.questionSetId(), internalRequest);
+        } catch (Exception e) {
+            if (existingSet != null && !"READY".equals(existingSet.getStatus())) {
+                existingSet.setStatus("FAILED");
+                generationSetRepository.save(existingSet);
+                if (existingSet.getQuiz() != null && existingSet.getQuiz().getId() != null) {
+                    quizCacheEvictService.evictQuizCache(existingSet.getQuiz().getId());
+                }
+            }
+            throw new RuntimeException("Ошибка обработки Kafka-запроса генерации: " + e.getMessage(), e);
+        }
+    }
+
+    @Transactional
+    public QuestionGenerationResponse generateExistingQuestionSet(Long questionSetId, QuestionGenerationRequest request) {
+        GenerationSet existingSet = generationSetRepository.findById(questionSetId)
+                .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
+
+        Quiz quiz = quizRepository.findById(request.quizId())
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден: " + request.quizId()));
+
+        // синхронизируем set (на случай если prompt пустой/обновился)
+        existingSet.setQuiz(quiz);
+        existingSet.setPrompt(request.prompt());
+        existingSet.setStatus("GENERATING");
+        existingSet.setGeneratedCount(0);
+        existingSet.setValidCount(0);
+        existingSet.setDuplicateCount(0);
+        existingSet.setFinalCount(0);
+        generationSetRepository.save(existingSet);
+
+        return generateQuizQuestionsUsingSet(existingSet, request);
+    }
+
+    private QuestionGenerationResponse generateQuizQuestionsUsingSet(GenerationSet questionSet, QuestionGenerationRequest request) {
+        Quiz quiz = questionSet.getQuiz();
+        int questionCount = request.questionCount() != null ? request.questionCount() : 10;
+        String prompt = request.prompt() != null ? request.prompt() : "Общая тема";
+        Exception lastException = null;
+
+        for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+            List<Question> generatedQuestions = new ArrayList<>();
+            try {
+                if (attempt > 1) {
+                    // Перед новой попыткой очищаем частично сохранённые результаты предыдущей
+                    questionRepository.deleteByGenerationSetId(questionSet.getId());
+                }
+
+                System.out.println("QuestionGenerationService: Начинаем генерацию вопросов, попытка " + attempt +
+                        " для промпта: " + prompt.substring(0, Math.min(50, prompt.length())));
+                String apiResponse = fastApiClient.getQuestionsByPrompt(prompt, questionCount);
+                System.out.println("QuestionGenerationService: Получен ответ от ML сервера, длина: " + (apiResponse != null ? apiResponse.length() : 0));
+
+                if (apiResponse == null || apiResponse.trim().isEmpty()) {
+                    throw new RuntimeException("Пустой ответ от ML сервера");
+                }
+
+                int parseLimit = Math.max(questionCount * 5, questionCount + 200);
+                List<QuestionParser.ParsedQuestion> parsedQuestions = QuestionParser.parse(apiResponse, parseLimit);
+                if (parsedQuestions.isEmpty()) {
+                    throw new RuntimeException("Парсер не нашел вопросов в ответе FastAPI");
+                }
+
+                int maxQuestionsToSave = questionCount;
+
+                for (int i = 0; i < parsedQuestions.size() && generatedQuestions.size() < maxQuestionsToSave; i++) {
                 QuestionParser.ParsedQuestion pq = parsedQuestions.get(i);
-                
+
                 if (pq.question == null || pq.answerOptions == null || pq.answerOptions.isEmpty()) {
                     System.err.println("QuestionGenerationService: Пропуск вопроса " + (i + 1) + " - некорректные данные");
                     continue;
                 }
-                
+
                 Question question = pq.question;
                 question.setQuiz(quiz);
                 question.setIsGenerated(true);
                 question.setGenerationSetId(questionSet.getId());
                 question.setIsValid(true);
                 question.setIsDuplicate(false);
-                
-                // Переопределяем тип вопроса согласно настройке квиза.
-                // Это важно, потому что парсер из FastAPI может заполнять type "по умолчанию".
+
                 question.setType(request.preferredQuestionType() != null
                         ? request.preferredQuestionType()
                         : QuestionType.SINGLE_CHOICE);
-                
+
                 if (question.getExplanation() == null || question.getExplanation().trim().isEmpty()) {
                     question.setExplanation("Объяснение отсутствует");
                 }
 
-                // Валидация структуры вопроса 100к1
                 if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
                     long optionCount = pq.answerOptions.stream().filter(o -> o != null && o.getText() != null).count();
                     long correctCount = pq.answerOptions.stream().filter(o -> o != null && o.isCorrect()).count();
@@ -156,89 +257,79 @@ public class QuestionGenerationService {
                         continue;
                     }
                 }
-                
+
                 if (question.getText() == null || question.getText().trim().isEmpty()) {
                     System.err.println("QuestionGenerationService: Пропуск вопроса " + (i + 1) + " - текст вопроса пустой");
                     continue;
                 }
-                
+
                 question = questionRepository.save(question);
-                
-                // Логируем сохранение объяснения
-                System.out.println("QuestionGenerationService: Сохранён вопрос ID " + question.getId() + 
-                        " с объяснением: " + (question.getExplanation() != null && !question.getExplanation().isEmpty() 
-                        ? question.getExplanation().substring(0, Math.min(50, question.getExplanation().length())) + "..." 
-                        : "отсутствует"));
-                
+
                 for (AnswerOption option : pq.answerOptions) {
                     option.setQuestion(question);
                     answerOptionRepository.save(option);
                 }
-                
-                generatedQuestions.add(question);
-            }
-            
-            // Проверяем, что сохранилось ровно столько вопросов, сколько запрошено
-            if (generatedQuestions.size() != questionCount) {
-                System.out.println("QuestionGenerationService: ВНИМАНИЕ! Запрошено " + questionCount + 
-                        " вопросов, но сохранено " + generatedQuestions.size() + " вопросов.");
-            }
-            
-            if (generatedQuestions.isEmpty()) {
-                throw new RuntimeException("Не удалось сохранить ни одного вопроса из распарсенных");
-            }
-            
-        } catch (UnethicalPromptException e) {
-            // Если промпт не прошел VibeCheck, не создаем квиз и пробрасываем исключение дальше
-            System.err.println("QuestionGenerationService: Промпт не прошел проверку на этичность: " + e.getMessage());
-            questionSet.setStatus("FAILED");
-            generationSetRepository.save(questionSet);
-            throw e;
-        } catch (Exception e) {
-            // Для всех остальных ошибок также не создаем заглушки
-            System.err.println("QuestionGenerationService: Ошибка при генерации вопросов: " + e.getMessage());
-            e.printStackTrace();
-            
-            // Проверяем, не является ли это ошибкой этичности, обернутой в другое исключение
-            Throwable cause = e.getCause();
-            while (cause != null) {
-                if (cause instanceof UnethicalPromptException) {
-                    questionSet.setStatus("FAILED");
-                    generationSetRepository.save(questionSet);
-                    throw (UnethicalPromptException) cause;
+
+                    generatedQuestions.add(question);
                 }
-                cause = cause.getCause();
-            }
-            
-            // Проверяем сообщение об ошибке на наличие упоминания об этичности
-            String errorMessage = e.getMessage();
-            if (errorMessage != null && (errorMessage.contains("неэтичн") || errorMessage.contains("UNETHICAL_PROMPT") || errorMessage.contains("неэтичными"))) {
-                questionSet.setStatus("FAILED");
+
+                if (generatedQuestions.isEmpty()) {
+                    throw new RuntimeException("Не удалось сохранить ни одного вопроса из распарсенных");
+                }
+
+                questionSet.setGeneratedCount(generatedQuestions.size());
+                questionSet.setValidCount(generatedQuestions.size());
+                questionSet.setFinalCount(generatedQuestions.size());
+                questionSet.setStatus("READY");
                 generationSetRepository.save(questionSet);
-                throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
+                quizCacheEvictService.evictQuizCache(quiz.getId());
+
+                return new QuestionGenerationResponse(
+                        questionSet.getId(),
+                        questionSet.getStatus(),
+                        generatedQuestions.size(),
+                        generatedQuestions.size(),
+                        0,
+                        generatedQuestions.size()
+                );
+            } catch (Exception e) {
+                lastException = e;
+                System.err.println("QuestionGenerationService: Попытка " + attempt + " завершилась ошибкой: " + e.getMessage());
+                if (attempt == MAX_GENERATION_ATTEMPTS) {
+                    break;
+                }
             }
-            
-            questionSet.setStatus("FAILED");
-            generationSetRepository.save(questionSet);
-            throw new RuntimeException("Ошибка при генерации вопросов: " + e.getMessage(), e);
         }
 
-        questionSet.setGeneratedCount(generatedQuestions.size());
-        questionSet.setValidCount(generatedQuestions.size());
-        questionSet.setFinalCount(generatedQuestions.size());
-        questionSet.setStatus("READY");
+        questionSet.setStatus("FAILED");
         generationSetRepository.save(questionSet);
-
-        return new QuestionGenerationResponse(
-                questionSet.getId(),
-                questionSet.getStatus(),
-                generatedQuestions.size(),
-                generatedQuestions.size(),
-                0,
-                generatedQuestions.size()
+        quizCacheEvictService.evictQuizCache(quiz.getId());
+        throw new RuntimeException(
+                "Ошибка при генерации вопросов после " + MAX_GENERATION_ATTEMPTS + " попыток: "
+                        + (lastException != null ? lastException.getMessage() : "unknown"),
+                lastException
         );
     }
 
+    @Transactional
+    public QuestionGenerationResponse generateQuizQuestions(QuestionGenerationRequest request) {
+        Quiz quiz = quizRepository.findById(request.quizId())
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден: " + request.quizId()));
+
+        GenerationSet questionSet = new GenerationSet();
+        questionSet.setQuiz(quiz);
+        questionSet.setPrompt(request.prompt());
+        questionSet.setStatus("GENERATING");
+        questionSet.setCreatedAt(Instant.now());
+        questionSet.setGeneratedCount(0);
+        questionSet.setValidCount(0);
+        questionSet.setDuplicateCount(0);
+        questionSet.setFinalCount(0);
+        questionSet = generationSetRepository.save(questionSet);
+        return generateQuizQuestionsUsingSet(questionSet, request);
+    }
+
+    @Transactional(readOnly = true)
     public org.example.dto.response.generation.ValidationResponse validateGeneratedQuestions(Long questionSetId) {
         GenerationSet questionSet = generationSetRepository.findById(questionSetId)
                 .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
@@ -257,6 +348,7 @@ public class QuestionGenerationService {
         );
   }
 
+    @Transactional(readOnly = true)
     public org.example.dto.response.generation.DeduplicationResponse removeDuplicateQuestions(Long questionSetId) {
         GenerationSet questionSet = generationSetRepository.findById(questionSetId)
                 .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
@@ -275,6 +367,7 @@ public class QuestionGenerationService {
         );
     }
 
+    @Transactional(readOnly = true)
     public org.example.dto.response.generation.GeneratedQuestionsDTO getGeneratedQuestions(Long questionSetId) {
         GenerationSet questionSet = generationSetRepository.findById(questionSetId)
                 .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));

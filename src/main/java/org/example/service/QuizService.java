@@ -17,7 +17,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -30,7 +34,6 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class QuizService {
-
     private static final String QUIZ_CACHE_KEY = "quiz:%d";
     private static final Duration QUIZ_CACHE_TTL = Duration.ofMinutes(30);
 
@@ -48,6 +51,7 @@ public class QuizService {
     private final LeaderboardService leaderboardService;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
+    private final TransactionTemplate requiresNewTx;
 
     @Autowired
     public QuizService(QuizRepository quizRepository,
@@ -63,7 +67,8 @@ public class QuizService {
                       FastApiClient fastApiClient,
                       LeaderboardService leaderboardService,
                       RedisTemplate<String, String> redisTemplate,
-                      ObjectMapper objectMapper) {
+                      ObjectMapper objectMapper,
+                      PlatformTransactionManager transactionManager) {
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
@@ -78,46 +83,55 @@ public class QuizService {
         this.leaderboardService = leaderboardService;
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+
+        TransactionTemplate tt = new TransactionTemplate(transactionManager);
+        tt.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        this.requiresNewTx = tt;
     }
 
+    /**
+     * Важно: генерация идёт через Kafka (другой поток/транзакция),
+     * поэтому квиз должен быть закоммичен ДО отправки сообщения.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public QuizResponseDTO createQuiz(CreateQuizRequest request) {
         User creator = userRepository.findById(request.createdBy())
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден: " + request.createdBy()));
 
-        // Проверяем этичность промпта ДО создания квиза в базе данных
-        if (request.prompt() != null && !request.prompt().trim().isEmpty()) {
-            try {
-                boolean isUnethical = fastApiClient.checkPromptEthics(request.prompt());
-                if (isUnethical) {
-                    throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
-                }
-            } catch (UnethicalPromptException e) {
-                throw e;
-            } catch (Exception e) {
-                System.err.println("QuizService: Ошибка при проверке этичности промпта: " + e.getMessage());
-                // Если проверка этичности не удалась, все равно пробрасываем ошибку, чтобы не создавать квиз
-                throw new RuntimeException("Ошибка при проверке этичности промпта: " + e.getMessage(), e);
-            }
+        // Этичность проверяется в Kafka worker перед фактической генерацией
+
+        record CreateQuizTxResult(Quiz quiz, boolean hasFile) {}
+
+        CreateQuizTxResult txResult = requiresNewTx.execute(status -> {
+            Quiz quiz = new Quiz();
+            quiz.setName(request.name());
+            quiz.setPrompt(request.prompt());
+            quiz.setCreatedBy(creator);
+            quiz.setHasMaterial(request.hasMaterial() != null && request.hasMaterial());
+            quiz.setMaterialUrl(null);
+            quiz.setQuestionNumber(request.questionNumber());
+            quiz.setTimePerQuestion(request.timeLimit() != null ?
+                    java.time.Duration.ofSeconds(request.timeLimit()) : null);
+            quiz.setPrivate(request.isPrivate() != null && request.isPrivate());
+            quiz.setStatic(request.isStatic() != null && request.isStatic());
+            quiz.setCreatedAt(Instant.now());
+            quiz.setDefaultQuestionType(resolveDefaultQuestionType(request.defaultQuestionType()));
+
+            quiz = quizRepository.save(quiz);
+            // save() уже в транзакции REQUIRES_NEW, коммит произойдет после выхода из execute()
+
+            boolean hasFile = Boolean.TRUE.equals(request.hasMaterial());
+            return new CreateQuizTxResult(quiz, hasFile);
+        });
+
+        if (txResult == null || txResult.quiz() == null) {
+            throw new RuntimeException("Не удалось создать квиз");
         }
 
-        Quiz quiz = new Quiz();
-        quiz.setName(request.name());
-        quiz.setPrompt(request.prompt());
-        quiz.setCreatedBy(creator);
-        quiz.setHasMaterial(request.hasMaterial() != null && request.hasMaterial());
-        quiz.setMaterialUrl(null);
-        quiz.setQuestionNumber(request.questionNumber());
-        quiz.setTimePerQuestion(request.timeLimit() != null ? 
-                java.time.Duration.ofSeconds(request.timeLimit()) : null);
-        quiz.setPrivate(request.isPrivate() != null && request.isPrivate());
-        quiz.setStatic(request.isStatic() != null && request.isStatic());
-        quiz.setCreatedAt(Instant.now());
-        quiz.setDefaultQuestionType(resolveDefaultQuestionType(request.defaultQuestionType()));
-
-        quiz = quizRepository.save(quiz);
+        Quiz quiz = txResult.quiz();
 
         // Если пользователь выбрал файл, генерация пойдёт в regenerateWithMaterial после POST .../materials
-        boolean hasFile = Boolean.TRUE.equals(request.hasMaterial());
+        boolean hasFile = txResult.hasFile();
 
         if (request.prompt() != null && !request.prompt().trim().isEmpty() && !hasFile) {
             try {
@@ -125,17 +139,17 @@ public class QuizService {
                 // questionNumber - это количество вопросов для сессии, а не для генерации
                 int questionCountForGeneration = 200;
                 
-                // Удаляем старые вопросы, если они есть (чтобы всегда было ровно 200)
-                long existingQuestionCount = questionRepository.countByQuizId(quiz.getId());
-                if (existingQuestionCount > 0) {
-                    System.out.println("QuizService: Удаляем " + existingQuestionCount + " старых вопросов перед генерацией новых");
-                    // Обнуляем ссылки на answer_options в user_answers
-                    userAnswerRepository.nullifySelectedAnswerReferences(quiz.getId());
-                    // Удаляем ответы пользователей
-                    userAnswerRepository.deleteByQuestionQuizId(quiz.getId());
-                    // Удаляем старые вопросы
-                    questionRepository.deleteByQuizId(quiz.getId());
-                }
+                // На новом квизе вопросов ещё нет, но оставим логику "на всякий случай"
+                requiresNewTx.execute(status -> {
+                    long existingQuestionCount = questionRepository.countByQuizId(quiz.getId());
+                    if (existingQuestionCount > 0) {
+                        System.out.println("QuizService: Удаляем " + existingQuestionCount + " старых вопросов перед генерацией новых");
+                        userAnswerRepository.nullifySelectedAnswerReferences(quiz.getId());
+                        userAnswerRepository.deleteByQuestionQuizId(quiz.getId());
+                        questionRepository.deleteByQuizId(quiz.getId());
+                    }
+                    return null;
+                });
                 
                 org.example.dto.request.generation.QuestionGenerationRequest genRequest =
                     new org.example.dto.request.generation.QuestionGenerationRequest(
@@ -147,27 +161,11 @@ public class QuizService {
                         resolveDefaultQuestionType(quiz.getDefaultQuestionType())
                     );
                 
-                questionGenerationService.generateQuizQuestions(genRequest);
-            } catch (UnethicalPromptException e) {
-                // Пробрасываем исключение для неэтичных промптов, чтобы его можно было обработать в контроллере
-                System.err.println("QuizService: Промпт не прошел проверку на этичность при генерации: " + e.getMessage());
-                // Удаляем созданный квиз, так как он не должен был быть создан
-                quizRepository.deleteById(quiz.getId());
-                throw e;
+                questionGenerationService.generateQuizQuestionsKafka(genRequest);
             } catch (Exception e) {
-                System.err.println("QuizService: Ошибка при генерации вопросов: " + e.getMessage());
+                System.err.println("QuizService: Ошибка при постановке генерации в очередь: " + e.getMessage());
                 e.printStackTrace();
-                // Проверяем, не является ли это ошибкой этичности, обернутой в RuntimeException
-                String errorMessage = e.getMessage();
-                if (errorMessage != null && (errorMessage.contains("неэтичн") || errorMessage.contains("UNETHICAL_PROMPT"))) {
-                    // Удаляем созданный квиз
-                    quizRepository.deleteById(quiz.getId());
-                    throw new UnethicalPromptException("Данные для создания квиза являются неэтичными");
-                }
-                // Удаляем созданный квиз при любой другой ошибке генерации
-                quizRepository.deleteById(quiz.getId());
-                // Пробрасываем исключение, чтобы контроллер мог его обработать
-                throw new RuntimeException("Ошибка при генерации вопросов: " + e.getMessage(), e);
+                throw new RuntimeException("Ошибка при постановке генерации в очередь: " + e.getMessage(), e);
             }
         }
 
@@ -405,7 +403,7 @@ public class QuizService {
                                 questionCountForGeneration, // Всегда генерируем 200 вопросов
                                 resolveDefaultQuestionType(quiz.getDefaultQuestionType())
                         );
-                questionGenerationService.generateQuizQuestions(genRequest);
+                questionGenerationService.generateQuizQuestionsKafka(genRequest);
             } catch (UnethicalPromptException e) {
                 // Пробрасываем исключение для неэтичных промптов
                 System.err.println("QuizService: Промпт не прошел проверку на этичность при обновлении: " + e.getMessage());
@@ -457,7 +455,7 @@ public class QuizService {
                                         questionsToGenerate, // Генерируем недостающие вопросы
                                         resolveDefaultQuestionType(quiz.getDefaultQuestionType())
                                 );
-                        questionGenerationService.generateQuizQuestions(genRequest);
+                        questionGenerationService.generateQuizQuestionsKafka(genRequest);
                     }
                 } catch (UnethicalPromptException e) {
                     // Пробрасываем исключение для неэтичных промптов
@@ -513,7 +511,7 @@ public class QuizService {
         );
 
         //Пока что синхронная генерация
-        questionGenerationService.generateQuizQuestions(genRequest);
+        questionGenerationService.generateQuizQuestionsKafka(genRequest);
 
         // Инвалидируем кэш — вопросы изменились
         evictQuizCache(quizId);

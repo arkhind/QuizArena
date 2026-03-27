@@ -42,3 +42,5 @@ build/
 ### Python ###
 python/.venv/
 python/__pycache__/
+
+uploads/
