@@ -22,6 +22,10 @@ public class QuestionParser {
     }
 
     public static List<ParsedQuestion> parse(String data) {
+        return parse(data, Integer.MAX_VALUE);
+    }
+
+    public static List<ParsedQuestion> parse(String data, int maxBlocksToProcess) {
         List<ParsedQuestion> result = new ArrayList<>();
         
         if (data == null || data.trim().isEmpty()) {
@@ -90,9 +94,10 @@ public class QuestionParser {
             }
         }
         
-        System.out.println("QuestionParser: Начинаем обработку " + questionBlocks.length + " блоков вопросов");
+        int limit = maxBlocksToProcess > 0 ? Math.min(questionBlocks.length, maxBlocksToProcess) : questionBlocks.length;
+        System.out.println("QuestionParser: Начинаем обработку " + limit + " блоков вопросов из " + questionBlocks.length);
         
-        for (int blockIndex = 0; blockIndex < questionBlocks.length; blockIndex++) {
+        for (int blockIndex = 0; blockIndex < limit; blockIndex++) {
             String block = questionBlocks[blockIndex].trim();
             if (block.isEmpty()) continue;
             
@@ -165,8 +170,7 @@ public class QuestionParser {
                 
                 if (isPlaceholder) continue;
                 
-                if (optionText.startsWith("=") || 
-                    (optionText.length() > 10 && (optionText.startsWith("При") || optionText.startsWith("Сумма") || optionText.startsWith("Сложение")))) {
+                if (optionText.startsWith("=")) {
                     continue;
                 }
                 
