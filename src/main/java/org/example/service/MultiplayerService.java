@@ -198,6 +198,12 @@ public class MultiplayerService {
             System.out.println("MultiplayerService.joinMultiplayerSession: пользователь userId=" + user.getId() + " уже присоединен к sessionId=" + session.getSessionId());
             return true; // Уже участник, возвращаем true
         }
+
+        int currentSize = attemptRepository.findBySessionId(session.getSessionId()).size();
+        if (currentSize >= 10) {
+            throw new IllegalStateException(
+                    "Достигнут лимит участников (" + 10 + " человек в сессии)");
+        }
         
         System.out.println("MultiplayerService.joinMultiplayerSession: создаем новую попытку для userId=" + user.getId() + ", sessionId=" + session.getSessionId());
 
