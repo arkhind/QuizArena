@@ -88,6 +88,11 @@ public class AttemptService {
 
         // Для вопроса типа HUNDRED_TO_ONE: questionId -> (answerOptionId -> nominal)
         Map<Long, Map<Long, BigDecimal>> hundredToOneNominalsByQuestionId;
+
+        // «Кот в мешке»: индекс вопроса в попытке (0-based), null если не используется
+        Integer catQuestionIndex;
+        // Ставка на текущий вопрос «Кот в мешке», null если ставка ещё не сделана или вопрос не «Кот»
+        Integer stakeForCurrentQuestion;
     }
 
     /**
@@ -166,16 +171,23 @@ public class AttemptService {
             selectQuestionsForAttempt(attempt, quiz, allQuestions);
         }
 
-        // Инициализируем состояние попытки в памяти (используется для HUNDRED_TO_ONE)
-        attemptStates.computeIfAbsent(attempt.getId(), id -> {
+        // Инициализируем состояние попытки в памяти (используется для HUNDRED_TO_ONE и «Кот в мешке»)
+        AttemptState existingState = attemptStates.get(attempt.getId());
+        if (existingState == null) {
             AttemptState st = new AttemptState();
-            st.attemptId = id;
+            st.attemptId = attempt.getId();
             st.userId = request.userId();
             st.quizId = quiz.getId();
             st.hundredToOneNominalsByQuestionId = new java.util.concurrent.ConcurrentHashMap<>();
             st.score = 0.0;
-            return st;
-        });
+            st.catQuestionIndex = request.catQuestionIndex();
+            st.stakeForCurrentQuestion = null;
+            attemptStates.put(attempt.getId(), st);
+        } else {
+            if (request.catQuestionIndex() != null) {
+                existingState.catQuestionIndex = request.catQuestionIndex();
+            }
+        }
 
         // Получаем текущий вопрос (первый неотвеченный)
         QuestionDTO currentQuestion = getNextQuestion(attempt.getId());
@@ -235,15 +247,42 @@ public class AttemptService {
                 .filter(id -> id != null)
                 .collect(Collectors.toList());
 
-        // 4. Находим первый неотвеченный вопрос из выбранных для попытки
-        Question nextQuestion = attemptQuestions.stream()
-                .map(AttemptQuestion::getQuestion)
-                .filter(q -> q != null && !answeredQuestionIds.contains(q.getId()))
-                .findFirst()
-                .orElse(null);
+        // 4. Находим первый неотвеченный вопрос и его индекс в попытке
+        Question nextQuestion = null;
+        int nextQuestionIndex = -1;
+        for (int i = 0; i < attemptQuestions.size(); i++) {
+            Question q = attemptQuestions.get(i).getQuestion();
+            if (q != null && !answeredQuestionIds.contains(q.getId())) {
+                nextQuestion = q;
+                nextQuestionIndex = i;
+                break;
+            }
+        }
 
         if (nextQuestion == null) {
             return null; // Все вопросы отвечены
+        }
+
+        // 5. Проверяем, является ли вопрос «Котом в мешке» и нужен ли экран ставки
+        AttemptState st = attemptStates.get(attemptId);
+        if (st != null && st.catQuestionIndex != null
+                && nextQuestionIndex == st.catQuestionIndex
+                && st.stakeForCurrentQuestion == null) {
+            Integer timeLimit = null;
+            Quiz quiz = nextQuestion.getQuiz();
+            if (quiz != null && quiz.getTimePerQuestion() != null) {
+                timeLimit = (int) quiz.getTimePerQuestion().getSeconds();
+            }
+            return new QuestionDTO(
+                    nextQuestion.getId(),
+                    null,
+                    List.of(),
+                    nextQuestion.getType(),
+                    timeLimit,
+                    null, null, null, null, 0,
+                    quiz != null ? toLocalDateTime(quiz.getCreatedAt()) : null,
+                    true
+            );
         }
 
         return toQuestionDTO(attemptId, nextQuestion);
@@ -305,6 +344,15 @@ public class AttemptService {
         // 4. Проверяем, что вопрос еще не отвечен
         if (userAnswerRepository.existsByAttemptIdAndQuestionId(request.attemptId(), questionId)) {
             throw new IllegalStateException("Вопрос уже отвечен");
+        }
+
+        // 4.1. Блокируем ответ на вопрос «Кот в мешке» без ставки
+        AttemptState catCheck = attemptStates.get(request.attemptId());
+        if (catCheck != null && catCheck.catQuestionIndex != null && catCheck.stakeForCurrentQuestion == null) {
+            int qIdx = getQuestionIndexInAttempt(request.attemptId(), questionId);
+            if (qIdx == catCheck.catQuestionIndex) {
+                throw new IllegalStateException("Сначала необходимо сделать ставку (submitStake)");
+            }
         }
 
         // 5. Обрабатываем ответ (может быть null при таймауте)
@@ -377,6 +425,22 @@ public class AttemptService {
         AttemptState st = attemptStates.get(request.attemptId());
         if (st != null) {
             st.score += scoreEarnedDouble;
+
+            // 7.1. «Кот в мешке»: при ответе на вопрос кота применяем ±ставку
+            if (st.catQuestionIndex != null && st.stakeForCurrentQuestion != null) {
+                int qIndex = getQuestionIndexInAttempt(request.attemptId(), questionId);
+                if (qIndex == st.catQuestionIndex) {
+                    int stake = st.stakeForCurrentQuestion;
+                    if (Boolean.TRUE.equals(isCorrect)) {
+                        st.score += stake;
+                        scoreEarned += stake;
+                    } else {
+                        st.score -= stake;
+                        scoreEarned -= stake;
+                    }
+                    st.stakeForCurrentQuestion = null;
+                }
+            }
         } else {
             // fallback на старую логику, если state не был инициализирован
             Long currentScore = attempt.getScore() != null ? attempt.getScore() : 0L;
@@ -500,6 +564,90 @@ public class AttemptService {
         } catch (Exception e) {
             System.err.println("AttemptService: Ошибка при проверке завершения мультиплеер сессии: " + e.getMessage());
         }
+    }
+
+    /**
+     * Устанавливает catQuestionIndex в AttemptState.
+     * Вызывается из MultiplayerService при старте сессии, чтобы у всех участников
+     * был одинаковый индекс «Кота в мешке».
+     */
+    public void setCatQuestionIndex(Long attemptId, Integer catQuestionIndex) {
+        AttemptState st = getOrCreateAttemptState(attemptId);
+        st.catQuestionIndex = catQuestionIndex;
+        st.stakeForCurrentQuestion = null;
+    }
+
+    /**
+     * Возвращает текущий накопленный счёт попытки (из in-memory state или из БД).
+     */
+    public double getCurrentScore(Long attemptId) {
+        AttemptState st = attemptStates.get(attemptId);
+        if (st != null) {
+            return st.score;
+        }
+        UserQuizAttempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new IllegalArgumentException("Попытка не найдена"));
+        return attempt.getScore() != null ? attempt.getScore().doubleValue() : 0.0;
+    }
+
+    /**
+     * Принимает ставку для вопроса «Кот в мешке».
+     * Валидация: stake >= 0, stake <= текущий счёт; при счёте <= 0 допускается только 0.
+     * После принятия ставки повторный вызов getNextQuestion вернёт сам вопрос (без экрана ставки).
+     *
+     * @return QuestionDTO — раскрытый вопрос «Кот в мешке» для немедленной отдачи клиенту
+     */
+    public QuestionDTO submitStake(org.example.dto.request.attempt.SubmitStakeRequest request) {
+        UserQuizAttempt attempt = attemptRepository.findById(request.attemptId())
+                .orElseThrow(() -> new IllegalArgumentException("Попытка не найдена"));
+
+        if (attempt.isCompleted()) {
+            throw new IllegalStateException("Попытка уже завершена");
+        }
+
+        AttemptState st = getOrCreateAttemptState(request.attemptId());
+        if (st.catQuestionIndex == null) {
+            throw new IllegalStateException("В данной попытке нет вопроса «Кот в мешке»");
+        }
+        if (st.stakeForCurrentQuestion != null) {
+            throw new IllegalStateException("Ставка уже сделана");
+        }
+
+        // Проверяем, что игрок действительно находится на вопросе «Кот в мешке»
+        List<AttemptQuestion> aq = attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(request.attemptId());
+        List<Long> answeredIds = userAnswerRepository.findByAttemptId(request.attemptId()).stream()
+                .map(a -> a.getQuestion() != null ? a.getQuestion().getId() : null)
+                .filter(id -> id != null)
+                .collect(java.util.stream.Collectors.toList());
+        int currentIndex = -1;
+        for (int i = 0; i < aq.size(); i++) {
+            Question q = aq.get(i).getQuestion();
+            if (q != null && !answeredIds.contains(q.getId())) {
+                currentIndex = i;
+                break;
+            }
+        }
+        if (currentIndex != st.catQuestionIndex) {
+            throw new IllegalStateException("Ставку можно делать только на вопросе «Кот в мешке»");
+        }
+
+        int stake = request.stake() != null ? request.stake() : 0;
+        double currentScore = getCurrentScore(request.attemptId());
+        int maxStake = (int) Math.floor(currentScore);
+
+        if (stake < 0) {
+            throw new IllegalArgumentException("Ставка не может быть отрицательной");
+        }
+        if (currentScore <= 0 && stake != 0) {
+            throw new IllegalArgumentException("При текущем счёте <= 0 допускается только ставка 0");
+        }
+        if (stake > maxStake) {
+            throw new IllegalArgumentException("Ставка не может превышать текущий счёт (" + maxStake + ")");
+        }
+
+        st.stakeForCurrentQuestion = stake;
+
+        return getNextQuestion(request.attemptId());
     }
 
     // ========== Вспомогательные методы ==========
@@ -670,6 +818,22 @@ public class AttemptService {
 
         st.hundredToOneNominalsByQuestionId.put(question.getId(), mapping);
         return mapping;
+    }
+
+    /**
+     * Определяет 0-based индекс вопроса в порядке попытки.
+     * Возвращает -1, если вопрос не найден.
+     */
+    private int getQuestionIndexInAttempt(Long attemptId, Long questionId) {
+        List<AttemptQuestion> attemptQuestions =
+                attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attemptId);
+        for (int i = 0; i < attemptQuestions.size(); i++) {
+            Question q = attemptQuestions.get(i).getQuestion();
+            if (q != null && q.getId().equals(questionId)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private Integer calculateScore(Question question, UserQuizAttempt attempt) {

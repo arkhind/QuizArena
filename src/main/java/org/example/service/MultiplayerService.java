@@ -20,6 +20,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -41,6 +42,7 @@ public class MultiplayerService {
     private final UserQuizAttemptRepository attemptRepository;
     private final UserAnswerRepository userAnswerRepository;
     private final AttemptQuestionRepository attemptQuestionRepository;
+    private final QuestionRepository questionRepository;
 
     @Autowired
     public MultiplayerService(
@@ -50,7 +52,8 @@ public class MultiplayerService {
             UserRepository userRepository,
             UserQuizAttemptRepository attemptRepository,
             UserAnswerRepository userAnswerRepository,
-            AttemptQuestionRepository attemptQuestionRepository) {
+            AttemptQuestionRepository attemptQuestionRepository,
+            QuestionRepository questionRepository) {
         this.attemptService = attemptService;
         this.sessionRepository = sessionRepository;
         this.quizRepository = quizRepository;
@@ -58,6 +61,7 @@ public class MultiplayerService {
         this.attemptRepository = attemptRepository;
         this.userAnswerRepository = userAnswerRepository;
         this.attemptQuestionRepository = attemptQuestionRepository;
+        this.questionRepository = questionRepository;
     }
 
     /**
@@ -68,6 +72,7 @@ public class MultiplayerService {
         Long quizId;
         List<Long> participantIds;
         Instant startTime;
+        Integer catQuestionIndex;
     }
 
     /**
@@ -279,16 +284,38 @@ public class MultiplayerService {
             throw new IllegalStateException("Недостаточно участников для начала");
         }
 
+        // Определяем количество вопросов в квизе для генерации catQuestionIndex
+        Quiz quiz = session.getQuiz();
+        List<Question> allQuestions = questionRepository.findByQuizId(quiz.getId());
+        int questionCount = quiz.getQuestionNumber() != null && quiz.getQuestionNumber() > 0
+                ? Math.min(quiz.getQuestionNumber(), allQuestions.size())
+                : allQuestions.size();
+
+        // Генерируем catQuestionIndex — случайный индекс из второй половины вопросов
+        Integer catQuestionIndex = null;
+        if (questionCount >= 2) {
+            int secondHalfStart = questionCount / 2;
+            catQuestionIndex = secondHalfStart + new Random().nextInt(questionCount - secondHalfStart);
+        }
+
+        // Сохраняем в SessionState
+        SessionState state = new SessionState();
+        state.sessionId = request.sessionId();
+        state.quizId = quiz.getId();
+        state.catQuestionIndex = catQuestionIndex;
+        state.startTime = Instant.now();
+        sessions.put(request.sessionId(), state);
+
         // Запускаем сессию
         session.setStatus("STARTED");
-        session.setStartedAt(Instant.now());
+        session.setStartedAt(state.startTime);
         sessionRepository.save(session);
 
-        // Обновляем попытки участников (устанавливаем startTime)
-        Instant now = Instant.now();
+        // Обновляем попытки участников (устанавливаем startTime) и передаём catQuestionIndex
         for (UserQuizAttempt attempt : sessionAttempts) {
-            attempt.setStartTime(now);
+            attempt.setStartTime(state.startTime);
             attemptRepository.save(attempt);
+            attemptService.setCatQuestionIndex(attempt.getId(), catQuestionIndex);
         }
 
         return true;
@@ -496,6 +523,38 @@ public class MultiplayerService {
                 "currentQuestionAnswered", currentQuestionAnswered,
                 "currentQuestionId", questionId != null ? questionId : 0L
         );
+    }
+
+    /**
+     * Возвращает текущий лидерборд мульти-сессии по ходу игры.
+     * Для каждого участника берётся текущий счёт из in-memory AttemptState.
+     */
+    public List<PlayerResult> getSessionLiveLeaderboard(String sessionId) {
+        sessionRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Сессия не найдена"));
+
+        List<UserQuizAttempt> attempts = attemptRepository.findBySessionIdWithUser(sessionId);
+
+        List<PlayerResult> entries = new ArrayList<>();
+        for (UserQuizAttempt attempt : attempts) {
+            if (attempt.getUser() == null) continue;
+            double score = attemptService.getCurrentScore(attempt.getId());
+            entries.add(new PlayerResult(
+                    0,
+                    attempt.getUser().getLogin(),
+                    (int) score,
+                    0L
+            ));
+        }
+
+        entries.sort((a, b) -> Integer.compare(b.score(), a.score()));
+
+        List<PlayerResult> ranked = new ArrayList<>();
+        for (int i = 0; i < entries.size(); i++) {
+            PlayerResult e = entries.get(i);
+            ranked.add(new PlayerResult(i + 1, e.username(), e.score(), e.timeSpent()));
+        }
+        return ranked;
     }
 
     // ========== Вспомогательные методы ==========

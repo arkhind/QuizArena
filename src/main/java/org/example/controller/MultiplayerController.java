@@ -124,6 +124,16 @@ public class MultiplayerController {
         }
     }
 
+    @GetMapping("/sessions/{sessionId}/live-leaderboard")
+    public ResponseEntity<?> getLiveLeaderboard(@PathVariable String sessionId) {
+        try {
+            var leaderboard = multiplayerService.getSessionLiveLeaderboard(sessionId);
+            return ResponseEntity.ok(leaderboard);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PostMapping("/sessions/{sessionId}/leave")
     public ResponseEntity<?> leaveSession(@PathVariable String sessionId, @RequestParam Long userId) {
         System.out.println("MultiplayerController.leaveSession: sessionId=" + sessionId + ", userId=" + userId);
