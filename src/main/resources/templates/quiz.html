@@ -236,7 +236,7 @@
                         th:if="${quizzes != null and !quizzes.isEmpty() and (hasQuestions == null or !hasQuestions) and (sessionId == null or isMultiplayerHost == true)}"
                         disabled>Начать квиз</button>
                 <button class="btn btn-primary"
-                        th:if="${quizzes != null and !quizzes.isEmpty() and hasQuestions != null and hasQuestions and quizzes[0].isPublic()}"
+                        th:if="${quizzes != null and !quizzes.isEmpty() and hasQuestions != null and hasQuestions}"
                         style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"
                         th:onclick="'startMultiplayer(' + ${quizzes[0].id} + ')'">Пройти вместе</button>
                 <button class="btn btn-secondary"
