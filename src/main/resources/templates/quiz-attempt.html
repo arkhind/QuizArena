@@ -121,6 +121,143 @@
             color: #333;
         }
 
+        .cat-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            box-sizing: border-box;
+        }
+        .cat-overlay-hidden {
+            display: none !important;
+        }
+        .cat-overlay-backdrop {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .cat-overlay-card {
+            position: relative;
+            z-index: 1;
+            width: min(96vw, 820px);
+            max-height: none;
+            overflow: visible;
+            box-sizing: border-box;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 28px 36px 32px;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
+            color: #111;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .cat-overlay-card h2 {
+            margin: 0 0 12px;
+            font-size: 1.35rem;
+            color: #000;
+        }
+        .cat-overlay-hint {
+            margin: 0 0 20px;
+            color: #111;
+            font-size: 1rem;
+            line-height: 1.45;
+        }
+        .cat-leaderboard h3 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            color: #000;
+        }
+        .cat-leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 28px;
+            font-size: 0.95rem;
+            color: #111;
+        }
+        .cat-leaderboard-table th,
+        .cat-leaderboard-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .cat-leaderboard-table th {
+            color: #000;
+            font-weight: 600;
+            background: #f1f5f9;
+        }
+        .cat-leaderboard-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .cat-bet {
+            margin-top: 4px;
+        }
+        .cat-bet label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #000;
+            font-size: 1rem;
+        }
+        .cat-bet-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 20px;
+            align-items: center;
+        }
+        #catBetInput {
+            flex: 1;
+            min-width: 260px;
+            min-height: 48px;
+            padding: 14px 18px;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            background: #fff;
+            color: #111;
+        }
+        .cat-btn {
+            padding: 14px 24px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .cat-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-weight: 600;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .cat-btn-primary:hover {
+            transform: translateY(-1px);
+        }
+        .cat-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .cat-error {
+            color: #b91c1c;
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+        .cat-muted {
+            color: #111;
+            font-size: 0.95rem;
+        }
+        #questionContentWrapper.cat-question-hidden {
+            visibility: hidden;
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+
         .question-section {
             margin-bottom: 30px;
         }
@@ -312,133 +449,166 @@
                     </div>
                 </div>
 
-                <form id="answerForm" onsubmit="submitAnswer(event)"
-                      th:data-question-type="${currentQuestion != null and currentQuestion.type != null ? currentQuestion.type.name() : 'SINGLE_CHOICE'}">
-                    <input type="hidden" id="attemptIdInput" th:value="${attemptId}">
-                    <input type="hidden" id="quizId" th:value="${quizId}">
-                    <input type="hidden" id="currentQuestionId" th:value="${currentQuestion != null ? currentQuestion.id : ''}">
-                    <div class="question-section">
-                        <div class="question-field">
-                            <div class="question-text" id="questionText" th:text="${currentQuestion != null ? currentQuestion.text : 'Загрузка вопроса...'}">
-                                Текст вопроса
+                <div id="catInBagOverlay" class="cat-overlay cat-overlay-hidden" aria-hidden="true">
+                    <div class="cat-overlay-backdrop"></div>
+                    <div class="cat-overlay-card" role="dialog" aria-labelledby="catInBagTitle">
+                        <h2 id="catInBagTitle">Кот в мешке</h2>
+                        <p class="cat-overlay-hint">Сделайте ставку. Текст вопроса откроется после подтверждения.</p>
+                        <section class="cat-leaderboard" aria-label="Текущий рейтинг в сессии">
+                            <h3>Текущий рейтинг</h3>
+                            <div id="catLeaderboardError" class="cat-error" style="display:none;"></div>
+                            <table class="cat-leaderboard-table">
+                                <thead>
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Игрок</th>
+                                    <th scope="col">Очки</th>
+                                </tr>
+                                </thead>
+                                <tbody id="catLeaderboardList"></tbody>
+                            </table>
+                        </section>
+                        <section class="cat-bet" aria-label="Ставка">
+                            <label for="catBetInput">Ставка (очков)</label>
+                            <div class="cat-bet-row">
+                                <input type="number" id="catBetInput" inputmode="numeric" min="0" step="1" value="0" />
+                                <button type="button" id="catBetConfirm" class="cat-btn cat-btn-primary">Подтвердить ставку</button>
                             </div>
+                            <p id="catBetValidationError" class="cat-error" style="display:none;"></p>
+                            <p class="cat-muted cat-bet-score">Ваш текущий счёт: <strong id="catCurrentScoreDisplay">0</strong></p>
+                        </section>
+                    </div>
+                </div>
+
+                <div id="questionContentWrapper">
+                    <form id="answerForm" onsubmit="submitAnswer(event)"
+                          th:data-question-type="${currentQuestion != null and currentQuestion.type != null ? currentQuestion.type.name() : 'SINGLE_CHOICE'}">
+                        <input type="hidden" id="attemptIdInput" th:value="${attemptId}">
+                        <input type="hidden" id="quizId" th:value="${quizId}">
+                        <input type="hidden" id="currentQuestionId" th:value="${currentQuestion != null ? currentQuestion.id : ''}">
+                        <div class="question-section">
+                            <div class="question-field">
+                                <div class="question-text" id="questionText" th:text="${currentQuestion != null ? currentQuestion.text : 'Загрузка вопроса...'}">
+                                    Текст вопроса
+                                </div>
+                            </div>
+
+                            <ul class="options-list" id="optionsList">
+                                <li class="option-item">
+                                    <!-- Без статического type="radio" при непройденном Thymeleaf браузер рисует type=text -->
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-0"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() == 0}">
+                                    <label for="option-0"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 1
+                                    </label>
+                                </li>
+                                <li class="option-item">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-1"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 1}">
+                                    <label for="option-1"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 2
+                                    </label>
+                                </li>
+                                <li class="option-item">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-2"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 2}">
+                                    <label for="option-2"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 3
+                                    </label>
+                                </li>
+                                <li class="option-item">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-3"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 3}">
+                                    <label for="option-3"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 4
+                                    </label>
+                                </li>
+                                <li class="option-item"
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 4} ? 'display:none' : ''">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-4"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 4 ? currentQuestion.options[4].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 4}">
+                                    <label for="option-4"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 4 ? currentQuestion.options[4].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 5
+                                    </label>
+                                </li>
+                                <li class="option-item"
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6} ? 'display:none' : ''">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-5"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 5 ? currentQuestion.options[5].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 5}">
+                                    <label for="option-5"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 5 ? currentQuestion.options[5].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 6
+                                    </label>
+                                </li>
+                                <li class="option-item"
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7} ? 'display:none' : ''">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-6"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 6 ? currentQuestion.options[6].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6}">
+                                    <label for="option-6"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 6 ? currentQuestion.options[6].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 7
+                                    </label>
+                                </li>
+                                <li class="option-item"
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7} ? 'display:none' : ''">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-7"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 7 ? currentQuestion.options[7].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7}">
+                                    <label for="option-7"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 7 ? currentQuestion.options[7].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 8
+                                    </label>
+                                </li>
+                            </ul>
                         </div>
 
-                        <ul class="options-list" id="optionsList">
-                            <li class="option-item">
-                                <!-- Без статического type="radio" при непройденном Thymeleaf браузер рисует type=text -->
-                                <input type="radio"
-                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
-                                       name="answer"
-                                       id="option-0"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() == 0}">
-                                <label for="option-0"
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 1
-                                </label>
-                            </li>
-                            <li class="option-item">
-                                <input type="radio"
-                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
-                                       name="answer"
-                                       id="option-1"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 1}">
-                                <label for="option-1"
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 2
-                                </label>
-                            </li>
-                            <li class="option-item">
-                                <input type="radio"
-                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
-                                       name="answer"
-                                       id="option-2"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 2}">
-                                <label for="option-2"
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 3
-                                </label>
-                            </li>
-                            <li class="option-item">
-                                <input type="radio"
-                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
-                                       name="answer"
-                                       id="option-3"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 3}">
-                                <label for="option-3"
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 4
-                                </label>
-                            </li>
-                            <li class="option-item"
-                                th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 4} ? 'display:none' : ''">
-                                <input type="radio"
-                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
-                                       name="answer"
-                                       id="option-4"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 4 ? currentQuestion.options[4].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 4}">
-                                <label for="option-4"
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 4 ? currentQuestion.options[4].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 5
-                                </label>
-                            </li>
-                            <li class="option-item"
-                                th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6} ? 'display:none' : ''">
-                                <input type="radio"
-                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
-                                       name="answer"
-                                       id="option-5"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 5 ? currentQuestion.options[5].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 5}">
-                                <label for="option-5"
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 5 ? currentQuestion.options[5].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 6
-                                </label>
-                            </li>
-                            <li class="option-item"
-                                th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7} ? 'display:none' : ''">
-                                <input type="radio"
-                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
-                                       name="answer"
-                                       id="option-6"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 6 ? currentQuestion.options[6].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6}">
-                                <label for="option-6"
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 6 ? currentQuestion.options[6].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 7
-                                </label>
-                            </li>
-                            <li class="option-item"
-                                th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7} ? 'display:none' : ''">
-                                <input type="radio"
-                                       th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
-                                       name="answer"
-                                       id="option-7"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 7 ? currentQuestion.options[7].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7}">
-                                <label for="option-7"
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 7 ? currentQuestion.options[7].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 8
-                                </label>
-                            </li>
-                        </ul>
-                    </div>
+                        <div class="explanation-section" id="explanationSection">
+                            <div class="explanation-title">📚 Объяснение:</div>
+                            <div class="explanation-text" id="explanationText"></div>
+                        </div>
 
-                    <div class="explanation-section" id="explanationSection">
-                        <div class="explanation-title">📚 Объяснение:</div>
-                        <div class="explanation-text" id="explanationText"></div>
-                    </div>
-
-                    <div class="button-group">
-                        <div id="errorMessage" class="error-message"></div>
-                        <button type="submit" class="submit-btn" id="submitButton">Ответить</button>
-                    </div>
-                </form>
+                        <div class="button-group">
+                            <div id="errorMessage" class="error-message"></div>
+                            <button type="submit" class="submit-btn" id="submitButton">Ответить</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -520,6 +690,44 @@
                     input.dispatchEvent(new Event('change', { bubbles: true }));
                 });
             }
+
+            document.getElementById('catBetConfirm').addEventListener('click', async function () {
+                var btn = document.getElementById('catBetConfirm');
+                var err = document.getElementById('catBetValidationError');
+                if (err) { err.style.display = 'none'; err.textContent = ''; }
+
+                var stake = parseInt(document.getElementById('catBetInput').value, 10);
+                if (isNaN(stake) || stake < 0) {
+                    if (err) { err.textContent = 'Введите неотрицательное целое число'; err.style.display = 'block'; }
+                    return;
+                }
+
+                btn.disabled = true;
+                try {
+                    var res = await fetch('/api/attempts/stake', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+                        },
+                        body: JSON.stringify({
+                            attemptId: parseInt(getAttemptId(), 10),
+                            stake: stake
+                        })
+                    });
+                    if (!res.ok) {
+                        var j = await res.json().catch(function () { return {}; });
+                        throw new Error(j.message || 'Ставка отклонена');
+                    }
+                    var question = await res.json();
+                    updateQuestionOnPage(q);
+                    if (typeof resetTimer === 'function') resetTimer();
+                } catch (e) {
+                    if (err) { err.textContent = e.message; err.style.display = 'block'; }
+                } finally {
+                    btn.disabled = false;
+                }
+            });
         });
 
         function showError(message) {
@@ -761,10 +969,84 @@
             }
         }
 
+        function setCatOverlayVisible(show) {
+            var overlay = document.getElementById('catInBagOverlay');
+            var wrap = document.getElementById('questionContentWrapper');
+            if (!overlay || !wrap) return;
+            if (show) {
+                overlay.classList.remove('cat-overlay-hidden');
+                wrap.classList.add('cat-question-hidden');
+            } else {
+                overlay.classList.add('cat-overlay-hidden');
+                wrap.classList.remove('cat-question-hidden');
+            }
+        }
+
+        async function loadCatLeaderboardAndScore() {
+            var token = localStorage.getItem('token');
+            var attemptId = parseInt(getAttemptId(), 10);
+
+            var scoreEl = document.getElementById('catCurrentScoreDisplay');
+            var betInput = document.getElementById('catBetInput');
+            var list = document.getElementById('catLeaderboardList');
+
+            try {
+                var sr = await fetch('/api/attempts/' + attemptId + '/score', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (sr.ok) {
+                    var sd = await sr.json();
+                    var sc = sd.score;
+                    if (scoreEl) scoreEl.textContent = String(sc);
+                    if (betInput) {
+                        betInput.max = sc > 0 ? String(sc) : '0';
+                        if (sc <= 0) betInput.value = '0';
+                    }
+                }
+            } catch (e) { console.warn(e); }
+
+            if (!list) return;
+            list.innerHTML = '';
+
+            if (!sessionId) {
+                return;
+            }
+
+            try {
+                var r = await fetch('/api/multiplayer/sessions/' + encodeURIComponent(sessionId) + '/live-leaderboard', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!r.ok) throw new Error('Рейтинг');
+                var rows = await r.json();
+                (rows || []).forEach(function (p) {
+                    var tr = document.createElement('tr');
+                    var tdPos = document.createElement('td');
+                    tdPos.textContent = p.position != null ? String(p.position) : '';
+                    var tdName = document.createElement('td');
+                    tdName.textContent = p.username || '';
+                    var tdScore = document.createElement('td');
+                    tdScore.textContent = p.score != null ? String(p.score) : '';
+                    tr.appendChild(tdPos);
+                    tr.appendChild(tdName);
+                    tr.appendChild(tdScore);
+                    list.appendChild(tr);
+                });
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
         function updateQuestionOnPage(question) {
             if (!question) {
                 return;
             }
+
+            if (question.isCatInBagStakeScreen === true) {
+                 setCatOverlayVisible(true);
+                 loadCatLeaderboardAndScore();
+                 return;
+            }
+            setCatOverlayVisible(false);
 
             if (question.id) {
                 currentQuestionId = question.id;
