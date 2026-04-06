@@ -133,6 +133,7 @@ public class AttemptService {
         }
 
         UserQuizAttempt attempt;
+        Integer resolvedCatQuestionIndex = request.catQuestionIndex();
         
         // Если передан sessionId, ищем существующую попытку для мультиплеера
         if (request.sessionId() != null && !request.sessionId().isEmpty()) {
@@ -158,6 +159,12 @@ public class AttemptService {
                 if (attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attempt.getId()).isEmpty()) {
                     selectQuestionsForAttempt(attempt, quiz, allQuestions);
                 }
+
+                // Для уже завершенной попытки не запускаем повторно:
+                // контроллер обработает маркер и отправит на экран завершения.
+                if (attempt.isCompleted()) {
+                    throw new IllegalStateException("ATTEMPT_COMPLETED:" + attempt.getId());
+                }
             }
         } else {
             attempt = new UserQuizAttempt();
@@ -173,6 +180,29 @@ public class AttemptService {
             selectQuestionsForAttempt(attempt, quiz, allQuestions);
         }
 
+        // Для мультиплеера выбираем и фиксируем "кота в мешке" на уровне сессии,
+        // когда вопросы уже выбраны для попытки.
+        if (request.sessionId() != null && !request.sessionId().isBlank()) {
+            var sessionOpt = multiplayerSessionRepository.findBySessionId(request.sessionId());
+            if (sessionOpt.isPresent()) {
+                var session = sessionOpt.get();
+                if (session.getCatQuestionIndex() != null) {
+                    resolvedCatQuestionIndex = session.getCatQuestionIndex();
+                } else {
+                    int totalQuestions = attemptQuestionRepository
+                            .findByAttemptIdOrderByQuestionOrder(attempt.getId())
+                            .size();
+                    if (totalQuestions > 0) {
+                        int lastSegmentStart = Math.max(0, totalQuestions - Math.max(1, totalQuestions / 3));
+                        int catIndex = lastSegmentStart + new Random().nextInt(totalQuestions - lastSegmentStart);
+                        session.setCatQuestionIndex(catIndex);
+                        multiplayerSessionRepository.save(session);
+                        resolvedCatQuestionIndex = catIndex;
+                    }
+                }
+            }
+        }
+
         // Инициализируем состояние попытки в памяти (используется для HUNDRED_TO_ONE и «Кот в мешке»)
         AttemptState existingState = attemptStates.get(attempt.getId());
         if (existingState == null) {
@@ -182,12 +212,12 @@ public class AttemptService {
             st.quizId = quiz.getId();
             st.hundredToOneNominalsByQuestionId = new java.util.concurrent.ConcurrentHashMap<>();
             st.score = 0.0;
-            st.catQuestionIndex = request.catQuestionIndex();
+            st.catQuestionIndex = resolvedCatQuestionIndex;
             st.stakeForCurrentQuestion = null;
             attemptStates.put(attempt.getId(), st);
         } else {
-            if (request.catQuestionIndex() != null) {
-                existingState.catQuestionIndex = request.catQuestionIndex();
+            if (resolvedCatQuestionIndex != null) {
+                existingState.catQuestionIndex = resolvedCatQuestionIndex;
             }
         }
 
@@ -494,7 +524,27 @@ public class AttemptService {
                 .orElseThrow(() -> new IllegalArgumentException("Попытка не найдена"));
 
         if (attempt.isCompleted()) {
-            throw new IllegalStateException("Попытка уже завершена");
+            // Идемпотентность: если finish вызван повторно, возвращаем уже сохраненный результат.
+            List<AttemptQuestion> attemptQuestions = attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attemptId);
+            int totalQuestions = attemptQuestions.size();
+            int correctAnswers = (int) userAnswerRepository.countByAttemptIdAndIsCorrectTrue(attemptId);
+            int finalScore = attempt.getScore() != null ? attempt.getScore().intValue() : 0;
+
+            long timeSpent = 0;
+            if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
+                timeSpent = java.time.Duration.between(attempt.getStartTime(), attempt.getFinishTime()).getSeconds();
+            }
+
+            int position = calculatePosition(attempt.getQuiz().getId(), attempt.getUser().getId(), finalScore, timeSpent);
+            return new QuizResultDTO(
+                    attemptId,
+                    finalScore,
+                    correctAnswers,
+                    totalQuestions,
+                    position,
+                    timeSpent,
+                    toLocalDateTime(attempt.getFinishTime())
+            );
         }
 
         metricsService.decrementActiveAttempts();

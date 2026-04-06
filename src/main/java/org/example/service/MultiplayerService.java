@@ -285,19 +285,6 @@ public class MultiplayerService {
             attemptRepository.save(attempt);
         }
 
-        // Назначаем общий индекс вопроса "Кот в мешке" для всех участников сессии.
-        // Иначе stake-экран никогда не появится, т.к. catQuestionIndex остается null.
-        if (!sessionAttempts.isEmpty()) {
-            List<AttemptQuestion> firstAttemptQuestions =
-                    attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(sessionAttempts.get(0).getId());
-            if (!firstAttemptQuestions.isEmpty()) {
-                int catQuestionIndex = new java.util.Random().nextInt(firstAttemptQuestions.size());
-                for (UserQuizAttempt attempt : sessionAttempts) {
-                    attemptService.setCatQuestionIndex(attempt.getId(), catQuestionIndex);
-                }
-            }
-        }
-
         return true;
     }
 
