@@ -26,9 +26,7 @@ import java.util.List;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -138,7 +136,7 @@ public class AttemptService {
         
         // Если передан sessionId, ищем существующую попытку для мультиплеера
         if (request.sessionId() != null && !request.sessionId().isEmpty()) {
-            attempt = attemptRepository.findByUserIdAndQuizIdAndSessionId(
+            attempt = attemptRepository.findTopByUserIdAndQuizIdAndSessionIdOrderByIdDesc(
                     request.userId(), request.quizId(), request.sessionId());
             
             if (attempt == null) {
@@ -196,7 +194,8 @@ public class AttemptService {
         // Получаем текущий вопрос (первый неотвеченный)
         QuestionDTO currentQuestion = getNextQuestion(attempt.getId());
         if (currentQuestion == null) {
-            throw new IllegalStateException("Все вопросы уже отвечены");
+            // Явный маркер для контроллера: попытка исчерпана, нужно вести на finish/results.
+            throw new IllegalStateException("ATTEMPT_COMPLETED:" + attempt.getId());
         }
 
         // Получаем количество выбранных вопросов для этой попытки

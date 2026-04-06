@@ -42,5 +42,11 @@ build/
 ### Python ###
 python/.venv/
 python/__pycache__/
+LLM_service/.venv/
+LLM_service/__pycache__/
+LLM_service/**/__pycache__/
+LLM_service/storage/
+LLM_service/.env
+LLM_service/.git/
 
 uploads/

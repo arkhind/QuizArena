@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.example.dto.ml.MlQuestionDTO;
+import org.example.dto.ml.MlQuestionOptionDTO;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -215,78 +217,93 @@ public class QuestionGenerationService {
 
                 System.out.println("QuestionGenerationService: Начинаем генерацию вопросов, попытка " + attempt +
                         " для промпта: " + prompt.substring(0, Math.min(50, prompt.length())));
-                String apiResponse = fastApiClient.getQuestionsByPrompt(prompt, questionCount);
-                System.out.println("QuestionGenerationService: Получен ответ от ML сервера, длина: " + (apiResponse != null ? apiResponse.length() : 0));
+                List<MlQuestionDTO> mlQuestions = fastApiClient.generateQuestionsStructured(
+                        prompt,
+                        questionCount,
+                        request.preferredQuestionType()
+                );
+                System.out.println("QuestionGenerationService: Получено вопросов от ML: " + (mlQuestions != null ? mlQuestions.size() : 0));
 
-                if (apiResponse == null || apiResponse.trim().isEmpty()) {
-                    throw new RuntimeException("Пустой ответ от ML сервера");
-                }
-
-                int parseLimit = Math.max(questionCount * 5, questionCount + 200);
-                List<QuestionParser.ParsedQuestion> parsedQuestions = QuestionParser.parse(apiResponse, parseLimit);
-                if (parsedQuestions.isEmpty()) {
-                    throw new RuntimeException("Парсер не нашел вопросов в ответе FastAPI");
+                if (mlQuestions == null || mlQuestions.isEmpty()) {
+                    throw new RuntimeException("ML не вернул ни одного вопроса");
                 }
 
                 int maxQuestionsToSave = questionCount;
-
-                for (int i = 0; i < parsedQuestions.size() && generatedQuestions.size() < maxQuestionsToSave; i++) {
-                QuestionParser.ParsedQuestion pq = parsedQuestions.get(i);
-
-                if (pq.question == null || pq.answerOptions == null || pq.answerOptions.isEmpty()) {
-                    System.err.println("QuestionGenerationService: Пропуск вопроса " + (i + 1) + " - некорректные данные");
-                    metricsService.recordValidationFailedNullField();
-                    continue;
-                }
-
-                Question question = pq.question;
-                question.setQuiz(quiz);
-                question.setIsGenerated(true);
-                question.setGenerationSetId(questionSet.getId());
-                question.setIsValid(true);
-                question.setIsDuplicate(false);
-
-                question.setType(request.preferredQuestionType() != null
-                        ? request.preferredQuestionType()
-                        : QuestionType.SINGLE_CHOICE);
-
-                if (question.getExplanation() == null || question.getExplanation().trim().isEmpty()) {
-                    question.setExplanation("Объяснение отсутствует");
-                }
-
-                if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
-                    long optionCount = pq.answerOptions.stream().filter(o -> o != null && o.getText() != null).count();
-                    long correctCount = pq.answerOptions.stream().filter(o -> o != null && o.isCorrect()).count();
-                    long wrongCount = optionCount - correctCount;
-
-                    if (optionCount != 8 || correctCount != 5 || wrongCount != 3) {
-                        System.err.println(
-                                "QuestionGenerationService: Пропуск вопроса 100к1 (ID ще не задан): " +
-                                        "ожидалось 8 вариантов и 5/3 правильных, получено " +
-                                        optionCount + " вариантов и " + correctCount + "/" + wrongCount + " правильных/неправильных");
-                        metricsService.recordValidationFailedWrongCount();
+                for (int i = 0; i < mlQuestions.size() && generatedQuestions.size() < maxQuestionsToSave; i++) {
+                    MlQuestionDTO mq = mlQuestions.get(i);
+                    if (mq == null || mq.question() == null || mq.question().trim().isEmpty()) {
+                        metricsService.recordValidationFailedNullField();
                         continue;
                     }
-                }
 
-                if (question.getText() == null || question.getText().trim().isEmpty()) {
-                    System.err.println("QuestionGenerationService: Пропуск вопроса " + (i + 1) + " - текст вопроса пустой");
-                    metricsService.recordValidationFailedNullField();
-                    continue;
-                }
+                    QuestionType type = mapMlType(mq.type(), request.preferredQuestionType());
 
-                question = questionRepository.save(question);
+                    List<MlQuestionOptionDTO> options = mq.options() != null ? mq.options() : List.of();
+                    List<String> correctIds = mq.correct_answers() != null ? mq.correct_answers() : List.of();
+                    long correctCount = options.stream()
+                            .filter(o -> o != null && o.id() != null && correctIds.stream().anyMatch(id -> id != null && id.equalsIgnoreCase(o.id())))
+                            .count();
+                    long optionCount = options.stream().filter(o -> o != null && o.text() != null && !o.text().trim().isEmpty()).count();
+                    long wrongCount = optionCount - correctCount;
 
-                for (AnswerOption option : pq.answerOptions) {
-                    option.setQuestion(question);
-                    answerOptionRepository.save(option);
-                }
+                    if (type == QuestionType.HUNDRED_TO_ONE) {
+                        if (optionCount != 8 || correctCount != 5 || wrongCount != 3) {
+                            System.err.println("QuestionGenerationService: Пропуск вопроса 100к1 - некорректная структура ("
+                                    + optionCount + " опций, " + correctCount + " correct, " + wrongCount + " wrong)");
+                            metricsService.recordValidationFailedWrongCount();
+                            continue;
+                        }
+                    }
+
+                    if (type == QuestionType.SINGLE_CHOICE) {
+                        // Мы требуем 4 варианта, но не блокируем полностью генерацию — просто пропускаем некорректные
+                        if (optionCount != 4) {
+                            System.err.println("QuestionGenerationService: Пропуск single_choice - ожидалось 4 варианта, получено " + optionCount);
+                            metricsService.recordValidationFailedWrongCount();
+                            continue;
+                        }
+                    }
+
+                    Question question = new Question();
+                    question.setQuiz(quiz);
+                    question.setText(mq.question().trim());
+                    question.setType(type);
+                    question.setIsGenerated(true);
+                    question.setGenerationSetId(questionSet.getId());
+                    question.setIsValid(true);
+                    question.setIsDuplicate(false);
+
+                    String explanation = mq.explanation() != null ? mq.explanation().trim() : "";
+                    question.setExplanation(explanation.isEmpty() ? "Объяснение отсутствует" : explanation);
+
+                    question = questionRepository.save(question);
+
+                    for (MlQuestionOptionDTO opt : options) {
+                        if (opt == null || opt.text() == null || opt.text().trim().isEmpty()) {
+                            continue;
+                        }
+                        AnswerOption ao = new AnswerOption();
+                        ao.setQuestion(question);
+                        ao.setText(opt.text().trim());
+                        boolean isCorrect = false;
+                        if (opt.id() != null) {
+                            for (String cid : correctIds) {
+                                if (cid != null && cid.equalsIgnoreCase(opt.id().trim())) {
+                                    isCorrect = true;
+                                    break;
+                                }
+                            }
+                        }
+                        ao.setCorrect(isCorrect);
+                        ao.setNaOption(false);
+                        answerOptionRepository.save(ao);
+                    }
 
                     generatedQuestions.add(question);
                 }
 
                 if (generatedQuestions.isEmpty()) {
-                    throw new RuntimeException("Не удалось сохранить ни одного вопроса из распарсенных");
+                    throw new RuntimeException("Не удалось сохранить ни одного вопроса из ответа ML");
                 }
 
                 questionSet.setGeneratedCount(generatedQuestions.size());
@@ -322,6 +339,17 @@ public class QuestionGenerationService {
                         + (lastException != null ? lastException.getMessage() : "unknown"),
                 lastException
         );
+    }
+
+    private QuestionType mapMlType(String mlType, QuestionType preferredFallback) {
+        String t = mlType != null ? mlType.trim().toLowerCase() : "";
+        return switch (t) {
+            case "multiple_choice" -> QuestionType.MULTIPLE_CHOICE;
+            case "true_false" -> QuestionType.TRUE_FALSE;
+            case "100k1", "q100k1", "hundred_to_one" -> QuestionType.HUNDRED_TO_ONE;
+            case "single_choice" -> QuestionType.SINGLE_CHOICE;
+            default -> preferredFallback != null ? preferredFallback : QuestionType.SINGLE_CHOICE;
+        };
     }
 
     @Transactional

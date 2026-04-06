@@ -474,6 +474,19 @@ public class PageController {
         }
         return "quiz-attempt";
         } catch (IllegalStateException e) {
+            if (e.getMessage() != null && e.getMessage().startsWith("ATTEMPT_COMPLETED:")) {
+                String attemptIdStr = e.getMessage().substring("ATTEMPT_COMPLETED:".length());
+                try {
+                    Long completedAttemptId = Long.parseLong(attemptIdStr);
+                    if (sessionId != null && !sessionId.isEmpty()) {
+                        // Для мультиплеера сначала завершаем попытку, затем ведем на экран результатов сессии
+                        return "redirect:/quiz/attempt/" + completedAttemptId + "/finish?quizId=" + quizId;
+                    }
+                    return "redirect:/quiz/attempt/" + completedAttemptId + "/finish?quizId=" + quizId;
+                } catch (Exception ignored) {
+                    // fallback ниже
+                }
+            }
             // Если квиз не содержит вопросов или другая ошибка состояния
             if (e.getMessage() != null && e.getMessage().contains("не содержит вопросов")) {
                 model.addAttribute("errorMessage", "Этот квиз не содержит вопросов. Невозможно начать прохождение.");

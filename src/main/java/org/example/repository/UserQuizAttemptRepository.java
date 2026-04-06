@@ -53,6 +53,8 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
     List<UserQuizAttempt> findBySessionIdWithUser(@Param("sessionId") String sessionId);
     
     UserQuizAttempt findByUserIdAndQuizIdAndSessionId(Long userId, Long quizId, String sessionId);
+
+    UserQuizAttempt findTopByUserIdAndQuizIdAndSessionIdOrderByIdDesc(Long userId, Long quizId, String sessionId);
     
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM user_quiz_attempts WHERE user_id = :userId AND quiz_id = :quizId AND session_id = :sessionId", nativeQuery = true)
