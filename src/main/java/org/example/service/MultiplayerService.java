@@ -285,6 +285,19 @@ public class MultiplayerService {
             attemptRepository.save(attempt);
         }
 
+        // Назначаем общий индекс вопроса "Кот в мешке" для всех участников сессии.
+        // Иначе stake-экран никогда не появится, т.к. catQuestionIndex остается null.
+        if (!sessionAttempts.isEmpty()) {
+            List<AttemptQuestion> firstAttemptQuestions =
+                    attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(sessionAttempts.get(0).getId());
+            if (!firstAttemptQuestions.isEmpty()) {
+                int catQuestionIndex = new java.util.Random().nextInt(firstAttemptQuestions.size());
+                for (UserQuizAttempt attempt : sessionAttempts) {
+                    attemptService.setCatQuestionIndex(attempt.getId(), catQuestionIndex);
+                }
+            }
+        }
+
         return true;
     }
 
@@ -489,6 +502,59 @@ public class MultiplayerService {
                 "bothAnswered", bothAnswered,
                 "currentQuestionAnswered", currentQuestionAnswered,
                 "currentQuestionId", questionId != null ? questionId : 0L
+        );
+    }
+
+    /**
+     * Возвращает live-таблицу результатов по мультиплеерной сессии.
+     */
+    public Map<String, Object> getSessionLiveLeaderboard(String sessionId) {
+        MultiplayerSession session = sessionRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Сессия не найдена"));
+
+        List<UserQuizAttempt> attempts = attemptRepository.findBySessionIdWithUser(sessionId);
+        List<Map<String, Object>> players = attempts.stream()
+                .filter(a -> a.getUser() != null)
+                .map(a -> {
+                    long score = a.getScore() != null ? a.getScore() : 0L;
+                    long timeSpent = 0L;
+                    if (a.getStartTime() != null) {
+                        Instant end = a.getFinishTime() != null ? a.getFinishTime() : Instant.now();
+                        timeSpent = Math.max(0L, java.time.Duration.between(a.getStartTime(), end).getSeconds());
+                    }
+                    return Map.<String, Object>of(
+                            "userId", a.getUser().getId(),
+                            "username", a.getUser().getLogin() != null ? a.getUser().getLogin() : "Unknown",
+                            "score", score,
+                            "completed", a.isCompleted(),
+                            "timeSpent", timeSpent
+                    );
+                })
+                .sorted((p1, p2) -> {
+                    int scoreCmp = Long.compare((Long) p2.get("score"), (Long) p1.get("score"));
+                    if (scoreCmp != 0) {
+                        return scoreCmp;
+                    }
+                    return Long.compare((Long) p1.get("timeSpent"), (Long) p2.get("timeSpent"));
+                })
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        for (int i = 0; i < players.size(); i++) {
+            players.set(i, Map.of(
+                    "position", i + 1,
+                    "userId", players.get(i).get("userId"),
+                    "username", players.get(i).get("username"),
+                    "score", players.get(i).get("score"),
+                    "completed", players.get(i).get("completed"),
+                    "timeSpent", players.get(i).get("timeSpent")
+            ));
+        }
+
+        return Map.of(
+                "sessionId", sessionId,
+                "quizId", session.getQuiz() != null ? session.getQuiz().getId() : null,
+                "status", session.getStatus(),
+                "players", players
         );
     }
 
