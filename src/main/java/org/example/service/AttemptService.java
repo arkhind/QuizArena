@@ -10,6 +10,7 @@ import org.example.dto.response.attempt.QuizResultDTO;
 import org.example.dto.response.quiz.QuestionDTO;
 import org.example.model.*;
 import org.example.repository.*;
+import org.example.metrics.MetricsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,6 +50,7 @@ public class AttemptService {
     private final org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository;
     private final org.example.repository.AttemptQuestionRepository attemptQuestionRepository;
     private final LeaderboardService leaderboardService;
+    private final MetricsService metricsService;
 
     @Autowired
     public AttemptService(
@@ -60,7 +62,8 @@ public class AttemptService {
             UserAnswerRepository userAnswerRepository,
             org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository,
             org.example.repository.AttemptQuestionRepository attemptQuestionRepository,
-            LeaderboardService leaderboardService) {
+            LeaderboardService leaderboardService,
+            MetricsService metricsService) {
         this.attemptRepository = attemptRepository;
         this.quizRepository = quizRepository;
         this.userRepository = userRepository;
@@ -70,6 +73,7 @@ public class AttemptService {
         this.multiplayerSessionRepository = multiplayerSessionRepository;
         this.attemptQuestionRepository = attemptQuestionRepository;
         this.leaderboardService = leaderboardService;
+        this.metricsService = metricsService;
     }
 
     /**
@@ -192,6 +196,8 @@ public class AttemptService {
         Integer timeRemaining = quiz.getTimePerQuestion() != null
                 ? (int) quiz.getTimePerQuestion().getSeconds()
                 : 60;
+
+        metricsService.incrementActiveAttempts();
 
         return new AttemptResponse(
                 attempt.getId(),
@@ -363,7 +369,12 @@ public class AttemptService {
             scoreEarnedDouble = 0.0;
         }
 
-        // 6. Сохраняем ответ пользователя
+        if (Boolean.TRUE.equals(isCorrect)) {
+            metricsService.recordCorrectAnswer();
+        } else {
+            metricsService.recordIncorrectAnswer();
+        }
+
         UserAnswer userAnswer = new UserAnswer();
         userAnswer.setAttempt(attempt);
         userAnswer.setQuestion(question);
@@ -423,7 +434,8 @@ public class AttemptService {
             throw new IllegalStateException("Попытка уже завершена");
         }
 
-        // 2. Завершаем попытку
+        metricsService.decrementActiveAttempts();
+
         attempt.setCompleted(true);
         attempt.setFinishTime(Instant.now());
         attempt = attemptRepository.save(attempt);
@@ -470,6 +482,11 @@ public class AttemptService {
 
         // 7. Вычисляем позицию в рейтинге (по лучшим попыткам каждого пользователя)
         int position = calculatePosition(attempt.getQuiz().getId(), attempt.getUser().getId(), finalScore, timeSpent);
+
+        if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
+            long durationNanos = java.time.Duration.between(attempt.getStartTime(), attempt.getFinishTime()).toNanos();
+            metricsService.getAttemptDurationTimer().record(durationNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
+        }
 
         return new QuizResultDTO(
                 attemptId,

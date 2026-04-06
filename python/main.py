@@ -1,11 +1,14 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 
 import shutil
 import os
 import LLM_functions
 
 app = FastAPI()
+
+Instrumentator().instrument(app).expose(app)
 
 UPLOAD_DIRECTORY = "docs"
 
