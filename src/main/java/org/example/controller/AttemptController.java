@@ -2,6 +2,7 @@ package org.example.controller;
 
 import org.example.dto.request.attempt.StartAttemptRequest;
 import org.example.dto.request.attempt.SubmitAnswerRequest;
+import org.example.dto.request.attempt.SubmitStakeRequest;
 import org.example.dto.response.attempt.AnswerResponse;
 import org.example.dto.response.attempt.AttemptResponse;
 import org.example.dto.response.attempt.QuizResultDTO;
@@ -51,6 +52,30 @@ public class AttemptController {
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/stake")
+    public ResponseEntity<?> submitStake(@RequestBody SubmitStakeRequest request) {
+        try {
+            QuestionDTO question = attemptService.submitStake(request);
+            return ResponseEntity.ok(question);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message",
+                    e.getMessage() != null ? e.getMessage() : "Неверные параметры ставки"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("message",
+                    e.getMessage() != null ? e.getMessage() : "Невозможно сделать ставку"));
+        }
+    }
+
+    @GetMapping("/{attemptId}/score")
+    public ResponseEntity<?> getCurrentScore(@PathVariable Long attemptId) {
+        try {
+            double score = attemptService.getCurrentScore(attemptId);
+            return ResponseEntity.ok(java.util.Map.of("score", (int) score));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 
