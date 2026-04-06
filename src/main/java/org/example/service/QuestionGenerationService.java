@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.metrics.MetricsService;
 import org.example.dto.request.generation.QuestionGenerationRequest;
 import org.example.dto.kafka.QuizGenerationRequestMessage;
 import org.example.kafka.KafkaQuizGenerationProperties;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class QuestionGenerationService {
@@ -27,6 +29,7 @@ public class QuestionGenerationService {
     private final KafkaTemplate<String, QuizGenerationRequestMessage> requestKafkaTemplate;
     private final String requestTopic;
     private final QuizCacheEvictService quizCacheEvictService;
+    private final MetricsService metricsService;
 
     @Autowired
     public QuestionGenerationService(
@@ -37,7 +40,8 @@ public class QuestionGenerationService {
             FastApiClient fastApiClient,
             KafkaTemplate<String, QuizGenerationRequestMessage> quizGenerationRequestKafkaTemplate,
             KafkaQuizGenerationProperties kafkaQuizGenerationProperties,
-            QuizCacheEvictService quizCacheEvictService) {
+            QuizCacheEvictService quizCacheEvictService,
+            MetricsService metricsService) {
         this.generationSetRepository = generationSetRepository;
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
@@ -46,6 +50,7 @@ public class QuestionGenerationService {
         this.requestKafkaTemplate = quizGenerationRequestKafkaTemplate;
         this.requestTopic = kafkaQuizGenerationProperties.getRequestTopic();
         this.quizCacheEvictService = quizCacheEvictService;
+        this.metricsService = metricsService;
     }
 
     /**
@@ -110,6 +115,7 @@ public class QuestionGenerationService {
             throw new IllegalArgumentException("kafkaRequest is null");
         }
         GenerationSet existingSet = null;
+        long generationStart = System.nanoTime();
         try {
             if (kafkaRequest.questionSetId() == null) {
                 throw new IllegalArgumentException("questionSetId is required");
@@ -118,17 +124,15 @@ public class QuestionGenerationService {
             existingSet = generationSetRepository.findById(kafkaRequest.questionSetId())
                     .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
 
-            // Идемпотентность: если сообщение доставлено повторно после успешной обработки,
-            // не запускаем генерацию по второму кругу.
             if ("READY".equals(existingSet.getStatus())) {
                 return;
             }
 
-            // Проверка этичности запускается один раз перед генерацией в worker'е.
-            // Это убирает блокировку HTTP createQuiz, когда ML-сервис занят.
             if (kafkaRequest.prompt() != null && !kafkaRequest.prompt().trim().isEmpty()) {
                 boolean isUnethical = fastApiClient.checkPromptEthics(kafkaRequest.prompt());
                 if (isUnethical) {
+                    metricsService.recordEthicsCheckFailed();
+                    metricsService.recordGenerationUnethical();
                     existingSet.setStatus("FAILED");
                     generationSetRepository.save(existingSet);
                     if (existingSet.getQuiz() != null && existingSet.getQuiz().getId() != null) {
@@ -136,6 +140,7 @@ public class QuestionGenerationService {
                     }
                     return;
                 }
+                metricsService.recordEthicsCheckPassed();
             }
 
             QuestionType preferred = null;
@@ -157,6 +162,8 @@ public class QuestionGenerationService {
             );
 
             generateExistingQuestionSet(kafkaRequest.questionSetId(), internalRequest);
+            metricsService.recordGenerationSuccess();
+            metricsService.getGenerationDurationTimer().record(System.nanoTime() - generationStart, TimeUnit.NANOSECONDS);
         } catch (Exception e) {
             if (existingSet != null && !"READY".equals(existingSet.getStatus())) {
                 existingSet.setStatus("FAILED");
@@ -165,6 +172,8 @@ public class QuestionGenerationService {
                     quizCacheEvictService.evictQuizCache(existingSet.getQuiz().getId());
                 }
             }
+            metricsService.recordGenerationFailed();
+            metricsService.getGenerationDurationTimer().record(System.nanoTime() - generationStart, TimeUnit.NANOSECONDS);
             throw new RuntimeException("Ошибка обработки Kafka-запроса генерации: " + e.getMessage(), e);
         }
     }
@@ -226,6 +235,7 @@ public class QuestionGenerationService {
 
                 if (pq.question == null || pq.answerOptions == null || pq.answerOptions.isEmpty()) {
                     System.err.println("QuestionGenerationService: Пропуск вопроса " + (i + 1) + " - некорректные данные");
+                    metricsService.recordValidationFailedNullField();
                     continue;
                 }
 
@@ -254,12 +264,14 @@ public class QuestionGenerationService {
                                 "QuestionGenerationService: Пропуск вопроса 100к1 (ID ще не задан): " +
                                         "ожидалось 8 вариантов и 5/3 правильных, получено " +
                                         optionCount + " вариантов и " + correctCount + "/" + wrongCount + " правильных/неправильных");
+                        metricsService.recordValidationFailedWrongCount();
                         continue;
                     }
                 }
 
                 if (question.getText() == null || question.getText().trim().isEmpty()) {
                     System.err.println("QuestionGenerationService: Пропуск вопроса " + (i + 1) + " - текст вопроса пустой");
+                    metricsService.recordValidationFailedNullField();
                     continue;
                 }
 
@@ -281,6 +293,7 @@ public class QuestionGenerationService {
                 questionSet.setValidCount(generatedQuestions.size());
                 questionSet.setFinalCount(generatedQuestions.size());
                 questionSet.setStatus("READY");
+                metricsService.recordQuestionsGenerated(generatedQuestions.size());
                 generationSetRepository.save(questionSet);
                 quizCacheEvictService.evictQuizCache(quiz.getId());
 

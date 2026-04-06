@@ -1,0 +1,281 @@
+{
+  "uid": "quizarena-business",
+  "title": "QuizArena — Business",
+  "tags": ["quizarena", "business"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Active Attempts (now)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "quizarena_active_attempts_total{application=\"quizarena\"}",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 50 },
+            { "color": "red", "value": 200 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 2,
+      "title": "Active Multiplayer Sessions",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "quizarena_multiplayer_sessions_active{application=\"quizarena\"}",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 3,
+      "title": "Active Multiplayer Players",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "quizarena_multiplayer_players_active{application=\"quizarena\"}",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 4,
+      "title": "Kafka DLT Messages Total",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "quizarena_kafka_dlt_messages_total{application=\"quizarena\"}",
+          "legendFormat": ""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 1 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 5,
+      "title": "Active Attempts Over Time",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "quizarena_active_attempts_total{application=\"quizarena\"}",
+          "legendFormat": "Active Attempts"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 6,
+      "title": "Answers Rate (correct vs incorrect)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(quizarena_answers_submitted_total{application=\"quizarena\", correct=\"true\"}[1m])",
+          "legendFormat": "Correct"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(quizarena_answers_submitted_total{application=\"quizarena\", correct=\"false\"}[1m])",
+          "legendFormat": "Incorrect"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 7,
+      "title": "Attempt Duration — P50 / P95 / P99",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(quizarena_attempt_duration_seconds_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P50"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(quizarena_attempt_duration_seconds_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P95"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.99, rate(quizarena_attempt_duration_seconds_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P99"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 8,
+      "title": "Generation Pipeline Duration — P50 / P95",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(quizarena_question_generation_seconds_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P50"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(quizarena_question_generation_seconds_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P95"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 9,
+      "title": "FastAPI ML Request Duration — P50 / P95",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(quizarena_fastapi_request_seconds_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P50 {{endpoint}}"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(quizarena_fastapi_request_seconds_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P95 {{endpoint}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 10,
+      "title": "Generation Requests by Status",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(quizarena_generation_requests_total{application=\"quizarena\", status=\"success\"}[5m])",
+          "legendFormat": "Success"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(quizarena_generation_requests_total{application=\"quizarena\", status=\"failed\"}[5m])",
+          "legendFormat": "Failed"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(quizarena_generation_requests_total{application=\"quizarena\", status=\"unethical\"}[5m])",
+          "legendFormat": "Unethical"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 11,
+      "title": "Ethics Checks — Passed vs Failed",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(quizarena_ethics_check_total{application=\"quizarena\", result=\"passed\"}[5m])",
+          "legendFormat": "Passed"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(quizarena_ethics_check_total{application=\"quizarena\", result=\"failed\"}[5m])",
+          "legendFormat": "Failed"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 12,
+      "title": "Question Validation Failures by Reason",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(quizarena_validation_failed_total{application=\"quizarena\", reason=\"null_field\"}[5m])",
+          "legendFormat": "Null Field"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(quizarena_validation_failed_total{application=\"quizarena\", reason=\"wrong_count\"}[5m])",
+          "legendFormat": "Wrong Count (100к1)"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 13,
+      "title": "Questions Generated per Batch — P50 / P95",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 36, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(quizarena_questions_generated_count_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P50"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(quizarena_questions_generated_count_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P95"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 14,
+      "title": "Kafka Message Processing Duration — P50 / P95",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 36, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.50, rate(quizarena_kafka_processing_seconds_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P50"
+        },
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(quizarena_kafka_processing_seconds_bucket{application=\"quizarena\"}[5m]))",
+          "legendFormat": "P95"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.metrics.MetricsService;
 import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -11,15 +12,18 @@ import java.nio.charset.StandardCharsets;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class FastApiClient {
     private static final String BASE_URL = "http://127.0.0.1:8000/question/";
     private static final String CHECK_ETHICS_URL = "http://127.0.0.1:8000/check-ethics/";
     private final HttpClient httpClient;
+    private final MetricsService metricsService;
 
-    public FastApiClient() {
+    public FastApiClient(MetricsService metricsService) {
         this.httpClient = HttpClient.newHttpClient();
+        this.metricsService = metricsService;
     }
 
     /**
@@ -32,13 +36,15 @@ public class FastApiClient {
     public boolean checkPromptEthics(String prompt) throws IOException, InterruptedException {
         String encodedPrompt = URLEncoder.encode(prompt, StandardCharsets.UTF_8);
         String url = CHECK_ETHICS_URL + encodedPrompt;
-        
+
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .GET()
                 .build();
 
+        long start = System.nanoTime();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        metricsService.getFastApiEthicsTimer().record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
         
         System.out.println("FastApiClient: Проверка этичности для промпта. Статус: " + response.statusCode());
         System.out.println("FastApiClient: Ответ проверки этичности: " + response.body());
@@ -71,13 +77,15 @@ public class FastApiClient {
     public String getQuestionsByPrompt(String prompt, int numberOfQuestions) throws IOException, InterruptedException, UnethicalPromptException {
         String encodedPrompt = URLEncoder.encode(prompt, StandardCharsets.UTF_8);
         String url = BASE_URL + encodedPrompt + "/" + numberOfQuestions;
-        
+
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .GET()
                 .build();
 
+        long start = System.nanoTime();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        metricsService.getFastApiGenerateTimer().record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
         
         // Проверяем статус код ответа
         if (response.statusCode() >= 400) {

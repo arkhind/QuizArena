@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.example.metrics.MetricsService;
 import org.example.dto.request.multiplayer.*;
 import org.example.dto.response.multiplayer.MultiplayerResultsDTO;
 import org.example.dto.response.multiplayer.MultiplayerSessionDTO;
@@ -41,6 +42,7 @@ public class MultiplayerService {
     private final UserQuizAttemptRepository attemptRepository;
     private final UserAnswerRepository userAnswerRepository;
     private final AttemptQuestionRepository attemptQuestionRepository;
+    private final MetricsService metricsService;
 
     @Autowired
     public MultiplayerService(
@@ -50,7 +52,8 @@ public class MultiplayerService {
             UserRepository userRepository,
             UserQuizAttemptRepository attemptRepository,
             UserAnswerRepository userAnswerRepository,
-            AttemptQuestionRepository attemptQuestionRepository) {
+            AttemptQuestionRepository attemptQuestionRepository,
+            MetricsService metricsService) {
         this.attemptService = attemptService;
         this.sessionRepository = sessionRepository;
         this.quizRepository = quizRepository;
@@ -58,6 +61,7 @@ public class MultiplayerService {
         this.attemptRepository = attemptRepository;
         this.userAnswerRepository = userAnswerRepository;
         this.attemptQuestionRepository = attemptQuestionRepository;
+        this.metricsService = metricsService;
     }
 
     /**
@@ -278,7 +282,10 @@ public class MultiplayerService {
         session.setStartedAt(Instant.now());
         sessionRepository.save(session);
 
-        // Обновляем попытки участников (устанавливаем startTime)
+        metricsService.incrementActiveMultiplayerSessions();
+        metricsService.addMultiplayerPlayers(sessionAttempts.size());
+        metricsService.recordSessionPlayerCount(sessionAttempts.size());
+
         Instant now = Instant.now();
         for (UserQuizAttempt attempt : sessionAttempts) {
             attempt.setStartTime(now);
@@ -318,6 +325,8 @@ public class MultiplayerService {
             session.setStatus("FINISHED");
             session.setFinishedAt(Instant.now());
             sessionRepository.save(session);
+            metricsService.decrementActiveMultiplayerSessions();
+            metricsService.removeMultiplayerPlayers(attempts.size());
         }
 
         // Получаем всех участников с их результатами (используем уже отфильтрованные completedAttempts)
@@ -398,6 +407,10 @@ public class MultiplayerService {
 
         session.setStatus("CANCELLED");
         sessionRepository.save(session);
+
+        if ("STARTED".equals(session.getStatus())) {
+            metricsService.decrementActiveMultiplayerSessions();
+        }
 
         return true;
     }
