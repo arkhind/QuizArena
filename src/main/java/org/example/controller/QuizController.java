@@ -3,10 +3,10 @@ package org.example.controller;
 import org.example.dto.request.quiz.*;
 import org.example.dto.response.quiz.*;
 import org.example.service.FileStorageService;
+import org.example.service.JwtService;
 import org.example.service.QuizService;
 import org.example.service.TextExtractorService;
 import org.example.service.UnethicalPromptException;
-import org.example.util.TokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,12 +24,14 @@ public class QuizController {
     private final QuizService quizService;
     private final FileStorageService fileStorageService;
     private final TextExtractorService textExtractorService;
+    private final JwtService jwtService;
 
     @Autowired
-    public QuizController(QuizService quizService, FileStorageService fileStorageService, TextExtractorService textExtractorService) {
+    public QuizController(QuizService quizService, FileStorageService fileStorageService, TextExtractorService textExtractorService, JwtService jwtService) {
         this.quizService = quizService;
         this.fileStorageService = fileStorageService;
         this.textExtractorService = textExtractorService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping
@@ -121,7 +123,7 @@ public class QuizController {
             }
             
             // Извлекаем userId из токена для проверки доступа к приватным квизам
-            Long userId = TokenUtil.extractUserIdFromRequest(request);
+            Long userId = jwtService.extractUserIdFromRequest(request);
             QuizDetailsDTO quiz = quizService.getQuiz(quizId, userId);
             return ResponseEntity.ok(quiz);
         } catch (IllegalArgumentException e) {
