@@ -238,8 +238,6 @@ public class AttemptService {
                 ? (int) quiz.getTimePerQuestion().getSeconds()
                 : 60;
 
-        metricsService.incrementActiveAttempts();
-
         return new AttemptResponse(
                 attempt.getId(),
                 quiz.getId(),
@@ -546,8 +544,6 @@ public class AttemptService {
                     toLocalDateTime(attempt.getFinishTime())
             );
         }
-
-        metricsService.decrementActiveAttempts();
 
         attempt.setCompleted(true);
         attempt.setFinishTime(Instant.now());
