@@ -46,6 +46,8 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
     Page<UserQuizAttempt> findBestAttemptsByQuizId(@Param("quizId") Long quizId, Pageable pageable);
 
     long countByUserId(Long userId);
+
+    long countByIsCompletedFalse();
     
     List<UserQuizAttempt> findBySessionId(String sessionId);
     

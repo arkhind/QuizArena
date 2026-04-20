@@ -2,16 +2,14 @@ package org.example.metrics;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import org.example.repository.UserQuizAttemptRepository;
 import org.springframework.stereotype.Service;
-
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 public class MetricsService {
-
-    private final AtomicInteger activeAttempts = new AtomicInteger(0);
 
     private final Counter answersCorrect;
     private final Counter answersIncorrect;
@@ -29,8 +27,9 @@ public class MetricsService {
 
     private final DistributionSummary questionsGenerated;
 
-    public MetricsService(MeterRegistry registry) {
-        registry.gauge("quizarena_active_attempts", activeAttempts);
+    public MetricsService(MeterRegistry registry, UserQuizAttemptRepository attemptRepository) {
+        Gauge.builder("quizarena_active_attempts", attemptRepository, UserQuizAttemptRepository::countByIsCompletedFalse)
+                .register(registry);
 
         answersCorrect = registry.counter("quizarena_answers_total", "result", "correct");
         answersIncorrect = registry.counter("quizarena_answers_total", "result", "incorrect");
@@ -49,9 +48,6 @@ public class MetricsService {
         questionsGenerated = DistributionSummary.builder("quizarena_questions_generated")
                 .register(registry);
     }
-
-    public void incrementActiveAttempts() { activeAttempts.incrementAndGet(); }
-    public void decrementActiveAttempts() { activeAttempts.decrementAndGet(); }
 
     public void recordCorrectAnswer() { answersCorrect.increment(); }
     public void recordIncorrectAnswer() { answersIncorrect.increment(); }
