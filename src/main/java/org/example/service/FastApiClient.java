@@ -29,8 +29,7 @@ public class FastApiClient {
 
     public FastApiClient(
             @Value("${quizarena.ml.base-url:http://127.0.0.1:8000}") String mlBaseUrl,
-            MetricsService metricsService
-    ) {
+            MetricsService metricsService) {
         String normalizedBase = mlBaseUrl.endsWith("/") ? mlBaseUrl.substring(0, mlBaseUrl.length() - 1) : mlBaseUrl;
         this.questionBaseUrl = normalizedBase + "/question/";
         this.checkEthicsBaseUrl = normalizedBase + "/check-ethics/";
@@ -49,9 +48,9 @@ public class FastApiClient {
                 .GET()
                 .build();
 
-        long start = System.nanoTime();
+        long ethicsStart = System.nanoTime();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        metricsService.getFastApiEthicsTimer().record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+        metricsService.getFastApiEthicsTimer().record(System.nanoTime() - ethicsStart, TimeUnit.NANOSECONDS);
 
         System.out.println("FastApiClient: Проверка этичности для промпта. Статус: " + response.statusCode());
         System.out.println("FastApiClient: Ответ проверки этичности: " + response.body());
@@ -110,9 +109,9 @@ public class FastApiClient {
                 .POST(HttpRequest.BodyPublishers.ofString(formBody, StandardCharsets.UTF_8))
                 .build();
 
-        long start = System.nanoTime();
+        long generateStart = System.nanoTime();
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        metricsService.getFastApiGenerateTimer().record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+        metricsService.getFastApiGenerateTimer().record(System.nanoTime() - generateStart, TimeUnit.NANOSECONDS);
 
         if (response.statusCode() >= 400) {
             try {

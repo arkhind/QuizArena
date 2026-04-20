@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import ValidationError
 
 from .config import get_settings
@@ -23,6 +24,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+Instrumentator().instrument(app).expose(app)
 
 
 def _parse_question_types(raw_value: str | None) -> list[QuestionType]:
