@@ -4,6 +4,7 @@ import org.example.dto.request.multiplayer.*;
 import org.example.dto.response.multiplayer.MultiplayerResultsDTO;
 import org.example.dto.response.multiplayer.MultiplayerSessionDTO;
 import org.example.dto.response.multiplayer.ParticipantsDTO;
+import org.example.service.JwtService;
 import org.example.service.MultiplayerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -17,10 +18,12 @@ import java.util.Map;
 public class MultiplayerController {
 
     private final MultiplayerService multiplayerService;
+    private final JwtService jwtService;
 
     @Autowired
-    public MultiplayerController(MultiplayerService multiplayerService) {
+    public MultiplayerController(MultiplayerService multiplayerService, JwtService jwtService) {
         this.multiplayerService = multiplayerService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/sessions")
@@ -113,7 +116,7 @@ public class MultiplayerController {
             // Если userId не передан в параметрах, пытаемся извлечь из токена
             Long currentUserId = userId;
             if (currentUserId == null) {
-                currentUserId = org.example.util.TokenUtil.extractUserIdFromRequest(request);
+                currentUserId = jwtService.extractUserIdFromRequest(request);
             }
             
             Map<String, Object> progress = multiplayerService.getSessionProgress(

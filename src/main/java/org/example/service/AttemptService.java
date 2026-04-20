@@ -479,6 +479,11 @@ public class AttemptService {
                     st.stakeForCurrentQuestion = null;
                 }
             }
+
+            // Сохраняем накопленный счёт в БД, чтобы пережить рестарт сервера и чтобы
+            // live-лидерборд в других инстансах видел актуальные баллы.
+            attempt.setScore(Math.round(st.score));
+            attemptRepository.save(attempt);
         } else {
             // fallback на старую логику, если state не был инициализирован
             Long currentScore = attempt.getScore() != null ? attempt.getScore() : 0L;
@@ -754,7 +759,15 @@ public class AttemptService {
         if (options.isEmpty()) {
             throw new IllegalStateException("У вопроса ID " + question.getId() + " нет вариантов ответов");
         }
-            
+
+        // «100 к 1»: детерминированная перетасовка (seed как у номиналов), чтобы правильные
+        // и неправильные варианты не шли подряд, но порядок был стабилен в рамках попытки.
+        if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
+            long shuffleSeed = attemptId * 1000003L + (question.getId() != null ? question.getId() : 0L);
+            options = new ArrayList<>(options);
+            Collections.shuffle(options, new Random(shuffleSeed));
+        }
+
         List<AnswerOption> dtoOptions = new ArrayList<>();
         for (org.example.model.AnswerOption opt : options) {
             if (opt == null) {
