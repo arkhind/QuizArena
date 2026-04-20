@@ -250,6 +250,18 @@
             color: #111;
             font-size: 0.95rem;
         }
+        .cat-stake-timer {
+            position: absolute;
+            top: 20px;
+            right: 28px;
+            margin: 0;
+            color: #111;
+            font-size: 1.6rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: 0.2px;
+            z-index: 2;
+        }
         #questionContentWrapper.cat-question-hidden {
             visibility: hidden;
             position: absolute;
@@ -460,7 +472,7 @@
                             <table class="cat-leaderboard-table">
                                 <thead>
                                 <tr>
-                                    <th scope="col">#</th>
+                                    <th scope="col">Место</th>
                                     <th scope="col">Игрок</th>
                                     <th scope="col">Очки</th>
                                 </tr>
@@ -476,6 +488,7 @@
                             </div>
                             <p id="catBetValidationError" class="cat-error" style="display:none;"></p>
                             <p class="cat-muted cat-bet-score">Ваш текущий счёт: <strong id="catCurrentScoreDisplay">0</strong></p>
+                            <p id="catStakeTimerText" class="cat-stake-timer">60 сек</p>
                         </section>
                     </div>
                 </div>
@@ -619,6 +632,9 @@
         let timeRemaining = /*[[${timeRemaining}]]*/ null;
         let timerInterval = null;
         let questionsRemaining = /*[[${questionsRemaining}]]*/ null;
+        let catLeaderboardInterval = null;
+        let stakeTimerInterval = null;
+        let stakeTimeLeft = 60;
 
         function getAttemptId() {
             // Сначала проверяем значение из сервера (Thymeleaf)
@@ -993,9 +1009,32 @@
             if (show) {
                 overlay.classList.remove('cat-overlay-hidden');
                 wrap.classList.add('cat-question-hidden');
+                if (timerInterval) { // чтобы окно ставки не закрвалось через время
+                  clearInterval(timerInterval);
+                  timerInterval = null;
+                }
+                startCatLeaderboardPolling();
+                startStakeTimer60s();
             } else {
                 overlay.classList.add('cat-overlay-hidden');
                 wrap.classList.remove('cat-question-hidden');
+                stopCatLeaderboardPolling()
+                stopStakeTimer();
+            }
+        }
+
+        function startCatLeaderboardPolling() {
+            stopCatLeaderboardPolling(); // защита от двойного интервала
+            loadCatLeaderboardAndScore(); // сразу первая загрузка
+            catLeaderboardInterval = setInterval(function () {
+                loadCatLeaderboardAndScore();
+            }, 1000); // раз в секунду
+        }
+
+        function stopCatLeaderboardPolling() {
+            if (catLeaderboardInterval) {
+                clearInterval(catLeaderboardInterval);
+                catLeaderboardInterval = null;
             }
         }
 
@@ -1006,6 +1045,8 @@
             var scoreEl = document.getElementById('catCurrentScoreDisplay');
             var betInput = document.getElementById('catBetInput');
             var list = document.getElementById('catLeaderboardList');
+            var errEl = document.getElementById('catLeaderboardError');
+            if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
 
             try {
                 var sr = await fetch('/api/attempts/' + attemptId + '/score', {
@@ -1020,7 +1061,12 @@
                         if (sc <= 0) betInput.value = '0';
                     }
                 }
-            } catch (e) { console.warn(e); }
+            } catch (e) { console.warn(e);
+              if (errEl) {
+                  errEl.textContent = 'Не удалось загрузить рейтинг';
+                  errEl.style.display = 'block';
+              }
+            }
 
             if (!list) return;
             list.innerHTML = '';
@@ -1054,6 +1100,62 @@
             }
         }
 
+        function stopStakeTimer() {
+            if (stakeTimerInterval) {
+                clearInterval(stakeTimerInterval);
+                stakeTimerInterval = null;
+            }
+        }
+
+        function renderStakeTimerText() {
+            var timerEl = document.getElementById('catStakeTimerText');
+            if (timerEl) {
+                timerEl.textContent = stakeTimeLeft + ' сек';
+            }
+        }
+
+        function startStakeTimer60s() {
+            renderStakeTimerText();
+            stakeTimerInterval = setInterval(async function () {
+                stakeTimeLeft--;
+                renderStakeTimerText();
+                if (stakeTimeLeft <= 0) {
+                    stopStakeTimer();
+                    // Если пользователь не нажал, отправляем ставку 0
+                    try {
+                        const rawStake = document.getElementById('catBetInput')?.value;
+                        let autoStake = parseInt(rawStake, 10);
+                        if (isNaN(autoStake) || autoStake < 0) autoStake = 0;
+
+                        var res = await fetch('/api/attempts/stake', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+                            },
+                           body: JSON.stringify({
+                                attemptId: parseInt(getAttemptId(), 10),
+                                stake: autoStake
+                            })
+                        });
+                        if (!res.ok) {
+                            var j = await res.json().catch(function () { return {}; });
+                            throw new Error(j.message || 'Ставка отклонена');
+                        }
+                        var question = await res.json();
+                        updateQuestionOnPage(question);
+                        if (typeof resetTimer === 'function') resetTimer();
+                    } catch (e) {
+                        var err = document.getElementById('catBetValidationError');
+                        if (err) {
+                            err.textContent = e.message || 'Не удалось отправить ставку по таймеру';
+                            err.style.display = 'block';
+                        }
+                    }
+                }
+            }, 1000);
+        }
+
         function updateQuestionOnPage(question) {
             if (!question) {
                 return;
@@ -1067,7 +1169,6 @@
 
             if (isStakeScreen) {
                  setCatOverlayVisible(true);
-                 loadCatLeaderboardAndScore();
                  return;
             }
             setCatOverlayVisible(false);
@@ -1298,7 +1399,9 @@
         window.addEventListener('beforeunload', () => {
             if (timerInterval) {
                 clearInterval(timerInterval);
+                stopStakeTimer();
             }
+            stopCatLeaderboardPolling();
             if (multiplayerPollInterval) {
                 clearInterval(multiplayerPollInterval);
             }
