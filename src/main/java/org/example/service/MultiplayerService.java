@@ -503,7 +503,10 @@ public class MultiplayerService {
         List<Map<String, Object>> players = attempts.stream()
                 .filter(a -> a.getUser() != null)
                 .map(a -> {
-                    long score = a.getScore() != null ? a.getScore() : 0L;
+                    // Для незавершённых попыток attempt.score в БД ещё не проставлен
+                    // (обновляется только на finish), поэтому тянем живой счёт из AttemptState,
+                    // чтобы live-лидерборд учитывал баллы текущего матча и эффект «кота в мешке».
+                    long score = Math.round(attemptService.getCurrentScore(a.getId()));
                     long timeSpent = 0L;
                     if (a.getStartTime() != null) {
                         Instant end = a.getFinishTime() != null ? a.getFinishTime() : Instant.now();
