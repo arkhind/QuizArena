@@ -3,12 +3,12 @@ package org.example.kafka;
 import org.example.dto.kafka.QuizGenerationRequestMessage;
 import org.example.metrics.MetricsService;
 import org.example.service.QuestionGenerationService;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.TimeUnit;
 
 @Component
 public class QuizGenerationRequestConsumer {

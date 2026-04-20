@@ -133,7 +133,6 @@ public class QuestionGenerationService {
             if (kafkaRequest.prompt() != null && !kafkaRequest.prompt().trim().isEmpty()) {
                 boolean isUnethical = fastApiClient.checkPromptEthics(kafkaRequest.prompt());
                 if (isUnethical) {
-                    metricsService.recordEthicsCheckFailed();
                     metricsService.recordGenerationUnethical();
                     existingSet.setStatus("FAILED");
                     generationSetRepository.save(existingSet);
@@ -142,7 +141,6 @@ public class QuestionGenerationService {
                     }
                     return;
                 }
-                metricsService.recordEthicsCheckPassed();
             }
 
             QuestionType preferred = null;
@@ -232,7 +230,7 @@ public class QuestionGenerationService {
                 for (int i = 0; i < mlQuestions.size() && generatedQuestions.size() < maxQuestionsToSave; i++) {
                     MlQuestionDTO mq = mlQuestions.get(i);
                     if (mq == null || mq.question() == null || mq.question().trim().isEmpty()) {
-                        metricsService.recordValidationFailedNullField();
+                        metricsService.recordValidationFailed();
                         continue;
                     }
 
@@ -250,7 +248,7 @@ public class QuestionGenerationService {
                         if (optionCount != 8 || correctCount != 5 || wrongCount != 3) {
                             System.err.println("QuestionGenerationService: Пропуск вопроса 100к1 - некорректная структура ("
                                     + optionCount + " опций, " + correctCount + " correct, " + wrongCount + " wrong)");
-                            metricsService.recordValidationFailedWrongCount();
+                            metricsService.recordValidationFailed();
                             continue;
                         }
                     }
@@ -259,7 +257,7 @@ public class QuestionGenerationService {
                         // Мы требуем 4 варианта, но не блокируем полностью генерацию — просто пропускаем некорректные
                         if (optionCount != 4) {
                             System.err.println("QuestionGenerationService: Пропуск single_choice - ожидалось 4 варианта, получено " + optionCount);
-                            metricsService.recordValidationFailedWrongCount();
+                            metricsService.recordValidationFailed();
                             continue;
                         }
                     }
