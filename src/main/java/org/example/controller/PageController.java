@@ -16,9 +16,9 @@ import org.example.dto.common.*;
 import org.example.repository.*;
 import org.example.model.UserQuizAttempt;
 import org.example.service.AttemptService;
+import org.example.service.JwtService;
 import org.example.service.QuizService;
 import org.example.service.ApiService;
-import org.example.util.TokenUtil;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -40,9 +40,10 @@ public class PageController {
     private final org.example.repository.UserRepository userRepository;
     private final org.example.repository.QuizRepository quizRepository;
     private final AttemptService attemptService;
+    private final JwtService jwtService;
 
     @Autowired
-    public PageController(ApiController apiController, QuizService quizService, UserQuizAttemptRepository attemptRepository, ApiService apiService, org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository, org.example.repository.UserRepository userRepository, org.example.repository.QuizRepository quizRepository, AttemptService attemptService) {
+    public PageController(ApiController apiController, QuizService quizService, UserQuizAttemptRepository attemptRepository, ApiService apiService, org.example.repository.MultiplayerSessionRepository multiplayerSessionRepository, org.example.repository.UserRepository userRepository, org.example.repository.QuizRepository quizRepository, AttemptService attemptService, JwtService jwtService) {
         this.apiController = apiController;
         this.quizService = quizService;
         this.attemptRepository = attemptRepository;
@@ -51,6 +52,7 @@ public class PageController {
         this.userRepository = userRepository;
         this.quizRepository = quizRepository;
         this.attemptService = attemptService;
+        this.jwtService = jwtService;
     }
     
     @GetMapping("/")
@@ -219,7 +221,7 @@ public class PageController {
                                   @RequestParam(required = false) String error,
                                   @RequestParam(required = false) String sessionId) {
         // Извлекаем userId из токена для проверки доступа к приватным квизам
-        Long userId = TokenUtil.extractUserIdFromRequest(request);
+        Long userId = jwtService.extractUserIdFromRequest(request);
         
         QuizDTO quiz = null;
         LeaderboardDTO leaderboard = null;
@@ -315,7 +317,7 @@ public class PageController {
     @GetMapping("/quiz/{quizId}/details")
     public String quizDetails(@PathVariable Long quizId, HttpServletRequest request, Model model) {
         // Извлекаем userId из токена для проверки доступа к приватным квизам
-        Long userId = TokenUtil.extractUserIdFromRequest(request);
+        Long userId = jwtService.extractUserIdFromRequest(request);
         QuizDetailsDTO quiz = apiService.getQuiz(quizId, userId);
         model.addAttribute("quiz", quiz);
         return "quiz-details";
@@ -371,7 +373,7 @@ public class PageController {
                                       Model model) {
         model.addAttribute("sessionId", sessionId);
         if (userId == null) {
-            Long userIdFromToken = TokenUtil.extractUserIdFromRequest(request);
+            Long userIdFromToken = jwtService.extractUserIdFromRequest(request);
             if (userIdFromToken != null) {
                 model.addAttribute("userId", userIdFromToken);
             } else {

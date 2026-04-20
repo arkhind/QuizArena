@@ -1,5 +1,6 @@
 package org.example.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.dto.request.auth.LoginRequest;
 import org.example.dto.request.auth.RegisterRequest;
 import org.example.dto.response.auth.AuthResponse;
@@ -17,118 +18,104 @@ import java.util.Optional;
 /**
  * Сервис для аутентификации и регистрации пользователей.
  */
+@Slf4j
 @Service
 @Transactional
 public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     @Autowired
-    public AuthService(UserRepository userRepository) {
+    public AuthService(UserRepository userRepository, JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
+        this.jwtService = jwtService;
     }
 
     public AuthResponse register(RegisterRequest request) {
-        System.out.println("=== AuthService.register() ===");
-        System.out.println("Username: " + request.username());
-        
-        // Нормализуем логин (убираем пробелы)
+        log.info("register() called, username={}", request.username());
+
         String login = request.username().trim();
-        System.out.println("Нормализованный логин: '" + login + "'");
-        
-        // Выводим всех пользователей для отладки
-        try {
-            List<User> allUsers = userRepository.findAll();
-            System.out.println("Всего пользователей в БД: " + allUsers.size());
-            for (User u : allUsers) {
-                System.out.println("  Пользователь ID=" + u.getId() + ", login='" + u.getLogin() + "'");
+        log.debug("Нормализованный логин: '{}'", login);
+
+        if (log.isDebugEnabled()) {
+            try {
+                List<User> allUsers = userRepository.findAll();
+                log.debug("Всего пользователей в БД: {}", allUsers.size());
+                for (User u : allUsers) {
+                    log.debug("  Пользователь ID={}, login='{}'", u.getId(), u.getLogin());
+                }
+            } catch (Exception e) {
+                log.warn("Не удалось получить список пользователей: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            System.err.println("Не удалось получить список пользователей: " + e.getMessage());
         }
-        
-        // Проверяем существование пользователя
+
         boolean exists = userRepository.existsByLogin(login);
-        System.out.println("Пользователь с логином '" + login + "' существует: " + exists);
-        
+        log.debug("Пользователь с логином '{}' существует: {}", login, exists);
+
         if (exists) {
-            System.err.println("ОШИБКА: Пользователь с логином '" + login + "' уже существует");
+            log.warn("Попытка регистрации с занятым логином: '{}'", login);
             throw new IllegalArgumentException("Пользователь с таким логином уже существует");
         }
 
         User user = new User();
         user.setLogin(login);
-        // TODO: Хеширование пароля с помощью BCrypt
         user.setPassword(passwordEncoder.encode(request.password()));
-        
-        System.out.println("Сохранение пользователя в БД...");
+
+        log.debug("Сохранение пользователя в БД...");
         user = userRepository.save(user);
-        System.out.println("Пользователь сохранен, ID: " + user.getId() + ", login: " + user.getLogin());
-        
-        // Проверяем, что пользователь действительно сохранен в БД
+        log.info("Пользователь сохранен, id={}, login='{}'", user.getId(), user.getLogin());
+
         Optional<User> savedUser = userRepository.findById(user.getId());
         if (savedUser.isEmpty()) {
-            System.err.println("КРИТИЧЕСКАЯ ОШИБКА: Пользователь не найден в БД после сохранения! ID: " + user.getId());
+            log.error("Пользователь не найден в БД после сохранения, id={}", user.getId());
             throw new IllegalStateException("Ошибка при сохранении пользователя");
         }
-        System.out.println("Проверка: пользователь найден в БД, ID: " + savedUser.get().getId() + ", login: " + savedUser.get().getLogin());
 
-        // TODO: Генерация JWT токена
-        String token = "token_" + user.getId() + "_" + System.currentTimeMillis();
+        String token = jwtService.generateToken(user);
 
-        System.out.println("Возвращаем AuthResponse: userId=" + user.getId() + ", username=" + user.getLogin());
+        log.info("Регистрация успешна, userId={}, username='{}'", user.getId(), user.getLogin());
         return new AuthResponse(user.getId(), user.getLogin(), token);
     }
 
     public AuthResponse login(LoginRequest request) {
-        System.out.println("=== AuthService.login() ===");
-        System.out.println("Username: " + request.username());
-        
-        // Выводим всех пользователей для отладки
-        try {
-            List<User> allUsers = userRepository.findAll();
-            System.out.println("Всего пользователей в БД: " + allUsers.size());
-            for (User u : allUsers) {
-                System.out.println("  Пользователь ID=" + u.getId() + ", login='" + u.getLogin() + "'");
+        log.info("login() called, username={}", request.username());
+
+        if (log.isDebugEnabled()) {
+            try {
+                List<User> allUsers = userRepository.findAll();
+                log.debug("Всего пользователей в БД: {}", allUsers.size());
+                for (User u : allUsers) {
+                    log.debug("  Пользователь ID={}, login='{}'", u.getId(), u.getLogin());
+                }
+            } catch (Exception e) {
+                log.warn("Не удалось получить список пользователей: {}", e.getMessage());
             }
-        } catch (Exception e) {
-            System.err.println("Не удалось получить список пользователей: " + e.getMessage());
         }
-        
-        // Ищем пользователя по логину (с учетом регистра)
+
         String login = request.username().trim();
-        System.out.println("Поиск пользователя с логином: '" + login + "'");
-        
+        log.debug("Поиск пользователя с логином: '{}'", login);
+
         User user = userRepository.findByLogin(login)
                 .orElseThrow(() -> {
-                    System.err.println("ОШИБКА: Пользователь с логином '" + login + "' не найден");
-                    System.err.println("Попробуйте проверить регистр и пробелы в логине");
+                    log.warn("Пользователь с логином '{}' не найден", login);
                     return new SecurityException("Неверный логин или пароль");
                 });
-        
-        System.out.println("Пользователь найден в БД: ID=" + user.getId() + ", login='" + user.getLogin() + "'");
 
-        // Проверка хеша пароля
-        System.out.println("Проверка пароля для пользователя ID=" + user.getId());
-        System.out.println("Хеш пароля в БД: " + (user.getPassword() != null ? user.getPassword().substring(0, Math.min(20, user.getPassword().length())) + "..." : "null"));
-        
+        log.debug("Пользователь найден в БД, id={}, login='{}'", user.getId(), user.getLogin());
+
         boolean passwordMatches = passwordEncoder.matches(request.password(), user.getPassword());
-        System.out.println("Пароль совпадает: " + passwordMatches);
-        
+
         if (!passwordMatches) {
-            System.err.println("ОШИБКА: Неверный пароль для пользователя ID=" + user.getId() + ", login='" + user.getLogin() + "'");
+            log.warn("Неверный пароль для пользователя id={}, login='{}'", user.getId(), user.getLogin());
             throw new SecurityException("Неверный логин или пароль");
         }
-        
-        System.out.println("Пароль верный, продолжаем логин");
 
-        // TODO: Генерация JWT токена
-        String token = "token_" + user.getId() + "_" + System.currentTimeMillis();
+        String token = jwtService.generateToken(user);
 
-        System.out.println("Возвращаем AuthResponse: userId=" + user.getId() + ", username=" + user.getLogin());
+        log.info("Логин успешен, userId={}, username='{}'", user.getId(), user.getLogin());
         return new AuthResponse(user.getId(), user.getLogin(), token);
     }
 }
-
