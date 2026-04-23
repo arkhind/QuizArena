@@ -41,7 +41,7 @@
             border-radius: 25px;
             cursor: pointer;
             font-size: 18px;
-            width: 80%;
+            width: 100%;
             transition: all 0.3s;
             margin-bottom: 15px;
             text-align: center;
@@ -62,7 +62,7 @@
             border-radius: 25px;
             cursor: pointer;
             font-size: 18px;
-            width: 80%;
+            width: 100%;
             transition: all 0.3s;
             margin-top: 15px;
             text-align: center;
@@ -82,7 +82,7 @@
 
         .container {
             max-width: none;
-            width: 80%;
+            width: 100%;
         }
 
         .header {
@@ -306,6 +306,22 @@
 
         .quiz-btn.delete:hover {
             background: #c82333;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                position: relative;
+                width: calc(100% - 48px);
+                left: 24px;
+                top: 24px;
+                height: auto;
+                margin-bottom: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+                padding: 16px 24px 24px;
+            }
         }
 
         /* Убеждаемся, что кнопка удаления всегда видна */
