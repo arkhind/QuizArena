@@ -635,6 +635,7 @@
         let catLeaderboardInterval = null;
         let stakeTimerInterval = null;
         let stakeTimeLeft = 60;
+        const stakeTimerMs = 60000;
 
         function getAttemptId() {
             // Сначала проверяем значение из сервера (Thymeleaf)
@@ -744,6 +745,8 @@
                         throw new Error(j.message || 'Ставка отклонена');
                     }
                     var question = await res.json();
+                    clearStakeDeadline();
+                    stopStakeTimer();
                     updateQuestionOnPage(question);
                     if (typeof resetTimer === 'function') resetTimer();
                 } catch (e) {
@@ -1111,6 +1114,28 @@
             }
         }
 
+        function getStakeTimerStorageKey() {
+            return 'catStakeDeadlineAt_' + getAttemptId();
+        }
+
+        function getOrCreateStakeDeadlineMs() {
+            var key = getStakeTimerStorageKey();
+            var saved = sessionStorage.getItem(key);
+            if (saved) {
+                var parsed = parseInt(saved, 10);
+                if (!isNaN(parsed)) {
+                    return parsed;
+                }
+            }
+            var deadline = Date.now() + stakeTimerMs;
+            sessionStorage.setItem(key, String(deadline));
+            return deadline;
+        }
+
+        function clearStakeDeadline() {
+            sessionStorage.removeItem(getStakeTimerStorageKey());
+        }
+
         function renderStakeTimerText() {
             var timerEl = document.getElementById('catStakeTimerText');
             if (timerEl) {
@@ -1121,9 +1146,12 @@
         function startStakeTimer60s() {
             // На всякий случай делаем паузу таймера вопроса, чтобы окно ставки не закрывалось через время
             stopQuestionTimer();
+            stopStakeTimer();
+            var deadlineMs = getOrCreateStakeDeadlineMs();
+            stakeTimeLeft = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
             renderStakeTimerText();
             stakeTimerInterval = setInterval(async function () {
-                stakeTimeLeft--;
+                stakeTimeLeft = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
                 renderStakeTimerText();
                 if (stakeTimeLeft <= 0) {
                     stopStakeTimer();
@@ -1149,6 +1177,7 @@
                             throw new Error(j.message || 'Ставка отклонена');
                         }
                         var question = await res.json();
+                        clearStakeDeadline();
                         updateQuestionOnPage(question);
                         if (typeof resetTimer === 'function') resetTimer();
                     } catch (e) {
@@ -1285,7 +1314,12 @@
                     if (remainingElement) {
                         questionsRemaining = parseInt(remainingElement.textContent) || 0;
                     }
-                    submitAnswer(null, null);
+                    const isCatOverlayOpen =
+                      !document.getElementById('catInBagOverlay')?.classList.contains('cat-overlay-hidden');
+
+                    if (!isCatOverlayOpen) {
+                        submitAnswer(null, null);
+                    }
                 } else {
                     timeElement.textContent = timeRemaining + ' сек';
                 }
