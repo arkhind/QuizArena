@@ -1002,6 +1002,13 @@
             }
         }
 
+        function stopQuestionTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
         function setCatOverlayVisible(show) {
             var overlay = document.getElementById('catInBagOverlay');
             var wrap = document.getElementById('questionContentWrapper');
@@ -1009,10 +1016,7 @@
             if (show) {
                 overlay.classList.remove('cat-overlay-hidden');
                 wrap.classList.add('cat-question-hidden');
-                if (timerInterval) { // чтобы окно ставки не закрвалось через время
-                  clearInterval(timerInterval);
-                  timerInterval = null;
-                }
+                stopQuestionTimer();
                 startCatLeaderboardPolling();
                 startStakeTimer60s();
             } else {
@@ -1115,6 +1119,8 @@
         }
 
         function startStakeTimer60s() {
+            // На всякий случай делаем паузу таймера вопроса, чтобы окно ставки не закрывалось через время
+            stopQuestionTimer();
             renderStakeTimerText();
             stakeTimerInterval = setInterval(async function () {
                 stakeTimeLeft--;
