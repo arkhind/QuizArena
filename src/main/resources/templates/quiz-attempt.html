@@ -633,6 +633,8 @@
         let timerInterval = null;
         let questionsRemaining = /*[[${questionsRemaining}]]*/ null;
         let catLeaderboardInterval = null;
+        let catLeaderboardLoading = false;
+        let catLeaderboardRequestId = 0;
         let stakeTimerInterval = null;
         let stakeTimeLeft = 60;
         const stakeTimerMs = 60000;
@@ -1046,6 +1048,10 @@
         }
 
         async function loadCatLeaderboardAndScore() {
+            if (catLeaderboardLoading) return;
+            catLeaderboardLoading = true;
+            const myRequestId = ++catLeaderboardRequestId;
+
             var token = localStorage.getItem('token');
             var attemptId = parseInt(getAttemptId(), 10);
 
@@ -1075,10 +1081,14 @@
               }
             }
 
-            if (!list) return;
+            if (!list) {
+                catLeaderboardLoading = false;
+                return;
+            }
             list.innerHTML = '';
 
             if (!sessionId) {
+                catLeaderboardLoading = false;
                 return;
             }
 
@@ -1089,6 +1099,10 @@
                 if (!r.ok) throw new Error('Рейтинг');
                 var payload = await r.json();
                 var rows = Array.isArray(payload) ? payload : ((payload && payload.players) ? payload.players : []);
+                if (myRequestId !== catLeaderboardRequestId) {
+                    catLeaderboardLoading = false;
+                    return;
+                }
                 (rows || []).forEach(function (p) {
                     var tr = document.createElement('tr');
                     var tdPos = document.createElement('td');
@@ -1105,6 +1119,7 @@
             } catch (e) {
                 console.warn(e);
             }
+            catLeaderboardLoading = false;
         }
 
         function stopStakeTimer() {
