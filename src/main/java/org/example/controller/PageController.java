@@ -474,14 +474,26 @@ public class PageController {
                     .findTopByUserIdAndQuizIdAndSessionIdIsNullAndIsCompletedFalseOrderByIdDesc(userId, quizId);
         }
 
+        long timeSpentSeconds = result.timeSpent() != null ? Math.max(0L, result.timeSpent()) : 0L;
+        String formattedTimeSpent = String.format("%02d:%02d", timeSpentSeconds / 60, timeSpentSeconds % 60);
+        int leaderboardSize = leaderboard != null && leaderboard.entries() != null ? leaderboard.entries().size() : 0;
+        int outperformedPercent = 0;
+        if (leaderboardSize > 0 && result.position() != null && result.position() > 0) {
+            outperformedPercent = Math.max(0, ((leaderboardSize - result.position()) * 100) / leaderboardSize);
+        }
+
         model.addAttribute("score", result.score());
         model.addAttribute("correctAnswers", result.correctAnswers());
         model.addAttribute("totalQuestions", result.totalQuestions());
         model.addAttribute("position", result.position());
+        model.addAttribute("timeSpentSeconds", timeSpentSeconds);
+        model.addAttribute("formattedTimeSpent", formattedTimeSpent);
         model.addAttribute("quizId", quizId);
         model.addAttribute("quizName", quizName);
         model.addAttribute("leaderboard", leaderboard);
         model.addAttribute("userPosition", leaderboard != null ? leaderboard.userPosition() : null);
+        model.addAttribute("leaderboardSize", leaderboardSize);
+        model.addAttribute("outperformedPercent", outperformedPercent);
         model.addAttribute("userId", userId);
         model.addAttribute("activeAttemptId", activeAttempt != null ? activeAttempt.getId() : null);
         return "quiz-results";
