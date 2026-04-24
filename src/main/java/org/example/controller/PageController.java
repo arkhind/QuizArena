@@ -320,6 +320,10 @@ public class PageController {
             model.addAttribute("errorMessage", "Этот квиз не содержит вопросов. Невозможно начать прохождение.");
         } else if ("startFailed".equals(error)) {
             model.addAttribute("errorMessage", "Ошибка при начале квиза. Попробуйте позже.");
+        } else if ("accessDenied".equals(error)) {
+            model.addAttribute("errorMessage", "Доступ к этому квизу запрещен. Это приватный квиз.");
+        } else if ("notFound".equals(error)) {
+            model.addAttribute("errorMessage", "Квиз или пользователь не найдены.");
         }
         
         return "quiz";
@@ -550,16 +554,11 @@ public class PageController {
             }
             // Если квиз не содержит вопросов или другая ошибка состояния
             if (e.getMessage() != null && e.getMessage().contains("не содержит вопросов")) {
-                model.addAttribute("errorMessage", "Этот квиз не содержит вопросов. Невозможно начать прохождение.");
-                model.addAttribute("quizId", quizId);
-                model.addAttribute("userId", userId);
                 return "redirect:/quiz/" + quizId + "?error=noQuestions";
             }
-            throw e;
+            return "redirect:/quiz/" + quizId + "?error=startFailed";
         } catch (Exception e) {
-            model.addAttribute("errorMessage", "Ошибка при начале квиза: " + e.getMessage());
-            model.addAttribute("quizId", quizId);
-            model.addAttribute("userId", userId);
+            // Общая ошибка
             return "redirect:/quiz/" + quizId + "?error=startFailed";
         }
     }
