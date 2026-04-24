@@ -983,7 +983,7 @@
 
                                     }
                                     if (quizId) {
-                                        window.location.href = '/quiz/attempt/' + attemptId + '/finish?quizId=' + quizId;
+                                        window.location.href = '/quiz/attempt/' + attemptId + '/finish';
                                     } else {
                                         window.location.href = '/quiz/attempt/' + attemptId + '/finish';
 
@@ -1554,15 +1554,15 @@
 
                 if (response.ok) {
                     setTimeout(() => {
-                        window.location.href = `/multiplayer/session/${sessionId}/results?userId=${localStorage.getItem('userId')}`;
+                        window.location.href = `/multiplayer/session/${sessionId}/results`;
                     }, 1000);
                 } else {
                     console.error('Failed to finish attempt');
-                    window.location.href = `/multiplayer/session/${sessionId}/results?userId=${localStorage.getItem('userId')}`;
+                    window.location.href = `/multiplayer/session/${sessionId}/results`;
                 }
             } catch (error) {
                 console.error('Error finishing attempt:', error);
-                window.location.href = `/multiplayer/session/${sessionId}/results?userId=${localStorage.getItem('userId')}`;
+                window.location.href = `/multiplayer/session/${sessionId}/results`;
             }
         }
 

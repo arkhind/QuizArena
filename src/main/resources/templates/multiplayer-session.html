@@ -402,7 +402,7 @@
         }
         
         const userId = localStorage.getItem('userId') || HOST_USER_ID;
-        const linkText = window.location.origin + '/multiplayer/join?sessionId=' + currentSessionId + '&userId=' + userId;
+        const linkText = window.location.origin + '/multiplayer/join?sessionId=' + currentSessionId;
         
         console.log('Copying link:', linkText);
         console.log('SESSION_ID used:', currentSessionId);

@@ -58,5 +58,8 @@ public interface UserAnswerRepository extends JpaRepository<UserAnswer, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM user_answers WHERE attempt_id IN (SELECT id FROM user_quiz_attempts WHERE user_id = :userId AND quiz_id = :quizId AND session_id = :sessionId)", nativeQuery = true)
     int deleteByUserIdAndQuizIdAndSessionId(@Param("userId") Long userId, @Param("quizId") Long quizId, @Param("sessionId") String sessionId);
-}
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM user_answers WHERE attempt_id IN (SELECT id FROM user_quiz_attempts WHERE session_id = :sessionId)", nativeQuery = true)
+    int deleteBySessionId(@Param("sessionId") String sessionId);
+}
