@@ -20,14 +20,15 @@ public class QuestionGenerationController {
     }
 
     @PostMapping("/generate")
-    public ResponseEntity<QuestionGenerationResponse> generateQuestions(@RequestBody QuestionGenerationRequest request) {
+    public ResponseEntity<?> generateQuestions(@RequestBody QuestionGenerationRequest request) {
         try {
-            QuestionGenerationResponse response = questionGenerationService.generateQuizQuestions(request);
+            QuestionGenerationResponse response = questionGenerationService.generateQuizQuestionsKafka(request);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Ошибка при генерации вопросов: " + e.getMessage());
         }
     }
 

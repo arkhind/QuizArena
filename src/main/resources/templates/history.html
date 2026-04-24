@@ -16,37 +16,37 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: #333;
-            display: flex;
         }
 
-        .sidebar {
-            width: 250px;
-            background: white;
-            padding: 25px;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            height: 200px;
-            position: fixed;
-            left: 20px;
-            top: 20px;
-            border-radius: 10px;
+        .main-content {
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .top-nav {
             display: flex;
-            flex-direction: column;
+            gap: 12px;
+            justify-content: flex-start;
+            margin-bottom: 20px;
         }
 
         .nav-btn {
-            background: transparent;
+            background: white;
             color: #667eea;
             border: 2px solid #667eea;
-            padding: 15px 25px;
+            padding: 12px 24px;
             border-radius: 25px;
             cursor: pointer;
-            font-size: 18px;
-            width: 80%;
-            transition: all 0.3s;
-            margin-bottom: 15px;
+            font-size: 16px;
             text-align: center;
             text-decoration: none;
-            display: block;
+            display: inline-block;
+            transition: all 0.3s;
         }
 
         .nav-btn:hover {
@@ -54,24 +54,12 @@
             color: white;
         }
 
-        .main-content {
-            flex: 1;
-            padding: 20px;
-            margin-left: 340px;
-            max-width: calc(100vw - 360px);
-        }
-
-        .container {
-            max-width: none;
-            width: 80%;
-        }
-
         .header {
             background: white;
             border-radius: 10px;
             padding: 25px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -88,7 +76,7 @@
             background: white;
             border-radius: 10px;
             padding: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             width: 100%;
             min-height: 500px;
         }
@@ -161,16 +149,12 @@
         }
 
         @media (max-width: 900px) {
-            .sidebar {
-                position: relative;
-                width: 100%;
-                margin-bottom: 20px;
-                height: auto;
+            .top-nav {
+                flex-direction: column;
             }
 
-            .main-content {
-                margin-left: 0;
-                max-width: 100%;
+            .nav-btn {
+                width: 100%;
             }
 
             .attempts-table {
@@ -185,13 +169,13 @@
     </style>
 </head>
 <body>
-<div class="sidebar">
-    <a th:href="@{/profile(userId=${userId})}" class="nav-btn">Назад</a>
-    <a th:href="@{/home}" class="nav-btn">Главная</a>
-</div>
-
 <div class="main-content">
     <div class="container">
+        <div class="top-nav">
+            <a th:href="@{/profile(userId=${userId})}" class="nav-btn">Назад</a>
+            <a th:href="@{/home}" class="nav-btn">Главная</a>
+        </div>
+
         <header class="header">
             <h1>История прохождений</h1>
         </header>
@@ -212,20 +196,17 @@
                     <td class="quiz-name" th:text="${attempt.quizName()}">Название квиза</td>
                     <td class="score-value" th:text="${attempt.score() != null ? attempt.score() : '-'}"></td>
                     <td class="date-value"
-                        th:text="${attempt.completedAt() != null ? #temporals.format(attempt.completedAt(), 'dd.MM.yyyy HH:mm') : '-'}">
-
-                    </td>
+                        th:text="${attempt.completedAt() != null ? #temporals.format(attempt.completedAt(), 'dd.MM.yyyy HH:mm') : '-'}"></td>
                 </tr>
                 </tbody>
             </table>
 
             <div class="empty-state" th:if="${attempts == null or attempts.isEmpty()}">
                 <h3>История пуста</h3>
-                <p>Вы еще не проходили квизы</p>
+                <p>Вы ещё не проходили квизы</p>
             </div>
         </section>
     </div>
 </div>
-
 </body>
 </html>

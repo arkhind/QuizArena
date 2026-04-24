@@ -7,6 +7,7 @@ import org.example.dto.request.auth.RegisterRequest;
 import org.example.dto.response.auth.AuthResponse;
 import org.example.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,10 +17,15 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final int authCookieMaxAgeSeconds;
 
     @Autowired
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService,
+                          @Value("${quizarena.jwt.expiration-ms}") long jwtExpirationMs) {
         this.authService = authService;
+        // Срок жизни cookie совпадает со сроком жизни JWT, переведённым в секунды.
+        long seconds = jwtExpirationMs / 1000L;
+        this.authCookieMaxAgeSeconds = (int) Math.min(seconds, Integer.MAX_VALUE);
     }
 
     @PostMapping("/register")
@@ -38,11 +44,10 @@ public class AuthController {
             
             AuthResponse response = authService.register(request);
             
-            // Устанавливаем токен в cookie для работы со страницами
             Cookie tokenCookie = new Cookie("authToken", response.token());
             tokenCookie.setHttpOnly(true);
             tokenCookie.setPath("/");
-            tokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7 дней
+            tokenCookie.setMaxAge(authCookieMaxAgeSeconds);
             httpResponse.addCookie(tokenCookie);
             
             return ResponseEntity.ok(response);
@@ -72,11 +77,10 @@ public class AuthController {
             
             AuthResponse response = authService.login(request);
             
-            // Устанавливаем токен в cookie для работы со страницами
             Cookie tokenCookie = new Cookie("authToken", response.token());
             tokenCookie.setHttpOnly(true);
             tokenCookie.setPath("/");
-            tokenCookie.setMaxAge(7 * 24 * 60 * 60); // 7 дней
+            tokenCookie.setMaxAge(authCookieMaxAgeSeconds);
             httpResponse.addCookie(tokenCookie);
             
             return ResponseEntity.ok(response);

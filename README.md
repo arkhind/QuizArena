@@ -63,6 +63,11 @@ cd python
 pip install -r requirements.txt
 ```
 
+Памятка для Леры: перейти на виртуальное окружение Python, где всё уже установлено (Windows):
+```bash
+.\.venv\Scripts\Activate
+```
+
 ## Запуск сервера
 
 ```bash

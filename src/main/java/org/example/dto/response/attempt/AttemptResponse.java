@@ -8,5 +8,7 @@ public record AttemptResponse(
   String quizName,
   QuestionDTO currentQuestion,
   Integer questionsRemaining,
-  Integer timeRemaining
+  Integer totalQuestions,
+  Integer timeRemaining,
+  Long currentQuestionDeadlineEpochMs
 ) {}

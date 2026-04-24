@@ -26,7 +26,6 @@ import java.net.http.HttpResponse;
 @Service
 @Transactional
 public class ApiService implements ApiController {
-
     private final AuthService authService;
     private final UserService userService;
     private final QuizService quizService;
@@ -187,7 +186,7 @@ public class ApiService implements ApiController {
 
     @Override
     public QuestionGenerationResponse generateQuizQuestions(QuestionGenerationRequest request) {
-        return questionGenerationService.generateQuizQuestions(request);
+        return questionGenerationService.generateQuizQuestionsKafka(request);
     }
 
     @Override
