@@ -451,12 +451,39 @@ public class PageController {
             quizName = "Квиз";
         }
         
+        Long userId = null;
+        try {
+            UserQuizAttempt attempt = attemptRepository.findById(attemptId).orElse(null);
+            if (attempt != null && attempt.getUser() != null) {
+                userId = attempt.getUser().getId();
+            }
+        } catch (Exception ignored) {
+        }
+
+        LeaderboardDTO leaderboard = null;
+        if (quizId != null && userId != null) {
+            try {
+                leaderboard = quizService.getQuizLeaderboard(quizId, userId);
+            } catch (Exception ignored) {
+            }
+        }
+
+        UserQuizAttempt activeAttempt = null;
+        if (quizId != null && userId != null) {
+            activeAttempt = attemptRepository
+                    .findTopByUserIdAndQuizIdAndSessionIdIsNullAndIsCompletedFalseOrderByIdDesc(userId, quizId);
+        }
+
         model.addAttribute("score", result.score());
         model.addAttribute("correctAnswers", result.correctAnswers());
         model.addAttribute("totalQuestions", result.totalQuestions());
         model.addAttribute("position", result.position());
         model.addAttribute("quizId", quizId);
         model.addAttribute("quizName", quizName);
+        model.addAttribute("leaderboard", leaderboard);
+        model.addAttribute("userPosition", leaderboard != null ? leaderboard.userPosition() : null);
+        model.addAttribute("userId", userId);
+        model.addAttribute("activeAttemptId", activeAttempt != null ? activeAttempt.getId() : null);
         return "quiz-results";
     }
 
