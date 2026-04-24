@@ -186,7 +186,7 @@
             if (joined) {
                 statusEl.textContent = 'Успешно присоединились! Перенаправление...';
                 setTimeout(() => {
-                    window.location.href = `/multiplayer/session/${sessionId}?userId=${USER_ID}`;
+                    window.location.href = `/multiplayer/session/${sessionId}`;
                 }, 1000);
             } else {
                 showError('Не удалось присоединиться к сессии');
@@ -220,4 +220,3 @@
 </script>
 </body>
 </html>
-
