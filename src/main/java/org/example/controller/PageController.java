@@ -483,7 +483,12 @@ public class PageController {
         int leaderboardSize = leaderboard != null && leaderboard.entries() != null ? leaderboard.entries().size() : 0;
         int outperformedPercent = 0;
         if (leaderboardSize > 0 && result.position() != null && result.position() > 0) {
-            outperformedPercent = Math.max(0, ((leaderboardSize - result.position()) * 100) / leaderboardSize);
+            if (leaderboardSize == 1) {
+                outperformedPercent = 100;
+            } else {
+                outperformedPercent = Math.min(100,
+                        Math.max(0, ((leaderboardSize - result.position()) * 100) / (leaderboardSize - 1)));
+            }
         }
 
         model.addAttribute("score", result.score());
