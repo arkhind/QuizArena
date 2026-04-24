@@ -334,18 +334,26 @@
         if (activeAttemptId) {
             const shouldResume = confirm("У вас есть незавершённая попытка. Нажмите OK, чтобы продолжить, или Отмена, чтобы начать заново.");
             if (shouldResume) {
-                window.location.href = "/quiz/" + quizId + "/attempt?userId=" + userIdNum + "&mode=resume";
+                window.location.href = "/quiz/" + quizId + "/attempt";
                 return;
             }
             const shouldRestart = confirm("Начать новую попытку? Прошлая незавершённая попытка будет завершена.");
             if (!shouldRestart) {
                 return;
             }
-            window.location.href = "/quiz/" + quizId + "/attempt?userId=" + userIdNum + "&mode=restart";
+            submitRestartAttempt(quizId);
             return;
         }
         
-        window.location.href = "/quiz/" + quizId + "/attempt?userId=" + userIdNum;
+        window.location.href = "/quiz/" + quizId + "/attempt";
+    }
+
+    function submitRestartAttempt(quizId) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/quiz/' + quizId + '/attempt/restart';
+        document.body.appendChild(form);
+        form.submit();
     }
 
 

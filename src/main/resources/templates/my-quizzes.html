@@ -385,12 +385,11 @@
 
 <script>
     function getCurrentUserId() {
-        return localStorage.getItem('userId') || new URLSearchParams(window.location.search).get('userId');
+        return localStorage.getItem('userId');
     }
 
     function goToCreateQuiz() {
-        const userId = getCurrentUserId();
-        window.location.href = '/quiz/create' + (userId ? '?userId=' + userId : '');
+        window.location.href = '/quiz/create';
     }
 
     function goToQuizDetails(quizId) {
@@ -398,8 +397,7 @@
     }
 
     function editQuiz(quizId) {
-        const userId = getCurrentUserId();
-        window.location.href = '/quiz/' + quizId + '/edit?userId=' + userId;
+        window.location.href = '/quiz/' + quizId + '/edit';
     }
 
     function showModal(title, message, buttons) {

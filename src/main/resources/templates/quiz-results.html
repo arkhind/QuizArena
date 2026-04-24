@@ -576,7 +576,11 @@
             return;
         }
 
-        window.location.href = '/quiz/' + quizId + '/attempt?userId=' + userIdNum + '&mode=restart';
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/quiz/' + quizId + '/attempt/restart';
+        document.body.appendChild(form);
+        form.submit();
     }
 
     function goHome() {
