@@ -252,9 +252,8 @@
     }
 
     function goToMyQuizzes() {
-        const userId = getCurrentUserId();
-        if (userId) {
-            window.location.href = '/my-quizzes?userId=' + userId;
+        if (getCurrentUserId()) {
+            window.location.href = '/my-quizzes';
         } else {
             window.location.href = '/login';
         }
@@ -270,9 +269,8 @@
     }
 
     function goToHistory() {
-        const userId = getCurrentUserId();
-        if (userId) {
-            window.location.href = '/history?userId=' + userId;
+        if (getCurrentUserId()) {
+            window.location.href = '/history';
         } else {
             window.location.href = '/login';
         }
