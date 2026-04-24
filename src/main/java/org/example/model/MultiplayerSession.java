@@ -40,10 +40,14 @@ public class MultiplayerSession {
     @Column(name = "finished_at")
     private Instant finishedAt;
 
+    @Column(name = "cat_question_index")
+    private Integer catQuestionIndex;
+
     public MultiplayerSession() {}
 
-    public MultiplayerSession(Long id, String sessionId, Quiz quiz, User hostUser, 
-                             String status, Instant createdAt, Instant startedAt, Instant finishedAt) {
+    public MultiplayerSession(Long id, String sessionId, Quiz quiz, User hostUser,
+                             String status, Instant createdAt, Instant startedAt, Instant finishedAt,
+                             Integer catQuestionIndex) {
         this.id = id;
         this.sessionId = sessionId;
         this.quiz = quiz;
@@ -52,6 +56,7 @@ public class MultiplayerSession {
         this.createdAt = createdAt;
         this.startedAt = startedAt;
         this.finishedAt = finishedAt;
+        this.catQuestionIndex = catQuestionIndex;
     }
 }
 

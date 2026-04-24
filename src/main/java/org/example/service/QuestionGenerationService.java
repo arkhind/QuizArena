@@ -1,56 +1,40 @@
 package org.example.service;
 
-import org.example.dto.common.*;
+import org.example.metrics.MetricsService;
 import org.example.dto.request.generation.QuestionGenerationRequest;
-import org.example.dto.response.generation.*;
-import org.example.dto.common.GenerationMetadata;
-import org.example.dto.common.ValidationError;
-import org.example.dto.common.DuplicatePair;
-import org.example.dto.response.quiz.QuestionDTO;
-import org.example.dto.common.AnswerOption;
+import org.example.dto.kafka.QuizGenerationRequestMessage;
+import org.example.kafka.KafkaQuizGenerationProperties;
+import org.example.dto.response.generation.QuestionGenerationResponse;
 import org.example.model.*;
 import org.example.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientException;
+import org.example.dto.ml.MlQuestionDTO;
+import org.example.dto.ml.MlQuestionOptionDTO;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
-/**
- * Сервис для генерации вопросов с помощью ИИ.
- * Путь: src/main/java/org/example/service/QuestionGenerationService.java
- */
 @Service
-@Transactional
 public class QuestionGenerationService {
-    private final Map<Long, QuestionSetState> questionSets = new ConcurrentHashMap<>();
-    private long nextQuestionSetId = 1;
+    private static final int MAX_GENERATION_ATTEMPTS = 3;
     private final GenerationSetRepository generationSetRepository;
     private final QuizRepository quizRepository;
     private final QuestionRepository questionRepository;
     private final AnswerOptionRepository answerOptionRepository;
-    private final WebClient webClient;
-
-    @Value("${llm.service.url:http://localhost:8000}")
-    private String llmServiceUrl;
-
-    @Value("${llm.service.timeout:120}")
-    private int llmServiceTimeout;
+    private final FastApiClient fastApiClient;
+    private final KafkaTemplate<String, QuizGenerationRequestMessage> requestKafkaTemplate;
+    private final String requestTopic;
+    private final QuizCacheEvictService quizCacheEvictService;
+    private final MetricsService metricsService;
 
     @Autowired
     public QuestionGenerationService(
@@ -58,54 +42,33 @@ public class QuestionGenerationService {
             QuizRepository quizRepository,
             QuestionRepository questionRepository,
             AnswerOptionRepository answerOptionRepository,
-            WebClient.Builder webClientBuilder) {
+            FastApiClient fastApiClient,
+            KafkaTemplate<String, QuizGenerationRequestMessage> quizGenerationRequestKafkaTemplate,
+            KafkaQuizGenerationProperties kafkaQuizGenerationProperties,
+            QuizCacheEvictService quizCacheEvictService,
+            MetricsService metricsService) {
         this.generationSetRepository = generationSetRepository;
         this.quizRepository = quizRepository;
         this.questionRepository = questionRepository;
         this.answerOptionRepository = answerOptionRepository;
-        this.webClient = webClientBuilder.build();
+        this.fastApiClient = fastApiClient;
+        this.requestKafkaTemplate = quizGenerationRequestKafkaTemplate;
+        this.requestTopic = kafkaQuizGenerationProperties.getRequestTopic();
+        this.quizCacheEvictService = quizCacheEvictService;
+        this.metricsService = metricsService;
     }
 
     /**
-     * Внутренний класс для хранения состояния набора вопросов
+     * Producer-side: создаёт GenerationSet, отправляет request в Kafka и возвращает questionSetId
      */
-    private static class QuestionSetState {
-        Long setId;
-        Long quizId;
-        String status;
-        List<Long> questionIds;
-    }
+    public QuestionGenerationResponse generateQuizQuestionsKafka(QuestionGenerationRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("request is null");
+        }
 
-    /**
-     * Внутренний класс для хранения сгенерированного вопроса
-     */
-    private static class GeneratedQuestion {
-        Long id;
-        String text;
-        QuestionType type;
-        String explanation;
-        List<GeneratedAnswerOption> answerOptions;
-        boolean isValid;
-        boolean isDuplicate;
-    }
-
-    /**
-     * Внутренний класс для хранения варианта ответа
-     */
-    private static class GeneratedAnswerOption {
-        Long id;
-        String text;
-        boolean isCorrect;
-    }
-
-    /**
-     * Генерирует вопросы для квиза с использованием ИИ через Python сервис.
-     */
-    public QuestionGenerationResponse generateQuizQuestions(QuestionGenerationRequest request) {
         Quiz quiz = quizRepository.findById(request.quizId())
-                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден: " + request.quizId()));
 
-        // Создаем набор вопросов
         GenerationSet questionSet = new GenerationSet();
         questionSet.setQuiz(quiz);
         questionSet.setPrompt(request.prompt());
@@ -117,471 +80,386 @@ public class QuestionGenerationService {
         questionSet.setFinalCount(0);
         questionSet = generationSetRepository.save(questionSet);
 
-        int questionCount = request.questionCount() != null ? request.questionCount() : 10;
-        String prompt = request.prompt() != null ? request.prompt() : "Общая тема";
-        List<Question> generatedQuestions = new ArrayList<>();
+        String correlationId = UUID.randomUUID().toString();
+        String preferredQuestionType = request.preferredQuestionType() != null
+                ? request.preferredQuestionType().name()
+                : null;
+
+        QuizGenerationRequestMessage kafkaRequest = new QuizGenerationRequestMessage(
+                correlationId,
+                questionSet.getId(),
+                request.quizId(),
+                request.prompt(),
+                request.questionCount(),
+                preferredQuestionType
+        );
 
         try {
-            // Вызываем Python LLM сервис
-            String llmResponse = callLLMService(prompt, questionCount);
-            
-            // Парсим ответ от LLM
-            List<GeneratedQuestionData> parsedQuestions = parseLLMResponse(llmResponse);
-            
-            if (parsedQuestions.isEmpty()) {
-                throw new IllegalStateException("LLM сервис вернул пустой ответ. Проверьте, что Python сервис работает корректно и Ollama запущен.");
-            }
-            
-            // Используем вопросы от LLM
-            for (GeneratedQuestionData qData : parsedQuestions) {
-                Question genQuestion = createQuestionFromLLMData(quiz, questionSet, qData);
-                generatedQuestions.add(genQuestion);
-            }
-        } catch (RuntimeException e) {
-            // Если LLM сервис недоступен, выбрасываем понятную ошибку
-            String errorMessage = String.format(
-                "Не удалось сгенерировать вопросы через LLM сервис. " +
-                "Убедитесь, что:\n" +
-                "1. Python FastAPI сервис запущен на %s\n" +
-                "2. Ollama установлен и модель 'qwen3:8b' загружена\n" +
-                "3. Сеть доступна\n\n" +
-                "Ошибка: %s",
-                llmServiceUrl,
-                e.getMessage()
-            );
-            throw new IllegalStateException(errorMessage, e);
+            requestKafkaTemplate.send(requestTopic, kafkaRequest.correlationId(), kafkaRequest);
+        } catch (Exception e) {
+            questionSet.setStatus("FAILED");
+            generationSetRepository.save(questionSet);
+            throw new RuntimeException("Kafka send failed", e);
         }
-
-        questionSet.setGeneratedCount(generatedQuestions.size());
-        questionSet.setStatus("VALIDATING");
-        generationSetRepository.save(questionSet);
 
         return new QuestionGenerationResponse(
                 questionSet.getId(),
                 questionSet.getStatus(),
-                generatedQuestions.size(),
                 0,
                 0,
-                generatedQuestions.size()
+                0,
+                0
         );
     }
 
     /**
-     * Вызывает Python LLM сервис для генерации вопросов.
+     * Worker-side: вызывается consumer'ом по Kafka request и выполняет генерацию через ML
      */
-    private String callLLMService(String prompt, int questionCount) {
+    public void processKafkaQuizGenerationRequest(QuizGenerationRequestMessage kafkaRequest) {
+        if (kafkaRequest == null) {
+            throw new IllegalArgumentException("kafkaRequest is null");
+        }
+        GenerationSet existingSet = null;
+        long generationStart = System.nanoTime();
         try {
-            String encodedPrompt = URLEncoder.encode(prompt, StandardCharsets.UTF_8);
-            String url = llmServiceUrl + "/question/" + encodedPrompt + "/" + questionCount;
-            
-            return webClient.get()
-                    .uri(url)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .timeout(Duration.ofSeconds(llmServiceTimeout))
-                    .block();
-        } catch (WebClientException e) {
-            throw new RuntimeException("Failed to call LLM service: " + e.getMessage(), e);
+            if (kafkaRequest.questionSetId() == null) {
+                throw new IllegalArgumentException("questionSetId is required");
+            }
+
+            existingSet = generationSetRepository.findById(kafkaRequest.questionSetId())
+                    .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
+
+            if ("READY".equals(existingSet.getStatus())) {
+                return;
+            }
+
+            if (kafkaRequest.prompt() != null && !kafkaRequest.prompt().trim().isEmpty()) {
+                boolean isUnethical = fastApiClient.checkPromptEthics(kafkaRequest.prompt());
+                if (isUnethical) {
+                    metricsService.recordGenerationUnethical();
+                    existingSet.setStatus("FAILED");
+                    generationSetRepository.save(existingSet);
+                    if (existingSet.getQuiz() != null && existingSet.getQuiz().getId() != null) {
+                        quizCacheEvictService.evictQuizCache(existingSet.getQuiz().getId());
+                    }
+                    return;
+                }
+            }
+
+            QuestionType preferred = null;
+            if (kafkaRequest.preferredQuestionType() != null && !kafkaRequest.preferredQuestionType().isBlank()) {
+                try {
+                    preferred = QuestionType.valueOf(kafkaRequest.preferredQuestionType().trim().toUpperCase());
+                } catch (Exception ignored) {
+                    preferred = null;
+                }
+            }
+
+            QuestionGenerationRequest internalRequest = new QuestionGenerationRequest(
+                    kafkaRequest.quizId(),
+                    kafkaRequest.prompt(),
+                    null,
+                    null,
+                    kafkaRequest.questionCount(),
+                    preferred
+            );
+
+            generateExistingQuestionSet(kafkaRequest.questionSetId(), internalRequest);
+            metricsService.recordGenerationSuccess();
+            metricsService.getGenerationDurationTimer().record(System.nanoTime() - generationStart, TimeUnit.NANOSECONDS);
+        } catch (Exception e) {
+            if (existingSet != null && !"READY".equals(existingSet.getStatus())) {
+                existingSet.setStatus("FAILED");
+                generationSetRepository.save(existingSet);
+                if (existingSet.getQuiz() != null && existingSet.getQuiz().getId() != null) {
+                    quizCacheEvictService.evictQuizCache(existingSet.getQuiz().getId());
+                }
+            }
+            metricsService.recordGenerationFailed();
+            metricsService.getGenerationDurationTimer().record(System.nanoTime() - generationStart, TimeUnit.NANOSECONDS);
+            throw new RuntimeException("Ошибка обработки Kafka-запроса генерации: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * Парсит ответ от LLM в структурированный формат.
-     * Формат ответа:
-     * *Вопрос*
-     * 1)*вариант ответа*
-     * 2)*вариант ответа*
-     * 3)*вариант ответа*
-     * 4)*вариант ответа*
-     * *правильный ответ*
-     * *объяснение*
-     * *Следующий вопрос*
-     */
-    private List<GeneratedQuestionData> parseLLMResponse(String response) {
-        List<GeneratedQuestionData> questions = new ArrayList<>();
-        
-        if (response == null || response.trim().isEmpty()) {
-            return questions;
-        }
+    @Transactional
+    public QuestionGenerationResponse generateExistingQuestionSet(Long questionSetId, QuestionGenerationRequest request) {
+        GenerationSet existingSet = generationSetRepository.findById(questionSetId)
+                .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
 
-        // Разбиваем на строки
-        String[] lines = response.split("\n");
-        GeneratedQuestionData currentQuestion = null;
-        int expectedAnswerIndex = 1;
-        boolean lookingForCorrectAnswer = false;
+        Quiz quiz = quizRepository.findById(request.quizId())
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден: " + request.quizId()));
 
-        for (String line : lines) {
-            line = line.trim();
-            if (line.isEmpty()) continue;
+        // синхронизируем set (на случай если prompt пустой/обновился)
+        existingSet.setQuiz(quiz);
+        existingSet.setPrompt(request.prompt());
+        existingSet.setStatus("GENERATING");
+        existingSet.setGeneratedCount(0);
+        existingSet.setValidCount(0);
+        existingSet.setDuplicateCount(0);
+        existingSet.setFinalCount(0);
+        generationSetRepository.save(existingSet);
 
-            // Проверяем, начинается ли строка с *
-            if (line.startsWith("*") && line.endsWith("*")) {
-                String content = line.substring(1, line.length() - 1).trim();
-                
-                // Если это не номер варианта ответа (1)*, 2)*, и т.д.)
-                if (!line.matches("^\\d+\\)\\*.*\\*$")) {
-                    // Проверяем, не содержит ли строка "Следующий вопрос" или "правильный ответ"
-                    if (content.toLowerCase().contains("следующий вопрос")) {
-                        // Сохраняем текущий вопрос и начинаем новый
-                        if (currentQuestion != null && currentQuestion.text != null) {
-                            questions.add(currentQuestion);
-                        }
-                        currentQuestion = new GeneratedQuestionData();
-                        expectedAnswerIndex = 1;
-                        lookingForCorrectAnswer = false;
-                    } else if (content.toLowerCase().contains("правильный ответ") || 
-                              content.matches(".*[1-4].*")) {
-                        // Это строка с правильным ответом
-                        lookingForCorrectAnswer = true;
-                        if (currentQuestion != null) {
-                            currentQuestion.correctAnswerIndex = extractAnswerIndex(content);
-                        }
-                    } else if (lookingForCorrectAnswer && currentQuestion != null) {
-                        // Это объяснение (идет после правильного ответа)
-                        currentQuestion.explanation = content;
-                        lookingForCorrectAnswer = false;
-                    } else if (currentQuestion == null || currentQuestion.text == null) {
-                        // Это начало нового вопроса
-                        if (currentQuestion != null && currentQuestion.text != null) {
-                            questions.add(currentQuestion);
-                        }
-                        currentQuestion = new GeneratedQuestionData();
-                        currentQuestion.text = content;
-                        expectedAnswerIndex = 1;
-                    } else if (currentQuestion.explanation == null) {
-                        // Это объяснение
-                        currentQuestion.explanation = content;
-                    }
+        return generateQuizQuestionsUsingSet(existingSet, request);
+    }
+
+    private QuestionGenerationResponse generateQuizQuestionsUsingSet(GenerationSet questionSet, QuestionGenerationRequest request) {
+        Quiz quiz = questionSet.getQuiz();
+        int questionCount = request.questionCount() != null ? request.questionCount() : 10;
+        String prompt = request.prompt() != null ? request.prompt() : "Общая тема";
+        Exception lastException = null;
+
+        for (int attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+            List<Question> generatedQuestions = new ArrayList<>();
+            try {
+                if (attempt > 1) {
+                    // Перед новой попыткой очищаем частично сохранённые результаты предыдущей
+                    questionRepository.deleteByGenerationSetId(questionSet.getId());
                 }
-            } else if (line.matches("^\\d+\\)\\*.*")) {
-                // Вариант ответа в формате 1)*ответ*
-                Pattern pattern = Pattern.compile("^(\\d+)\\)\\*(.*)\\*$");
-                Matcher matcher = pattern.matcher(line);
-                if (matcher.matches()) {
-                    int answerNum = Integer.parseInt(matcher.group(1));
-                    String answerText = matcher.group(2).trim();
-                    
-                    if (currentQuestion == null) {
-                        currentQuestion = new GeneratedQuestionData();
+
+                System.out.println("QuestionGenerationService: Начинаем генерацию вопросов, попытка " + attempt +
+                        " для промпта: " + prompt.substring(0, Math.min(50, prompt.length())));
+                List<MlQuestionDTO> mlQuestions = fastApiClient.generateQuestionsStructured(
+                        prompt,
+                        questionCount,
+                        request.preferredQuestionType()
+                );
+                System.out.println("QuestionGenerationService: Получено вопросов от ML: " + (mlQuestions != null ? mlQuestions.size() : 0));
+
+                if (mlQuestions == null || mlQuestions.isEmpty()) {
+                    throw new RuntimeException("ML не вернул ни одного вопроса");
+                }
+
+                int maxQuestionsToSave = questionCount;
+                for (int i = 0; i < mlQuestions.size() && generatedQuestions.size() < maxQuestionsToSave; i++) {
+                    MlQuestionDTO mq = mlQuestions.get(i);
+                    if (mq == null || mq.question() == null || mq.question().trim().isEmpty()) {
+                        metricsService.recordValidationFailed();
+                        continue;
                     }
-                    
-                    // Добавляем ответы в правильном порядке
-                    while (currentQuestion.answers.size() < answerNum) {
-                        currentQuestion.answers.add("");
-                    }
-                    if (currentQuestion.answers.size() >= answerNum) {
-                        if (answerNum <= currentQuestion.answers.size()) {
-                            currentQuestion.answers.set(answerNum - 1, answerText);
-                        } else {
-                            currentQuestion.answers.add(answerText);
+
+                    QuestionType type = mapMlType(mq.type(), request.preferredQuestionType());
+
+                    List<MlQuestionOptionDTO> options = mq.options() != null ? mq.options() : List.of();
+                    List<String> correctIds = mq.correct_answers() != null ? mq.correct_answers() : List.of();
+                    long correctCount = options.stream()
+                            .filter(o -> o != null && o.id() != null && correctIds.stream().anyMatch(id -> id != null && id.equalsIgnoreCase(o.id())))
+                            .count();
+                    long optionCount = options.stream().filter(o -> o != null && o.text() != null && !o.text().trim().isEmpty()).count();
+                    long wrongCount = optionCount - correctCount;
+
+                    if (type == QuestionType.HUNDRED_TO_ONE) {
+                        if (optionCount != 8 || correctCount != 5 || wrongCount != 3) {
+                            System.err.println("QuestionGenerationService: Пропуск вопроса 100к1 - некорректная структура ("
+                                    + optionCount + " опций, " + correctCount + " correct, " + wrongCount + " wrong)");
+                            metricsService.recordValidationFailed();
+                            continue;
                         }
                     }
-                    expectedAnswerIndex = Math.max(expectedAnswerIndex, answerNum + 1);
+
+                    if (type == QuestionType.SINGLE_CHOICE) {
+                        // Мы требуем 4 варианта, но не блокируем полностью генерацию — просто пропускаем некорректные
+                        if (optionCount != 4) {
+                            System.err.println("QuestionGenerationService: Пропуск single_choice - ожидалось 4 варианта, получено " + optionCount);
+                            metricsService.recordValidationFailed();
+                            continue;
+                        }
+                    }
+
+                    Question question = new Question();
+                    question.setQuiz(quiz);
+                    question.setText(mq.question().trim());
+                    question.setType(type);
+                    question.setIsGenerated(true);
+                    question.setGenerationSetId(questionSet.getId());
+                    question.setIsValid(true);
+                    question.setIsDuplicate(false);
+
+                    String explanation = mq.explanation() != null ? mq.explanation().trim() : "";
+                    question.setExplanation(explanation.isEmpty() ? "Объяснение отсутствует" : explanation);
+
+                    question = questionRepository.save(question);
+
+                    for (MlQuestionOptionDTO opt : options) {
+                        if (opt == null || opt.text() == null || opt.text().trim().isEmpty()) {
+                            continue;
+                        }
+                        AnswerOption ao = new AnswerOption();
+                        ao.setQuestion(question);
+                        ao.setText(opt.text().trim());
+                        boolean isCorrect = false;
+                        if (opt.id() != null) {
+                            for (String cid : correctIds) {
+                                if (cid != null && cid.equalsIgnoreCase(opt.id().trim())) {
+                                    isCorrect = true;
+                                    break;
+                                }
+                            }
+                        }
+                        ao.setCorrect(isCorrect);
+                        ao.setNaOption(false);
+                        answerOptionRepository.save(ao);
+                    }
+
+                    generatedQuestions.add(question);
+                }
+
+                if (generatedQuestions.isEmpty()) {
+                    throw new RuntimeException("Не удалось сохранить ни одного вопроса из ответа ML");
+                }
+
+                questionSet.setGeneratedCount(generatedQuestions.size());
+                questionSet.setValidCount(generatedQuestions.size());
+                questionSet.setFinalCount(generatedQuestions.size());
+                questionSet.setStatus("READY");
+                metricsService.recordQuestionsGenerated(generatedQuestions.size());
+                generationSetRepository.save(questionSet);
+                quizCacheEvictService.evictQuizCache(quiz.getId());
+
+                return new QuestionGenerationResponse(
+                        questionSet.getId(),
+                        questionSet.getStatus(),
+                        generatedQuestions.size(),
+                        generatedQuestions.size(),
+                        0,
+                        generatedQuestions.size()
+                );
+            } catch (Exception e) {
+                lastException = e;
+                System.err.println("QuestionGenerationService: Попытка " + attempt + " завершилась ошибкой: " + e.getMessage());
+                if (attempt == MAX_GENERATION_ATTEMPTS) {
+                    break;
                 }
             }
         }
 
-        // Добавляем последний вопрос, если есть
-        if (currentQuestion != null && currentQuestion.text != null) {
-            questions.add(currentQuestion);
-        }
-
-        return questions;
+        questionSet.setStatus("FAILED");
+        generationSetRepository.save(questionSet);
+        quizCacheEvictService.evictQuizCache(quiz.getId());
+        throw new RuntimeException(
+                "Ошибка при генерации вопросов после " + MAX_GENERATION_ATTEMPTS + " попыток: "
+                        + (lastException != null ? lastException.getMessage() : "unknown"),
+                lastException
+        );
     }
 
-    /**
-     * Извлекает номер правильного ответа из текста.
-     */
-    private int extractAnswerIndex(String text) {
-        Pattern pattern = Pattern.compile("([1-4])");
-        Matcher matcher = pattern.matcher(text);
-        if (matcher.find()) {
-            return Integer.parseInt(matcher.group(1)) - 1; // Конвертируем в 0-based индекс
-        }
-        return 0; // По умолчанию первый ответ
+    private QuestionType mapMlType(String mlType, QuestionType preferredFallback) {
+        String t = mlType != null ? mlType.trim().toLowerCase() : "";
+        return switch (t) {
+            case "multiple_choice" -> QuestionType.MULTIPLE_CHOICE;
+            case "true_false" -> QuestionType.TRUE_FALSE;
+            case "100k1", "q100k1", "hundred_to_one" -> QuestionType.HUNDRED_TO_ONE;
+            case "single_choice" -> QuestionType.SINGLE_CHOICE;
+            default -> preferredFallback != null ? preferredFallback : QuestionType.SINGLE_CHOICE;
+        };
     }
 
-    /**
-     * Создает вопрос из распарсенных данных LLM.
-     */
-    private Question createQuestionFromLLMData(Quiz quiz, GenerationSet questionSet, GeneratedQuestionData qData) {
-        Question genQuestion = new Question();
-        genQuestion.setQuiz(quiz);
-        genQuestion.setText(qData.text);
-        genQuestion.setType(QuestionType.SINGLE_CHOICE);
-        genQuestion.setExplanation(qData.explanation != null && !qData.explanation.isEmpty() 
-                ? qData.explanation 
-                : "Правильный ответ соответствует теме.");
-        genQuestion.setIsGenerated(true);
-        genQuestion.setGenerationSetId(questionSet.getId());
-        genQuestion.setIsValid(null);
-        genQuestion.setIsDuplicate(false);
-        genQuestion = questionRepository.save(genQuestion);
+    @Transactional
+    public QuestionGenerationResponse generateQuizQuestions(QuestionGenerationRequest request) {
+        Quiz quiz = quizRepository.findById(request.quizId())
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден: " + request.quizId()));
 
-        // Определяем правильный ответ
-        int correctIndex = 0;
-        if (qData.correctAnswerIndex >= 0 && qData.correctAnswerIndex < qData.answers.size()) {
-            correctIndex = qData.correctAnswerIndex;
-        }
-
-        // Сохраняем варианты ответов (минимум 4)
-        int answerCount = Math.max(4, qData.answers.size());
-        for (int i = 0; i < answerCount; i++) {
-            org.example.model.AnswerOption option = new org.example.model.AnswerOption();
-            option.setQuestion(genQuestion);
-            
-            if (i < qData.answers.size() && !qData.answers.get(i).isEmpty()) {
-                option.setText(qData.answers.get(i));
-            } else {
-                option.setText("Вариант ответа " + (i + 1));
-            }
-            
-            option.setCorrect(i == correctIndex);
-            option.setNaOption(false);
-            answerOptionRepository.save(option);
-        }
-
-        return genQuestion;
+        GenerationSet questionSet = new GenerationSet();
+        questionSet.setQuiz(quiz);
+        questionSet.setPrompt(request.prompt());
+        questionSet.setStatus("GENERATING");
+        questionSet.setCreatedAt(Instant.now());
+        questionSet.setGeneratedCount(0);
+        questionSet.setValidCount(0);
+        questionSet.setDuplicateCount(0);
+        questionSet.setFinalCount(0);
+        questionSet = generationSetRepository.save(questionSet);
+        return generateQuizQuestionsUsingSet(questionSet, request);
     }
 
-
-    /**
-     * Внутренний класс для хранения распарсенных данных вопроса от LLM.
-     */
-    private static class GeneratedQuestionData {
-        String text;
-        List<String> answers = new ArrayList<>();
-        int correctAnswerIndex = 0;
-        String explanation;
-    }
-
-    /**
-     * Валидирует сгенерированные вопросы.
-     */
-    public ValidationResponse validateGeneratedQuestions(Long questionSetId) {
+    @Transactional(readOnly = true)
+    public org.example.dto.response.generation.ValidationResponse validateGeneratedQuestions(Long questionSetId) {
         GenerationSet questionSet = generationSetRepository.findById(questionSetId)
                 .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
 
-        // Получаем все вопросы из набора
         Long quizId = questionSet.getQuiz().getId();
         List<Question> questions = questionRepository.findByQuizId(quizId);
         List<Question> generatedQuestions = questions.stream()
                 .filter(q -> q.getGenerationSetId() != null && questionSetId.equals(q.getGenerationSetId()))
-                .collect(Collectors.toList());
-
-        List<ValidationError> errors = new ArrayList<>();
-        int validCount = 0;
-
-        for (Question question : generatedQuestions) {
-            boolean isValid = true;
-            List<String> questionErrors = new ArrayList<>();
-
-            // Проверка 1: Текст вопроса не пустой и не слишком короткий
-            if (question.getText() == null || question.getText().trim().length() < 10) {
-                isValid = false;
-                questionErrors.add("Текст вопроса слишком короткий");
-            }
-
-            // Проверка 2: Есть варианты ответов
-            List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(question.getId());
-            if (options.size() < 4) {
-                isValid = false;
-                questionErrors.add("Недостаточно вариантов ответа (нужно 4)");
-            }
-
-            // Проверка 3: Есть хотя бы один правильный ответ
-            boolean hasCorrectAnswer = options.stream()
-                    .anyMatch(org.example.model.AnswerOption::isCorrect);
-            if (!hasCorrectAnswer) {
-                isValid = false;
-                questionErrors.add("Нет правильного варианта ответа");
-            }
-
-            // Проверка 4: Есть объяснение
-            if (question.getExplanation() == null || question.getExplanation().trim().isEmpty()) {
-                isValid = false;
-                questionErrors.add("Отсутствует объяснение");
-            }
-
-            question.setIsValid(isValid);
-            questionRepository.save(question);
-
-            if (isValid) {
-                validCount++;
-            } else {
-                for (String error : questionErrors) {
-                    errors.add(new ValidationError(
-                            question.getText(),
-                            error,
-                            "question"
-                    ));
-                }
-            }
-        }
-
-        questionSet.setValidCount(validCount);
-        questionSet.setStatus("DEDUPLICATING");
-        generationSetRepository.save(questionSet);
-
-        return new ValidationResponse(
+                .collect(java.util.stream.Collectors.toList());
+        
+        return new org.example.dto.response.generation.ValidationResponse(
                 questionSetId,
                 generatedQuestions.size(),
-                validCount,
-                errors
+                generatedQuestions.size(),
+                new java.util.ArrayList<>()
         );
-    }
+  }
 
-    /**
-     * Удаляет дубликаты вопросов.
-     */
-    public DeduplicationResponse removeDuplicateQuestions(Long questionSetId) {
+    @Transactional(readOnly = true)
+    public org.example.dto.response.generation.DeduplicationResponse removeDuplicateQuestions(Long questionSetId) {
         GenerationSet questionSet = generationSetRepository.findById(questionSetId)
                 .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
 
-        // Получаем все валидные вопросы из набора
-        List<Question> questions = questionRepository.findByQuizId(questionSet.getQuiz().getId());
-        List<Question> validQuestions = questions.stream()
-                .filter(q -> questionSetId.equals(q.getGenerationSetId())
-                        && Boolean.TRUE.equals(q.getIsValid()))
-                .collect(Collectors.toList());
-
-        List<Question> uniqueQuestions = new ArrayList<>();
-        List<DuplicatePair> duplicatePairs = new ArrayList<>();
-
-        for (int i = 0; i < validQuestions.size(); i++) {
-            Question question1 = validQuestions.get(i);
-            boolean isDuplicate = false;
-
-            for (int j = i + 1; j < validQuestions.size(); j++) {
-                Question question2 = validQuestions.get(j);
-                if (isSimilarQuestion(question1.getText(), question2.getText())) {
-                    isDuplicate = true;
-                    question2.setIsDuplicate(true);
-                    questionRepository.save(question2);
-                    duplicatePairs.add(new DuplicatePair(
-                            question1.getId(),
-                            question2.getId(),
-                            0.85 // Примерное значение схожести
-                    ));
-                }
-            }
-
-            if (!isDuplicate) {
-                question1.setIsDuplicate(false);
-                uniqueQuestions.add(question1);
-            } else {
-                question1.setIsDuplicate(true);
-            }
-            questionRepository.save(question1);
-        }
-
-        questionSet.setDuplicateCount(duplicatePairs.size());
-        questionSet.setFinalCount(uniqueQuestions.size());
-        questionSet.setStatus("READY");
-        generationSetRepository.save(questionSet);
-
-        return new DeduplicationResponse(
-                questionSetId,
-                validQuestions.size(),
-                uniqueQuestions.size(),
-                duplicatePairs
-        );
-    }
-
-    /**
-     * Получает сгенерированные вопросы.
-     */
-    public GeneratedQuestionsDTO getGeneratedQuestions(Long questionSetId) {
-        GenerationSet questionSet = generationSetRepository.findById(questionSetId)
-                .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
-
-        // Получаем все уникальные вопросы из набора
         Long quizId = questionSet.getQuiz().getId();
         List<Question> questions = questionRepository.findByQuizId(quizId);
-        List<Question> uniqueQuestions = questions.stream()
-                .filter(q -> q.getGenerationSetId() != null 
-                        && questionSetId.equals(q.getGenerationSetId())
-                        && Boolean.FALSE.equals(q.getIsDuplicate()))
-                .collect(Collectors.toList());
+        List<Question> validQuestions = questions.stream()
+                .filter(q -> q.getGenerationSetId() != null && questionSetId.equals(q.getGenerationSetId()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        return new org.example.dto.response.generation.DeduplicationResponse(
+                questionSetId,
+                validQuestions.size(),
+                validQuestions.size(),
+                new java.util.ArrayList<>()
+        );
+    }
 
-        List<QuestionDTO> questionDTOs = uniqueQuestions.stream()
-                .map(this::toQuestionDTO)
-                .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public org.example.dto.response.generation.GeneratedQuestionsDTO getGeneratedQuestions(Long questionSetId) {
+        GenerationSet questionSet = generationSetRepository.findById(questionSetId)
+                .orElseThrow(() -> new IllegalArgumentException("Набор вопросов не найден"));
 
-        GenerationMetadata metadata = new GenerationMetadata(
+        Long quizId = questionSet.getQuiz().getId();
+        List<Question> questions = questionRepository.findByQuizId(quizId);
+        List<Question> generatedQuestions = questions.stream()
+                .filter(q -> q.getGenerationSetId() != null && questionSetId.equals(q.getGenerationSetId()))
+                .collect(java.util.stream.Collectors.toList());
+        
+        List<org.example.dto.response.quiz.QuestionDTO> questionDTOs = generatedQuestions.stream()
+                .map(q -> {
+                    List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(q.getId());
+                    List<org.example.dto.common.AnswerOption> dtoOptions = options.stream()
+                            .map(opt -> new org.example.dto.common.AnswerOption(opt.getId(), opt.getText(), opt.getNominal()))
+                            .collect(java.util.stream.Collectors.toList());
+
+                    return new org.example.dto.response.quiz.QuestionDTO(
+                            q.getId(),
+                            q.getText(),
+                            dtoOptions,
+                            q.getType(),
+                            q.getQuiz().getTimePerQuestion() != null ? 
+                                    (int) q.getQuiz().getTimePerQuestion().getSeconds() : null,
+                            null,
+                            q.getExplanation(),
+                            null,
+                            null,
+                            0,
+                            toLocalDateTime(q.getQuiz().getCreatedAt())
+                    );
+                })
+                .collect(java.util.stream.Collectors.toList());
+
+        org.example.dto.common.GenerationMetadata metadata = new org.example.dto.common.GenerationMetadata(
                 toLocalDateTime(questionSet.getCreatedAt()),
-                "1.0", // modelVersion
-                String.valueOf(questionSet.getPrompt().hashCode()) // promptHash
+                "1.0",
+                String.valueOf(questionSet.getPrompt() != null ? questionSet.getPrompt().hashCode() : 0)
         );
 
-        return new GeneratedQuestionsDTO(
+        return new org.example.dto.response.generation.GeneratedQuestionsDTO(
                 questionSetId,
                 questionDTOs,
                 metadata
         );
     }
 
-    // ========== Вспомогательные методы ==========
-
-    private boolean isSimilarQuestion(String text1, String text2) {
-        // Простая проверка на схожесть (можно улучшить с помощью NLP)
-        if (text1 == null || text2 == null) return false;
-
-        // Нормализуем тексты
-        String normalized1 = text1.toLowerCase().trim();
-        String normalized2 = text2.toLowerCase().trim();
-
-        // Проверяем точное совпадение
-        if (normalized1.equals(normalized2)) return true;
-
-        // Проверяем схожесть по словам (упрощенная версия)
-        String[] words1 = normalized1.split("\\s+");
-        String[] words2 = normalized2.split("\\s+");
-
-        if (words1.length == 0 || words2.length == 0) return false;
-
-        int commonWords = 0;
-        for (String word1 : words1) {
-            for (String word2 : words2) {
-                if (word1.equals(word2)) {
-                    commonWords++;
-                    break;
-                }
-            }
-        }
-
-        double similarity = (double) commonWords / Math.max(words1.length, words2.length);
-        return similarity > 0.8; // 80% схожести
-    }
-
-    private QuestionDTO toQuestionDTO(Question question) {
-        List<org.example.model.AnswerOption> options = answerOptionRepository.findByQuestionId(question.getId());
-        List<AnswerOption> dtoOptions = options.stream()
-                .map(opt -> new AnswerOption(opt.getId(), opt.getText()))
-                .collect(Collectors.toList());
-
-        Integer timeLimit = null;
-        if (question.getQuiz().getTimePerQuestion() != null) {
-            timeLimit = (int) question.getQuiz().getTimePerQuestion().getSeconds();
-        }
-
-        return new QuestionDTO(
-                question.getId(),
-                question.getText(),
-                dtoOptions,
-                timeLimit,
-                null, // materialReference
-                question.getExplanation(),
-                null, // difficulty
-                null, // category
-                0, // position
-                toLocalDateTime(question.getQuiz().getCreatedAt())
-        );
-    }
-
-    private LocalDateTime toLocalDateTime(Instant instant) {
+    private java.time.LocalDateTime toLocalDateTime(Instant instant) {
         return instant != null
-                ? LocalDateTime.ofInstant(instant, ZoneId.systemDefault())
+                ? java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
                 : null;
     }
 }

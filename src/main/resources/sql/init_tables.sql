@@ -34,7 +34,8 @@ CREATE TABLE answer_options(
     question_id BIGINT NOT NULL,
     text TEXT NOT NULL,
     is_correct BOOLEAN NOT NULL,
-    is_na_option BOOLEAN NOT NULL,
+  is_na_option BOOLEAN NOT NULL,
+  nominal DECIMAL(10,2),
     CONSTRAINT answer_options_question_id_fk FOREIGN KEY(question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
@@ -46,6 +47,9 @@ CREATE TABLE user_quiz_attempts(
     finish_time TIMESTAMP WITH TIME ZONE,
     score BIGINT,
     is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    current_question_id BIGINT,
+    current_question_started_at TIMESTAMP WITH TIME ZONE,
+    current_question_deadline_at TIMESTAMP WITH TIME ZONE,
     CONSTRAINT user_quiz_attempts_user_id_fk FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT user_quiz_attempts_quiz_id_fk FOREIGN KEY(quiz_id) REFERENCES quizzes(id)
 );

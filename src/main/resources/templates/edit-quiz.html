@@ -20,17 +20,7 @@
         }
 
         .sidebar {
-            width: 250px;
-            background: white;
-            padding: 25px;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            height: 200px;
-            position: fixed;
-            left: 20px;
-            top: 20px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
+            display: none;
         }
 
         .nav-btn {
@@ -41,7 +31,7 @@
             border-radius: 25px;
             cursor: pointer;
             font-size: 18px;
-            width: 80%;
+            width: 100%;
             transition: all 0.3s;
             margin-bottom: 15px;
             text-align: center;
@@ -57,13 +47,13 @@
         .main-content {
             flex: 1;
             padding: 20px;
-            margin-left: 340px;
-            max-width: calc(100vw - 360px);
+            margin-left: 0;
+            max-width: 100%;
         }
 
         .container {
             max-width: none;
-            width: 80%;
+            width: 100%;
         }
 
         .header {
@@ -300,330 +290,383 @@
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <a href="/my-quizzes" class="nav-btn" onclick="event.preventDefault(); goBack()">Назад</a>
-        <a href="/home" class="nav-btn">Главная</a>
-    </div>
+<div class="sidebar">
+    <a href="/my-quizzes" class="nav-btn" onclick="event.preventDefault(); goBack()">Назад</a>
+    <a href="/home" class="nav-btn">Главная</a>
+</div>
 
-    <div class="main-content">
-        <div class="container">
-            <header class="header">
-                <h1 th:text="'Редактирование: ' + ${quizName}">Редактирование квиза</h1>
-            </header>
+<div class="main-content">
+    <div class="container">
+        <header class="header">
+            <h1 th:text="'Редактирование: ' + ${quizName}">Редактирование квиза</h1>
+        </header>
 
-            <div class="form-container">
-                <form id="editQuizForm" onsubmit="handleSubmit(event)">
-                    <!-- Скрытые поля для ID -->
-                    <input type="hidden" id="quizId" th:value="${quizId}">
-                    <input type="hidden" id="userId" th:value="${userId}">
+        <div class="form-container">
+            <form id="editQuizForm" onsubmit="handleSubmit(event)">
+                <!-- Скрытые поля для ID -->
+                <input type="hidden" id="quizId" th:value="${quizId}">
+                <input type="hidden" id="userId" th:value="${userId}">
 
-                    <!-- Название квиза -->
-                    <div class="form-group">
-                        <label>
-                            <span class="required">*</span> Название квиза:
-                        </label>
-                        <input type="text" 
-                               id="quizName" 
-                               name="name" 
-                               th:value="${quizName}"
-                               required 
-                               minlength="3"
-                               maxlength="100">
-                    </div>
+                <!-- Название квиза -->
+                <div class="form-group">
+                    <label>
+                        <span class="required">*</span> Название квиза:
+                    </label>
+                    <input type="text"
+                           id="quizName"
+                           name="name"
+                           th:value="${quizName}"
+                           required
+                           minlength="3"
+                           maxlength="100">
+                </div>
 
-                    <div class="form-group">
-                        <label>
-                            <span class="required">*</span> Описание (промт для ИИ):
-                        </label>
-                        <textarea id="quizDescription" 
-                                  name="description"
-                                  th:text="${description}"
-                                  required
-                                  minlength="10"
-                                  maxlength="500"></textarea>
-                    </div>
+                <div class="form-group">
+                    <label>
+                        <span class="required">*</span> Описание (промпт для ИИ):
+                    </label>
+                    <textarea id="quizDescription"
+                              name="description"
+                              th:text="${description}"
+                              required
+                              minlength="10"
+                              maxlength="500"></textarea>
+                </div>
 
-                    <div class="form-group">
-                        <div class="file-upload-section" onclick="document.getElementById('quizMaterial').click()">
-                            <div class="file-upload-icon">📄</div>
-                            <span class="file-upload-label" id="fileLabel">
+                <div class="form-group">
+                    <div class="file-upload-section" onclick="document.getElementById('quizMaterial').click()">
+                        <div class="file-upload-icon">📄</div>
+                        <span class="file-upload-label" id="fileLabel">
                                 Добавить новый материал (.pdf, .txt, .doc, .docx)
                             </span>
-                            <small style="color: #999; display: block; margin-top: 10px;">
-                                Необязательно. Новый материал добавится к существующим
-                            </small>
-                            <div class="file-input-wrapper">
-                                <input type="file" 
-                                       id="quizMaterial" 
-                                       name="material"
-                                       accept=".pdf,.txt,.doc,.docx"
-                                       style="display: none;">
-                            </div>
+                        <small style="color: #999; display: block; margin-top: 10px;">
+                            Необязательно. Новый материал добавится к существующим
+                        </small>
+                        <div class="file-input-wrapper">
+                            <input type="file"
+                                   id="quizMaterial"
+                                   name="material"
+                                   accept=".pdf,.txt,.doc,.docx"
+                                   style="display: none;">
                         </div>
                     </div>
+                </div>
 
-                    <div class="number-inputs">
-                        <div class="form-group">
-                            <label>
-                                <span class="required">*</span> Время на ответ (сек):
-                            </label>
-                            <input type="number" 
-                                   id="timeLimit" 
-                                   name="timeLimit"
-                                   th:value="${timeLimit}"
-                                   min="10" 
-                                   max="300" 
-                                   required>
-                        </div>
-                    </div>
-
-                    <div class="form-group quiz-type-section">
+                <div class="number-inputs">
+                    <div class="form-group">
                         <label>
-                            <span class="required">*</span> Настройки квиза:
+                            <span class="required">*</span> Количество вопросов:
                         </label>
+                        <input type="number"
+                               id="questionNumber"
+                               name="questionNumber"
+                               th:value="${quiz != null and quiz.questionNumber != null ? quiz.questionNumber : 10}"
+                               min="1"
+                               max="200"
+                               required>
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            Максимум 30 вопросов (из 200 доступных в базе данных)
+                        </small>
+                    </div>
 
-                        <div class="type-category">
-                            <span class="type-category-label">1. Видимость:</span>
-                            <div class="radio-group">
-                                <div class="radio-option">
-                                    <input type="radio" 
-                                           id="public" 
-                                           name="visibility" 
-                                           value="public"
-                                           th:checked="${isPublic == true}">
-                                    <label for="public">Публичный</label>
-                                </div>
-                                <div class="radio-option">
-                                    <input type="radio" 
-                                           id="private" 
-                                           name="visibility" 
-                                           value="private"
-                                           th:checked="${isPublic == false}">
-                                    <label for="private">Приватный</label>
-                                </div>
+                    <div class="form-group">
+                        <label>
+                            <span class="required">*</span> Время на ответ (сек):
+                        </label>
+                        <input type="number"
+                               id="timeLimit"
+                               name="timeLimit"
+                               th:value="${timeLimit}"
+                               min="10"
+                               max="300"
+                               required>
+                    </div>
+                </div>
+
+                <div class="form-group quiz-type-section">
+                    <label>
+                        <span class="required">*</span> Настройки квиза:
+                    </label>
+
+                    <div class="type-category">
+                        <span class="type-category-label">1. Видимость:</span>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio"
+                                       id="public"
+                                       name="visibility"
+                                       value="public"
+                                       th:checked="${isPublic == true}">
+                                <label for="public">Публичный</label>
                             </div>
-                        </div>
-
-                        <div class="type-category">
-                            <span class="type-category-label">2. Тип содержимого:</span>
-                            <div class="radio-group">
-                                <div class="radio-option">
-                                    <input type="radio" 
-                                           id="static" 
-                                           name="contentType" 
-                                           value="static"
-                                           th:checked="${isStatic == true}">
-                                    <label for="static">Статичный</label>
-                                </div>
-                                <div class="radio-option">
-                                    <input type="radio" 
-                                           id="updatable" 
-                                           name="contentType" 
-                                           value="updatable"
-                                           th:checked="${isStatic == false}">
-                                    <label for="updatable">Обновляемый</label>
-                                </div>
+                            <div class="radio-option">
+                                <input type="radio"
+                                       id="private"
+                                       name="visibility"
+                                       value="private"
+                                       th:checked="${isPublic == false}">
+                                <label for="private">Приватный</label>
                             </div>
                         </div>
                     </div>
 
-                    <div class="button-group">
-                        <button type="button" class="cancel-btn" onclick="goBack()">
-                            Отмена
-                        </button>
-                        <button type="button" class="delete-btn" onclick="deleteQuiz()">
-                            Удалить квиз
-                        </button>
-                        <button type="submit" class="submit-btn">
-                            Сохранить изменения
-                        </button>
+                    <div class="type-category">
+                        <span class="type-category-label">2. Тип содержимого:</span>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio"
+                                       id="static"
+                                       name="contentType"
+                                       value="static"
+                                       th:checked="${isStatic == true}">
+                                <label for="static">Статичный</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio"
+                                       id="updatable"
+                                       name="contentType"
+                                       value="updatable"
+                                       th:checked="${isStatic == false}">
+                                <label for="updatable">Обновляемый</label>
+                            </div>
+                        </div>
                     </div>
-                </form>
-            </div>
+
+                    <!-- defaultQuestionType-->
+                    <div class="type-category">
+                        <span class="type-category-label">3. Тип вопросов:</span>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="editDefSingle" name="defaultQuestionType" value="SINGLE_CHOICE"
+                                       th:checked="${quiz.defaultQuestionType == null or quiz.defaultQuestionType.name() == 'SINGLE_CHOICE'}">
+                                <label for="editDefSingle">Одиночный выбор</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="editDefMulti" name="defaultQuestionType" value="MULTIPLE_CHOICE"
+                                       th:checked="${quiz.defaultQuestionType != null and quiz.defaultQuestionType.name() == 'MULTIPLE_CHOICE'}">
+                                <label for="editDefMulti">Множественный выбор</label>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="editHundredToOne" name="defaultQuestionType" value="HUNDRED_TO_ONE"
+                                       th:checked="${quiz.defaultQuestionType != null and quiz.defaultQuestionType.name() == 'HUNDRED_TO_ONE'}">
+                                <label for="editHundredToOne">100 к 1</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="cancel-btn" onclick="goBack()">
+                        Отмена
+                    </button>
+                    <button type="button" class="delete-btn" onclick="deleteQuiz()">
+                        Удалить квиз
+                    </button>
+                    <button type="submit" class="submit-btn">
+                        Сохранить изменения
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <script>
-        /**
-         * Возврат на страницу "Мои квизы".
-         * Получает userId из скрытого поля или localStorage.
-         */
-        function goBack() {
-            const userId = getCurrentUserId();
-            window.location.href = '/my-quizzes?userId=' + userId;
+<script>
+    /**
+     * Возврат на страницу "Мои квизы".
+     * Получает userId из скрытого поля или localStorage.
+     */
+    function goBack() {
+        const userId = getCurrentUserId();
+        window.location.href = '/my-quizzes?userId=' + userId;
+    }
+
+    /**
+     * Получение ID текущего пользователя.
+     * Сначала проверяет скрытое поле формы, затем localStorage, затем query параметры.
+     *
+     * @returns {string} ID пользователя
+     */
+    function getCurrentUserId() {
+        // Пробуем получить из скрытого поля формы
+        const formUserId = document.getElementById('userId')?.value;
+        if (formUserId) {
+            return formUserId;
         }
 
-        /**
-         * Получение ID текущего пользователя.
-         * Сначала проверяет скрытое поле формы, затем localStorage, затем query параметры.
-         * 
-         * @returns {string} ID пользователя
-         */
-        function getCurrentUserId() {
-            // Пробуем получить из скрытого поля формы
-            const formUserId = document.getElementById('userId')?.value;
-            if (formUserId) {
-                return formUserId;
-            }
-            
-            // Пробуем получить из localStorage
-            const storedUserId = localStorage.getItem('userId');
-            if (storedUserId) {
-                return storedUserId;
-            }
-            
-            // Пробуем получить из URL параметров
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlUserId = urlParams.get('userId');
-            if (urlUserId) {
-                return urlUserId;
-            }
-            
-            // Дефолтное значение
-            return '1';
+        // Пробуем получить из localStorage
+        const storedUserId = localStorage.getItem('userId');
+        if (storedUserId) {
+            return storedUserId;
         }
 
-        /**
-         * Получение ID квиза из скрытого поля формы.
-         * 
-         * @returns {string} ID квиза
-         */
-        function getQuizId() {
-            return document.getElementById('quizId').value;
+        // Пробуем получить из URL параметров
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlUserId = urlParams.get('userId');
+        if (urlUserId) {
+            return urlUserId;
         }
 
-        /**
-         * Обработка отправки формы редактирования квиза.
-         * Собирает данные формы, валидирует их и отправляет на сервер через REST API.
-         * 
-         * @param {Event} event - событие отправки формы
-         */
-        async function handleSubmit(event) {
-            event.preventDefault(); // Предотвращаем стандартную отправку формы
-            
-            const form = document.getElementById('editQuizForm');
-            const formData = new FormData(form);
-            
-            // Собираем данные формы в объект для отправки
-            const quizData = {
-                quizId: parseInt(getQuizId()),
-                userId: parseInt(getCurrentUserId()),
-                name: formData.get('name').trim(),
-                description: formData.get('description').trim(),
-                timeLimit: parseInt(formData.get('timeLimit')),
-                isPrivate: formData.get('visibility') === 'private',
-                isStatic: formData.get('contentType') === 'static'
-            };
+        // Дефолтное значение
+        return '1';
+    }
 
-            try {
-                // Получаем токен авторизации из localStorage
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    alert('Вы не авторизованы');
-                    window.location.href = '/login';
-                    return;
-                }
+    /**
+     * Получение ID квиза из скрытого поля формы.
+     *
+     * @returns {string} ID квиза
+     */
+    function getQuizId() {
+        return document.getElementById('quizId').value;
+    }
 
+    /**
+     * Обработка отправки формы редактирования квиза.
+     * Собирает данные формы, валидирует их и отправляет на сервер через REST API.
+     *
+     * @param {Event} event - событие отправки формы
+     */
+    async function handleSubmit(event) {
+        event.preventDefault(); // Предотвращаем стандартную отправку формы
 
-                const response = await fetch('/api/quizzes/' + getQuizId(), {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify(quizData)
-                });
+        const form = document.getElementById('editQuizForm');
+        const formData = new FormData(form);
 
+        // Собираем данные формы в объект для отправки
+        const quizData = {
+            quizId: parseInt(getQuizId()),
+            userId: parseInt(getCurrentUserId()),
+            name: formData.get('name').trim(),
+            prompt: formData.get('description').trim(), // description -> prompt для соответствия DTO
+            questionNumber: parseInt(formData.get('questionNumber')),
+            timeLimit: parseInt(formData.get('timeLimit')),
+            isPrivate: formData.get('visibility') === 'private',
+            isStatic: formData.get('contentType') === 'static',
+            defaultQuestionType: formData.get('defaultQuestionType')
+        };
 
-                if (response.ok) {
-                    const result = await response.json();
-                    alert('Квиз успешно обновлен!');
-                    window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
-                } else {
-
-                    const error = await response.json().catch(() => ({}));
-                    const errorMessage = error.message || error.error || 
-                                       `Ошибка ${response.status}: ${response.statusText}`;
-                    alert('Ошибка при обновлении квиза: ' + errorMessage);
-                }
-            } catch (error) {
-
-                console.error('Error:', error);
-                alert('Ошибка сети');
-            }
-        }
-
-
-        async function deleteQuiz() {
-
-            if (!confirm('Вы уверены, что хотите удалить этот квиз? Это действие нельзя отменить.')) {
+        try {
+            // Получаем токен авторизации из localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Вы не авторизованы');
+                window.location.href = '/login';
                 return;
             }
 
-            try {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    alert('Вы не авторизованы');
-                    return;
-                }
+
+            const response = await fetch('/api/quizzes/' + getQuizId(), {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(quizData)
+            });
 
 
-                const response = await fetch('/api/quizzes/' + getQuizId() + '?userId=' + getCurrentUserId(), {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({
-                        quizId: parseInt(getQuizId()),
-                        userId: parseInt(getCurrentUserId())
-                    })
-                });
-
-                if (response.ok) {
-                    alert('Квиз удален');
-                    window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
-                } else {
-                    const error = await response.json().catch(() => ({}));
-                    const errorMessage = error.message || error.error || 
-                                       `Ошибка ${response.status}: ${response.statusText}`;
-                    alert('Ошибка при удалении квиза: ' + errorMessage);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Ошибка сети. Проверьте подключение к интернету.');
-            }
-        }
-
-        /**
-         * Обновление текста метки после выбора файла.
-         * Показывает имя загруженного файла вместо стандартного текста.
-         * 
-         * @param {string} fileName - имя выбранного файла
-         */
-        function updateFileLabel(fileName) {
-            const label = document.getElementById('fileLabel');
-            label.textContent = 'Файл загружен: ' + fileName;
-        }
-        const fileInput = document.getElementById('quizMaterial');
-
-
-        /**
-         * Обработчик изменения файла через стандартный выбор.
-         * Срабатывает при клике на "Выбрать файл" в диалоге.
-         */
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                updateFileLabel(e.target.files[0].name);
+            if (response.ok) {
+                const result = await response.json();
+                alert('Квиз успешно обновлен!');
+                window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
             } else {
-                // Если файл удален, возвращаем исходный текст
-                const label = document.getElementById('fileLabel');
-                label.textContent = 'Добавить новый материал (.pdf, .txt, .doc, .docx)';
-                label.style.color = '#666';
-                label.style.fontWeight = 'normal';
+                let errorText = '';
+                try {
+                    const error = await response.text();
+                    try {
+                        const errorJson = JSON.parse(error);
+                        errorText = errorJson.message || errorJson.error || `Ошибка ${response.status}: ${response.statusText}`;
+                    } catch (e) {
+                        errorText = error || `Ошибка ${response.status}: ${response.statusText}`;
+                    }
+                } catch (e) {
+                    errorText = `Ошибка ${response.status}: ${response.statusText}`;
+                }
+                
+                // Проверяем, является ли ошибка связанной с неэтичным промптом
+                if (errorText.includes('неэтичн') || errorText.includes('неэтичными')) {
+                    alert('Данные для создания квиза являются неэтичными');
+                } else {
+                    alert('Ошибка при обновлении квиза: ' + errorText);
+                }
             }
-        });
-    </script>
+        } catch (error) {
+
+            console.error('Error:', error);
+            alert('Ошибка сети');
+        }
+    }
+
+
+    async function deleteQuiz() {
+
+        if (!confirm('Вы уверены, что хотите удалить этот квиз? Это действие нельзя отменить.')) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Вы не авторизованы');
+                return;
+            }
+
+
+            const response = await fetch('/api/quizzes/' + getQuizId() + '?userId=' + getCurrentUserId(), {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({
+                    quizId: parseInt(getQuizId()),
+                    userId: parseInt(getCurrentUserId())
+                })
+            });
+
+            if (response.ok) {
+                alert('Квиз удален');
+                window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
+            } else {
+                const error = await response.json().catch(() => ({}));
+                const errorMessage = error.message || error.error ||
+                                   `Ошибка ${response.status}: ${response.statusText}`;
+                alert('Ошибка при удалении квиза: ' + errorMessage);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Ошибка сети. Проверьте подключение к интернету.');
+        }
+    }
+
+    /**
+     * Обновление текста метки после выбора файла.
+     * Показывает имя загруженного файла вместо стандартного текста.
+     *
+     * @param {string} fileName - имя выбранного файла
+     */
+    function updateFileLabel(fileName) {
+        const label = document.getElementById('fileLabel');
+        label.textContent = 'Файл загружен: ' + fileName;
+    }
+    const fileInput = document.getElementById('quizMaterial');
+
+
+    /**
+     * Обработчик изменения файла через стандартный выбор.
+     * Срабатывает при клике на "Выбрать файл" в диалоге.
+     */
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            updateFileLabel(e.target.files[0].name);
+        } else {
+            // Если файл удален, возвращаем исходный текст
+            const label = document.getElementById('fileLabel');
+            label.textContent = 'Добавить новый материал (.pdf, .txt, .doc, .docx)';
+            label.style.color = '#666';
+            label.style.fontWeight = 'normal';
+        }
+    });
+</script>
 </body>
 </html>
-

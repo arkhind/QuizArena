@@ -20,17 +20,7 @@
         }
 
         .sidebar {
-            width: 250px;
-            background: white;
-            padding: 25px;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            height: 200px;
-            position: fixed;
-            left: 20px;
-            top: 20px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
+            display: none;
         }
 
         .nav-btn {
@@ -41,7 +31,7 @@
             border-radius: 25px;
             cursor: pointer;
             font-size: 18px;
-            width: 80%;
+            width: 100%;
             margin-bottom: 15px;
             text-align: center;
             text-decoration: none;
@@ -51,13 +41,13 @@
         .main-content {
             flex: 1;
             padding: 20px;
-            margin-left: 340px;
-            max-width: calc(100vw - 360px);
+            margin-left: 0;
+            max-width: 100%;
         }
 
         .container {
             max-width: none;
-            width: 80%;
+            width: 100%;
         }
 
         .header {
@@ -185,191 +175,191 @@
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <a href="#" onclick="goBack(); return false;" class="nav-btn">Назад</a>
-        <a href="/home" th:href="@{/home}" class="nav-btn">Главная</a>
-    </div>
+<div class="sidebar">
+    <a href="#" onclick="goBack(); return false;" class="nav-btn">Назад</a>
+    <a href="/home" th:href="@{/home}" class="nav-btn">Главная</a>
+</div>
 
-    <div class="main-content">
-        <div class="container">
-            <header class="header">
-                <h1>Редактирование профиля</h1>
-            </header>
+<div class="main-content">
+    <div class="container">
+        <header class="header">
+            <h1>Редактирование профиля</h1>
+        </header>
 
-            <div class="form-container">
-                <form id="editProfileForm">
-                    <div class="form-group">
-                        <label for="username">Новый логин</label>
-                        <input type="text" 
-                               id="username" 
-                               name="username" 
-                               placeholder="Введите новый логин">
-                        <div class="current-value">
-                            Текущий логин: <span th:text="${userProfile != null ? userProfile.username : 'username'}">username</span>
-                        </div>
-                        <div class="error-message" id="usernameError"></div>
+        <div class="form-container">
+            <form id="editProfileForm">
+                <div class="form-group">
+                    <label for="username">Новый логин</label>
+                    <input type="text"
+                           id="username"
+                           name="username"
+                           placeholder="Введите новый логин">
+                    <div class="current-value">
+                        Текущий логин: <span th:text="${userProfile != null ? userProfile.username : 'username'}">username</span>
                     </div>
+                    <div class="error-message" id="usernameError"></div>
+                </div>
 
-                    <div class="form-group">
-                        <label for="password">Новый пароль</label>
-                        <input type="password" 
-                               id="password" 
-                               name="password" 
-                               placeholder="Введите новый пароль">
-                        <div class="error-message" id="passwordError"></div>
-                    </div>
+                <div class="form-group">
+                    <label for="password">Новый пароль</label>
+                    <input type="password"
+                           id="password"
+                           name="password"
+                           placeholder="Введите новый пароль">
+                    <div class="error-message" id="passwordError"></div>
+                </div>
 
-                    <div class="form-group">
-                        <label for="confirmPassword">Подтверждение пароля</label>
-                        <input type="password" 
-                               id="confirmPassword" 
-                               name="confirmPassword" 
-                               placeholder="Подтвердите новый пароль">
-                        <div class="error-message" id="confirmPasswordError"></div>
-                    </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Подтверждение пароля</label>
+                    <input type="password"
+                           id="confirmPassword"
+                           name="confirmPassword"
+                           placeholder="Подтвердите новый пароль">
+                    <div class="error-message" id="confirmPasswordError"></div>
+                </div>
 
-                    <div class="error-message" id="generalError"></div>
-                    <div class="success-message" id="successMessage"></div>
+                <div class="error-message" id="generalError"></div>
+                <div class="success-message" id="successMessage"></div>
 
-                    <div class="button-group">
-                        <button type="button" class="cancel-btn" onclick="goBack()">
-                            Отмена
-                        </button>
-                        <button type="submit" class="submit-btn">
-                            Сохранить изменения
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <div class="button-group">
+                    <button type="button" class="cancel-btn" onclick="goBack()">
+                        Отмена
+                    </button>
+                    <button type="submit" class="submit-btn">
+                        Сохранить изменения
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <script>
-        /**
-         * Возврат на страницу профиля.
-         * Получает userId из URL или localStorage.
-         */
-        function goBack() {
-            const userId = getCurrentUserId();
-            window.location.href = '/profile?userId=' + userId;
+<script>
+    /**
+     * Возврат на страницу профиля.
+     * Получает userId из URL или localStorage.
+     */
+    function goBack() {
+        const userId = getCurrentUserId();
+        window.location.href = '/profile?userId=' + userId;
+    }
+
+    /**
+     * Получение ID текущего пользователя.
+     * Сначала проверяет query параметры, затем localStorage.
+     *
+     * @returns {string} ID пользователя
+     */
+    function getCurrentUserId() {
+        // Пробуем получить из URL параметров
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlUserId = urlParams.get('userId');
+        if (urlUserId) {
+            return urlUserId;
         }
 
-        /**
-         * Получение ID текущего пользователя.
-         * Сначала проверяет query параметры, затем localStorage.
-         * 
-         * @returns {string} ID пользователя
-         */
-        function getCurrentUserId() {
-            // Пробуем получить из URL параметров
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlUserId = urlParams.get('userId');
-            if (urlUserId) {
-                return urlUserId;
-            }
-            
-            // Пробуем получить из localStorage
-            const storedUserId = localStorage.getItem('userId');
-            if (storedUserId) {
-                return storedUserId;
-            }
-            
-            // Дефолтное значение
-            return '1';
+        // Пробуем получить из localStorage
+        const storedUserId = localStorage.getItem('userId');
+        if (storedUserId) {
+            return storedUserId;
         }
 
-        // Обработчик отправки формы
-        document.getElementById('editProfileForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Скрываем предыдущие сообщения об ошибках
-            document.getElementById('usernameError').classList.remove('show');
-            document.getElementById('passwordError').classList.remove('show');
-            document.getElementById('confirmPasswordError').classList.remove('show');
-            document.getElementById('generalError').classList.remove('show');
-            document.getElementById('successMessage').classList.remove('show');
-            
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-            const userId = getCurrentUserId();
-            
-            // Валидация
-            let hasErrors = false;
-            
-            if (username && username.length < 3) {
-                document.getElementById('usernameError').textContent = 'Логин должен содержать минимум 3 символа';
-                document.getElementById('usernameError').classList.add('show');
-                hasErrors = true;
-            }
-            
-            if (password && password.length < 6) {
-                document.getElementById('passwordError').textContent = 'Пароль должен содержать минимум 6 символов';
-                document.getElementById('passwordError').classList.add('show');
-                hasErrors = true;
-            }
-            
-            if (password && password !== confirmPassword) {
-                document.getElementById('confirmPasswordError').textContent = 'Пароли не совпадают';
-                document.getElementById('confirmPasswordError').classList.add('show');
-                hasErrors = true;
-            }
-            
-            if (hasErrors) {
-                return;
-            }
-            
-            // Если ничего не заполнено
-            if (!username && !password) {
-                document.getElementById('generalError').textContent = 'Заполните хотя бы одно поле';
-                document.getElementById('generalError').classList.add('show');
-                return;
-            }
-            
-            try {
-                const updateData = {
-                    userId: parseInt(userId),
-                    newUsername: username || null,
-                    newPassword: password || null
-                };
-                
-                const response = await fetch('/api/users/profile', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(updateData)
-                });
+        // Дефолтное значение
+        return '1';
+    }
 
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('successMessage').textContent = 'Профиль успешно обновлен';
-                    document.getElementById('successMessage').classList.add('show');
-                    
-                    // Очистка полей
-                    document.getElementById('username').value = '';
-                    document.getElementById('password').value = '';
-                    document.getElementById('confirmPassword').value = '';
-                    
-                    // Обновление текущего логина на странице
-                    if (data.username) {
-                        const currentUsernameSpan = document.querySelector('.current-value span');
-                        if (currentUsernameSpan) {
-                            currentUsernameSpan.textContent = data.username;
-                        }
+    // Обработчик отправки формы
+    document.getElementById('editProfileForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Скрываем предыдущие сообщения об ошибках
+        document.getElementById('usernameError').classList.remove('show');
+        document.getElementById('passwordError').classList.remove('show');
+        document.getElementById('confirmPasswordError').classList.remove('show');
+        document.getElementById('generalError').classList.remove('show');
+        document.getElementById('successMessage').classList.remove('show');
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        const userId = getCurrentUserId();
+
+        // Валидация
+        let hasErrors = false;
+
+        if (username && username.length < 3) {
+            document.getElementById('usernameError').textContent = 'Логин должен содержать минимум 3 символа';
+            document.getElementById('usernameError').classList.add('show');
+            hasErrors = true;
+        }
+
+        if (password && password.length < 6) {
+            document.getElementById('passwordError').textContent = 'Пароль должен содержать минимум 6 символов';
+            document.getElementById('passwordError').classList.add('show');
+            hasErrors = true;
+        }
+
+        if (password && password !== confirmPassword) {
+            document.getElementById('confirmPasswordError').textContent = 'Пароли не совпадают';
+            document.getElementById('confirmPasswordError').classList.add('show');
+            hasErrors = true;
+        }
+
+        if (hasErrors) {
+            return;
+        }
+
+        // Если ничего не заполнено
+        if (!username && !password) {
+            document.getElementById('generalError').textContent = 'Заполните хотя бы одно поле';
+            document.getElementById('generalError').classList.add('show');
+            return;
+        }
+
+        try {
+            const updateData = {
+                userId: parseInt(userId),
+                newUsername: username || null,
+                newPassword: password || null
+            };
+
+            const response = await fetch('/api/users/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('successMessage').textContent = 'Профиль успешно обновлен';
+                document.getElementById('successMessage').classList.add('show');
+
+                // Очистка полей
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+                document.getElementById('confirmPassword').value = '';
+
+                // Обновление текущего логина на странице
+                if (data.username) {
+                    const currentUsernameSpan = document.querySelector('.current-value span');
+                    if (currentUsernameSpan) {
+                        currentUsernameSpan.textContent = data.username;
                     }
-                    
-                } else {
-                    const error = await response.json().catch(() => ({ message: 'Ошибка при обновлении профиля' }));
-                    document.getElementById('generalError').textContent = error.message || 'Ошибка при обновлении профиля';
-                    document.getElementById('generalError').classList.add('show');
                 }
-            } catch (error) {
-                document.getElementById('generalError').textContent = 'Ошибка сети';
+
+            } else {
+                const error = await response.json().catch(() => ({ message: 'Ошибка при обновлении профиля' }));
+                document.getElementById('generalError').textContent = error.message || 'Ошибка при обновлении профиля';
                 document.getElementById('generalError').classList.add('show');
-                console.error('Error:', error);
             }
-        });
-    </script>
+        } catch (error) {
+            document.getElementById('generalError').textContent = 'Ошибка сети';
+            document.getElementById('generalError').classList.add('show');
+            console.error('Error:', error);
+        }
+    });
+</script>
 </body>
 </html>

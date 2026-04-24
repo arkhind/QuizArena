@@ -16,37 +16,39 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: #333;
-            display: flex;
+            display: block;
         }
 
         .sidebar {
-            width: 250px;
+            width: 240px;
             background: white;
-            padding: 25px;
+            padding: 20px;
             box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            height: 200px;
             position: fixed;
-            left: 20px;
-            top: 20px;
+            left: 24px;
+            top: 24px;
             border-radius: 10px;
             display: flex;
             flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            box-sizing: border-box;
         }
 
         .nav-btn {
             background: transparent;
             color: #667eea;
             border: 2px solid #667eea;
-            padding: 15px 25px;
+            padding: 14px 20px;
             border-radius: 25px;
             cursor: pointer;
-            font-size: 18px;
-            width: 80%;
+            font-size: 17px;
+            width: 100%;
             transition: all 0.3s;
-            margin-bottom: 15px;
             text-align: center;
             text-decoration: none;
             display: block;
+            box-sizing: border-box;
         }
 
         .nav-btn:hover {
@@ -55,15 +57,17 @@
         }
 
         .main-content {
-            flex: 1;
-            padding: 20px;
-            margin-left: 340px;
-            max-width: calc(100vw - 360px);
+            padding: 24px;
+            margin-left: 288px;
+            margin-right: 0;
+            max-width: calc(100% - 280px);
+            box-sizing: border-box;
         }
 
         .container {
-            max-width: none;
-            width: 80%;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
         }
 
         .header {
@@ -97,7 +101,10 @@
 
         .progress-info {
             display: flex;
-            justify-content: space-between;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-items: stretch;
+            gap: 12px;
             margin-bottom: 20px;
             padding: 15px;
             background: #f8f9fa;
@@ -106,6 +113,8 @@
         }
 
         .progress-item {
+            flex: 1 1 30%;
+            min-width: 160px;
             text-align: center;
         }
 
@@ -121,6 +130,155 @@
             color: #333;
         }
 
+        .cat-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            box-sizing: border-box;
+        }
+        .cat-overlay-hidden {
+            display: none !important;
+        }
+        .cat-overlay-backdrop {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .cat-overlay-card {
+            position: relative;
+            z-index: 1;
+            width: min(96vw, 820px);
+            max-height: none;
+            overflow: visible;
+            box-sizing: border-box;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 28px 36px 32px;
+            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.18);
+            color: #111;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .cat-overlay-card h2 {
+            margin: 0 0 12px;
+            font-size: 1.35rem;
+            color: #000;
+        }
+        .cat-overlay-hint {
+            margin: 0 0 20px;
+            color: #111;
+            font-size: 1rem;
+            line-height: 1.45;
+        }
+        .cat-leaderboard h3 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            color: #000;
+        }
+        .cat-leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 28px;
+            font-size: 0.95rem;
+            color: #111;
+        }
+        .cat-leaderboard-table th,
+        .cat-leaderboard-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .cat-leaderboard-table th {
+            color: #000;
+            font-weight: 600;
+            background: #f1f5f9;
+        }
+        .cat-leaderboard-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .cat-bet {
+            margin-top: 4px;
+        }
+        .cat-bet label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #000;
+            font-size: 1rem;
+        }
+        .cat-bet-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 20px;
+            align-items: center;
+        }
+        #catBetInput {
+            flex: 1;
+            min-width: 260px;
+            min-height: 48px;
+            padding: 14px 18px;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            background: #fff;
+            color: #111;
+        }
+        .cat-btn {
+            padding: 14px 24px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .cat-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            font-weight: 600;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .cat-btn-primary:hover {
+            transform: translateY(-1px);
+        }
+        .cat-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .cat-error {
+            color: #b91c1c;
+            font-size: 0.95rem;
+            margin-top: 8px;
+        }
+        .cat-muted {
+            color: #111;
+            font-size: 0.95rem;
+        }
+        .cat-stake-timer {
+            position: absolute;
+            top: 20px;
+            right: 28px;
+            margin: 0;
+            color: #111;
+            font-size: 1.6rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: 0.2px;
+            z-index: 2;
+        }
+        #questionContentWrapper.cat-question-hidden {
+            visibility: hidden;
+            position: absolute;
+            width: 0;
+            height: 0;
+            overflow: hidden;
+        }
+
         .question-section {
             margin-bottom: 30px;
         }
@@ -131,6 +289,8 @@
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 25px;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .question-text {
@@ -138,10 +298,16 @@
             font-weight: bold;
             color: #333;
             margin: 0;
+            line-height: 1.4;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: normal;
+            hyphens: auto;
         }
 
         .options-list {
             list-style: none;
+            width: 100%;
         }
 
         .option-item {
@@ -151,20 +317,78 @@
             padding: 15px;
             margin-bottom: 15px;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .option-item input[type="radio"]:disabled {
+        .option-item label {
+            flex: 1;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            cursor: pointer;
+        }
+
+        .option-item input[type="radio"]:disabled,
+        .option-item input[type="checkbox"]:disabled {
             cursor: not-allowed;
             opacity: 0.5;
         }
 
-        .option-item input[type="radio"]:disabled + label {
+        .option-item input[type="radio"]:disabled + label,
+        .option-item input[type="checkbox"]:disabled + label {
             cursor: not-allowed;
             opacity: 0.6;
             color: #999;
         }
 
-        .option-item input[type="radio"] {
+        .option-item.correct-answer {
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .option-item.correct-answer label {
+            color: #155724;
+            font-weight: bold;
+        }
+
+        .option-item.selected-wrong {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+        }
+
+        .option-item.selected-wrong label {
+            color: #721c24;
+        }
+
+        .explanation-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e7f3ff;
+            border: 2px solid #0066cc;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .explanation-section.show {
+            display: block;
+        }
+
+        .explanation-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0066cc;
+            margin-bottom: 10px;
+        }
+
+        .explanation-text {
+            font-size: 16px;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .option-item input[type="radio"],
+        .option-item input[type="checkbox"] {
             margin-right: 10px;
             width: 20px;
             height: 20px;
@@ -174,9 +398,28 @@
 
         .button-group {
             display: flex;
+            flex-direction: column;
             gap: 15px;
-            justify-content: center;
+            align-items: center;
             margin-top: 30px;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+            padding: 8px 15px;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            display: none;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        .error-message.show {
+            display: block;
         }
 
         button {
@@ -196,26 +439,41 @@
         @media (max-width: 900px) {
             .sidebar {
                 position: relative;
-                width: 100%;
-                margin-bottom: 20px;
+                width: calc(100% - 48px);
+                left: 24px;
+                top: 24px;
+                margin-bottom: 0;
+                flex-direction: row;
+                gap: 12px;
+            }
+
+            .nav-btn {
+                flex: 1;
+                font-size: 15px;
+                padding: 12px 16px;
             }
 
             .main-content {
                 margin-left: 0;
                 max-width: 100%;
+                padding: 16px;
             }
 
             .progress-info {
                 flex-direction: column;
                 gap: 10px;
             }
+
+            .progress-item {
+                flex: 1 1 100%;
+            }
         }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <a href="/home" class="nav-btn">Главная</a>
-        <a href="#" class="nav-btn" onclick="event.preventDefault(); exitAttempt();">Выйти</a>
+        <a href="/home" class="nav-btn" onclick="event.preventDefault(); exitAttempt('/home');">Главная</a>
+        <a href="#" class="nav-btn" onclick="event.preventDefault(); exitAttempt('/home');">Выйти</a>
     </div>
 
     <div class="main-content">
@@ -223,7 +481,7 @@
             <header class="header">
                 <h1 th:text="${quizName}">Название квиза</h1>
                 <div class="quiz-info">
-                    <span>Вопрос <span id="currentQuestionNum">1</span> из <span id="totalQuestions">10</span></span>
+                    <span>Вопрос <span id="currentQuestionNum">1</span> из <span id="totalQuestions" th:text="${totalQuestions != null ? totalQuestions : 10}">10</span></span>
                 </div>
             </header>
 
@@ -239,86 +497,201 @@
                              th:text="${timeRemaining} + ' сек'"
                              th:attr="data-default-time=${defaultTimeLimit != null ? defaultTimeLimit : 60}">60 сек</div>
                     </div>
+                    <div class="progress-item" id="multiplayerStatus" style="display: none;">
+                        <div class="progress-label">Статус соперника</div>
+                        <div class="progress-value" id="opponentStatus">Ожидание...</div>
+                    </div>
                 </div>
 
-                <form id="answerForm" onsubmit="submitAnswer(event)" th:attr="data-attempt-id=${attemptId}">
-                    <div class="question-section">
-                        <div class="question-field">
-                            <div class="question-text" id="questionText" th:text="${currentQuestion != null ? currentQuestion.text : 'Загрузка вопроса...'}">
-                                Текст вопроса
+                <div id="catInBagOverlay" class="cat-overlay cat-overlay-hidden" aria-hidden="true">
+                    <div class="cat-overlay-backdrop"></div>
+                    <div class="cat-overlay-card" role="dialog" aria-labelledby="catInBagTitle">
+                        <h2 id="catInBagTitle">Кот в мешке</h2>
+                        <p class="cat-overlay-hint">Сделайте ставку. Текст вопроса откроется после подтверждения.</p>
+                        <section class="cat-leaderboard" aria-label="Текущий рейтинг в сессии">
+                            <h3>Текущий рейтинг</h3>
+                            <div id="catLeaderboardError" class="cat-error" style="display:none;"></div>
+                            <table class="cat-leaderboard-table">
+                                <thead>
+                                <tr>
+                                    <th scope="col">Место</th>
+                                    <th scope="col">Игрок</th>
+                                    <th scope="col">Очки</th>
+                                </tr>
+                                </thead>
+                                <tbody id="catLeaderboardList"></tbody>
+                            </table>
+                        </section>
+                        <section class="cat-bet" aria-label="Ставка">
+                            <label for="catBetInput">Ставка (очков)</label>
+                            <div class="cat-bet-row">
+                                <input type="number" id="catBetInput" inputmode="numeric" min="0" step="1" value="0" />
+                                <button type="button" id="catBetConfirm" class="cat-btn cat-btn-primary">Подтвердить ставку</button>
                             </div>
+                            <p id="catBetValidationError" class="cat-error" style="display:none;"></p>
+                            <p class="cat-muted cat-bet-score">Ваш текущий счёт: <strong id="catCurrentScoreDisplay">0</strong></p>
+                            <p id="catStakeTimerText" class="cat-stake-timer">60 сек</p>
+                        </section>
+                    </div>
+                </div>
+
+                <div id="questionContentWrapper">
+                    <form id="answerForm" onsubmit="submitAnswer(event)"
+                          th:data-question-type="${currentQuestion != null and currentQuestion.type != null ? currentQuestion.type.name() : 'SINGLE_CHOICE'}"
+                          th:data-is-cat-stake-screen="${currentQuestion != null and currentQuestion.isCatInBagStakeScreen != null ? currentQuestion.isCatInBagStakeScreen : false}">
+                        <input type="hidden" id="attemptIdInput" th:value="${attemptId}">
+                        <input type="hidden" id="quizId" th:value="${quizId}">
+                        <input type="hidden" id="currentQuestionId" th:value="${currentQuestion != null ? currentQuestion.id : ''}">
+                        <div class="question-section">
+                            <div class="question-field">
+                                <div class="question-text" id="questionText" th:text="${currentQuestion != null ? currentQuestion.text : 'Загрузка вопроса...'}">
+                                    Текст вопроса
+                                </div>
+                            </div>
+
+                            <ul class="options-list" id="optionsList">
+                                <li class="option-item">
+                                    <!-- Без статического type="radio" при непройденном Thymeleaf браузер рисует type=text -->
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-0"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() == 0}">
+                                    <label for="option-0"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 1
+                                    </label>
+                                </li>
+                                <li class="option-item">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-1"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 1}">
+                                    <label for="option-1"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 2
+                                    </label>
+                                </li>
+                                <li class="option-item">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-2"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 2}">
+                                    <label for="option-2"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 3
+                                    </label>
+                                </li>
+                                <li class="option-item">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-3"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 3}">
+                                    <label for="option-3"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 4
+                                    </label>
+                                </li>
+                                <li class="option-item"
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 4} ? 'display:none' : ''">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-4"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 4 ? currentQuestion.options[4].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 4}">
+                                    <label for="option-4"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 4 ? currentQuestion.options[4].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 5
+                                    </label>
+                                </li>
+                                <li class="option-item"
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6} ? 'display:none' : ''">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-5"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 5 ? currentQuestion.options[5].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 5}">
+                                    <label for="option-5"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 5 ? currentQuestion.options[5].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 6
+                                    </label>
+                                </li>
+                                <li class="option-item"
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7} ? 'display:none' : ''">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-6"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 6 ? currentQuestion.options[6].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6}">
+                                    <label for="option-6"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 6 ? currentQuestion.options[6].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 7
+                                    </label>
+                                </li>
+                                <li class="option-item"
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7} ? 'display:none' : ''">
+                                    <input type="radio"
+                                           th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
+                                           name="answer"
+                                           id="option-7"
+                                           th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 7 ? currentQuestion.options[7].id : ''}"
+                                           th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7}">
+                                    <label for="option-7"
+                                           th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 7 ? currentQuestion.options[7].text : 'Загрузка варианта ответа...'}">
+                                        Вариант ответа 8
+                                    </label>
+                                </li>
+                            </ul>
                         </div>
 
-                        <ul class="options-list" id="optionsList">
-                            <li class="option-item">
-                                <input type="radio" 
-                                       name="answer" 
-                                       id="option-0"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() == 0}">
-                                <label for="option-0" 
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 0 ? currentQuestion.options[0].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 1
-                                </label>
-                            </li>
-                            <li class="option-item">
-                                <input type="radio" 
-                                       name="answer" 
-                                       id="option-1"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 1}">
-                                <label for="option-1" 
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 1 ? currentQuestion.options[1].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 2
-                                </label>
-                            </li>
-                            <li class="option-item">
-                                <input type="radio" 
-                                       name="answer" 
-                                       id="option-2"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 2}">
-                                <label for="option-2" 
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 2 ? currentQuestion.options[2].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 3
-                                </label>
-                            </li>
-                            <li class="option-item">
-                                <input type="radio" 
-                                       name="answer" 
-                                       id="option-3"
-                                       th:value="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].id : ''}"
-                                       th:disabled="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 3}">
-                                <label for="option-3" 
-                                       th:text="${currentQuestion != null and currentQuestion.options != null and currentQuestion.options.size() > 3 ? currentQuestion.options[3].text : 'Загрузка варианта ответа...'}">
-                                    Вариант ответа 4
-                                </label>
-                            </li>
-                        </ul>
-                    </div>
+                        <div class="explanation-section" id="explanationSection">
+                            <div class="explanation-title">📚 Объяснение:</div>
+                            <div class="explanation-text" id="explanationText"></div>
+                        </div>
 
-                    <div class="button-group">
-                        <button type="submit" class="submit-btn">Ответить</button>
-                    </div>
-                </form>
+                        <div class="button-group">
+                            <div id="errorMessage" class="error-message"></div>
+                            <button type="submit" class="submit-btn" id="submitButton">Ответить</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 
-    <script>
-        let attemptId = null;
-        let timeRemaining = null;
+    <script th:inline="javascript">
+        let attemptId = /*[[${attemptId}]]*/ null;
+        let timeRemaining = /*[[${timeRemaining}]]*/ null;
         let timerInterval = null;
-        let questionsRemaining = null;
+        let questionsRemaining = /*[[${questionsRemaining}]]*/ null;
+        let catLeaderboardInterval = null;
+        let catLeaderboardLoading = false;
+        let catLeaderboardRequestId = 0;
+        let stakeTimerInterval = null;
+        let stakeTimeLeft = 60;
+        const stakeTimerMs = 60000;
 
         function getAttemptId() {
-            // Пробуем получить из data-атрибута формы
-            const form = document.getElementById('answerForm');
-            if (form && form.dataset.attemptId) {
-                return form.dataset.attemptId;
+            // Сначала проверяем значение из сервера (Thymeleaf)
+            if (attemptId) {
+                return attemptId.toString();
             }
-            
-            // Пробуем получить из URL (для страницы /quiz/attempt/{attemptId}/question)
+            // Потом проверяем скрытое поле в форме
+            const hiddenInput = document.getElementById('attemptIdInput');
+            if (hiddenInput && hiddenInput.value) {
+                return hiddenInput.value;
+            }
+            // Если нет, пытаемся извлечь из URL
             const path = window.location.pathname;
             const match = path.match(/\/attempt\/(\d+)/);
             if (match) {
@@ -327,23 +700,150 @@
             
             return null;
         }
+        
+        // Инициализация attemptId и currentQuestionId при загрузке страницы
+        window.addEventListener('DOMContentLoaded', function() {
+            const hiddenInput = document.getElementById('attemptIdInput');
+            if (hiddenInput && hiddenInput.value) {
+                attemptId = parseInt(hiddenInput.value);
+            }
+            
+            // Инициализируем currentQuestionId из скрытого поля
+            const questionIdInput = document.getElementById('currentQuestionId');
+            if (questionIdInput && questionIdInput.value) {
+                currentQuestionId = parseInt(questionIdInput.value);
+            }
+            
+            // Инициализируем номер текущего вопроса
+            const totalQuestionsElement = document.getElementById('totalQuestions');
+            const currentQuestionNumElement = document.getElementById('currentQuestionNum');
+            const questionsRemainingElement = document.getElementById('questionsRemaining');
+            if (totalQuestionsElement && currentQuestionNumElement && questionsRemainingElement) {
+                const totalQuestions = parseInt(totalQuestionsElement.textContent) || 10;
+                const questionsRemaining = parseInt(questionsRemainingElement.textContent) || 0;
+                const currentQuestionNum = totalQuestions - questionsRemaining + 1;
+                currentQuestionNumElement.textContent = currentQuestionNum;
+            }
+            
+            const answerForm = document.getElementById('answerForm');
+            if (answerForm) {
+                const initialStakeScreen = answerForm.dataset.isCatStakeScreen === 'true';
+                if (initialStakeScreen) {
+                    setCatOverlayVisible(true);
+                    loadCatLeaderboardAndScore();
+                } else {
+                    setCatOverlayVisible(false);
+                }
+                answerForm.addEventListener('change', function (e) {
+                    if (e.target && e.target.matches && e.target.matches('input[name="answer"]')) {
+                        hideError();
+                    }
+                });
+            }
 
-        function exitAttempt() {
-            if (confirm('Вы уверены, что хотите выйти из квиза?')) {
-                window.location.href = '/home';
+            var optionsList = document.getElementById('optionsList');
+            if (optionsList) {
+                optionsList.addEventListener('click', function (e) {
+                    if (e.target.closest('label') || e.target.tagName === 'INPUT') {
+                        return;
+                    }
+                    var li = e.target.closest('.option-item');
+                    if (!li) {
+                        return;
+                    }
+                    var input = li.querySelector('input[name="answer"]');
+                    if (!input || input.disabled) {
+                        return;
+                    }
+                    if (input.type === 'radio') {
+                        input.checked = true;
+                    } else {
+                        input.checked = !input.checked;
+                    }
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            }
+
+            document.getElementById('catBetConfirm').addEventListener('click', async function () {
+                var btn = document.getElementById('catBetConfirm');
+                var err = document.getElementById('catBetValidationError');
+                if (err) { err.style.display = 'none'; err.textContent = ''; }
+
+                var stake = parseInt(document.getElementById('catBetInput').value, 10);
+                if (isNaN(stake) || stake < 0) {
+                    if (err) { err.textContent = 'Введите неотрицательное целое число'; err.style.display = 'block'; }
+                    return;
+                }
+
+                btn.disabled = true;
+                try {
+                    var res = await fetch('/api/attempts/stake', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+                        },
+                        body: JSON.stringify({
+                            attemptId: parseInt(getAttemptId(), 10),
+                            stake: stake
+                        })
+                    });
+                    if (!res.ok) {
+                        var j = await res.json().catch(function () { return {}; });
+                        throw new Error(j.message || 'Ставка отклонена');
+                    }
+                    var question = await res.json();
+                    clearStakeDeadline();
+                    stopStakeTimer();
+                    updateQuestionOnPage(question);
+                    if (typeof resetTimer === 'function') resetTimer();
+                } catch (e) {
+                    if (err) { err.textContent = e.message; err.style.display = 'block'; }
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            if (errorElement) {
+                errorElement.textContent = message;
+                errorElement.classList.add('show');
             }
         }
+
+        function hideError() {
+            const errorElement = document.getElementById('errorMessage');
+            if (errorElement) {
+                errorElement.classList.remove('show');
+                errorElement.textContent = '';
+            }
+        }
+
+        function exitAttempt(targetUrl = '/home') {
+            if (confirm('Вы уверены, что хотите выйти из квиза?')) {
+                window.location.href = targetUrl;
+            }
+        }
+
+        // Глобальная переменная для хранения ID текущего вопроса
+        let currentQuestionId = null;
 
         async function submitAnswer(event, answerId = null) {
             if (event) {
                 event.preventDefault();
             }
 
-            attemptId = getAttemptId();
-            if (!attemptId) {
-                alert('Ошибка: не найден ID попытки');
+            // Получаем attemptId из разных источников
+            const currentAttemptId = getAttemptId();
+            if (!currentAttemptId) {
+                alert('Ошибка: не найден ID попытки. Пожалуйста, начните квиз заново.');
+                window.location.href = '/home';
                 return;
             }
+            
+            attemptId = parseInt(currentAttemptId);
 
             const token = localStorage.getItem('token');
             if (!token) {
@@ -352,15 +852,49 @@
                 return;
             }
 
+            const form = document.getElementById('answerForm');
+            const questionType = (form && form.dataset.questionType) ? form.dataset.questionType : 'SINGLE_CHOICE';
+            const isMultiple = questionType === 'MULTIPLE_CHOICE';
+
             let selectedAnswer = answerId;
-            if (!selectedAnswer && event) {
-                const form = document.getElementById('answerForm');
+            let selectedAnswerIds = [];
+
+            if (isMultiple) {
+                const checked = form ? form.querySelectorAll('input[name="answer"]:checked') : [];
+                selectedAnswerIds = Array.from(checked).map(function (el) { return parseInt(el.value, 10); });
+            } else if (!selectedAnswer && event) {
                 const formData = new FormData(form);
                 selectedAnswer = formData.get('answer');
             }
 
-            if (!selectedAnswer) {
-                selectedAnswer = null;
+            const isTimeout = answerId === null && !event;
+
+            if (!isTimeout) {
+                const hasSelection = isMultiple ? selectedAnswerIds.length > 0 : !!selectedAnswer;
+                if (!hasSelection) {
+                    showError('Пожалуйста, выберите вариант ответа перед отправкой.');
+                    return;
+                }
+                hideError();
+            } else {
+                hideError();
+            }
+
+            if (!currentQuestionId) {
+                const questionIdInput = document.getElementById('currentQuestionId');
+                if (questionIdInput && questionIdInput.value) {
+                    currentQuestionId = questionIdInput.value;
+                }
+            }
+
+            const payload = {
+                attemptId: parseInt(attemptId, 10),
+                questionId: currentQuestionId ? parseInt(currentQuestionId, 10) : null
+            };
+            if (isMultiple) {
+                payload.selectedAnswerIds = isTimeout ? null : selectedAnswerIds;
+            } else {
+                payload.selectedAnswerId = selectedAnswer ? parseInt(selectedAnswer, 10) : null;
             }
 
             try {
@@ -370,25 +904,82 @@
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({
-                        attemptId: parseInt(attemptId),
-                        answerId: selectedAnswer ? parseInt(selectedAnswer) : null
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 if (response.ok) {
                     const result = await response.json();
 
-                    if (result.nextQuestion) {
-                        updateQuestionOnPage(result.nextQuestion);
-                        updateQuestionsCounter();
-                        resetTimer();
-                    } else {
-                        window.location.href = '/quiz/attempt/' + attemptId + '/question';
+                    // Показываем результат ответа: подсвечиваем правильный ответ и показываем объяснение
+                    showAnswerResult(result);
+
+                    // Останавливаем таймер, чтобы пользователь мог читать объяснение
+                    if (timerInterval) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                    }
+
+                    // Меняем кнопку на "Следующий вопрос" или "Завершить квиз" для ручного перехода
+                    const submitButton = document.getElementById('submitButton');
+                    if (submitButton) {
+                        if (result.nextQuestion) {
+                            submitButton.textContent = 'Следующий вопрос';
+                            submitButton.onclick = function(e) {
+                                e.preventDefault();
+                                if (sessionId) {
+                                    checkMultiplayerProgress();
+                                }
+                                // Сбрасываем состояние перед следующим вопросом
+                                resetAnswerState();
+                                updateQuestionOnPage(result.nextQuestion);
+                                updateQuestionsCounter();
+                                resetTimer();
+                                // Восстанавливаем обработчик submit
+                                submitButton.onclick = null;
+                                submitButton.type = 'submit';
+                            };
+                            submitButton.type = 'button';
+                        } else {
+                            submitButton.textContent = 'Завершить квиз';
+                            submitButton.onclick = function(e) {
+                                e.preventDefault();
+                                if (sessionId) {
+                                    finishMultiplayerAttempt();
+                                } else {
+                                    // Получаем quizId из скрытого поля или из ответа API
+                                    const quizIdElement = document.getElementById('quizId');
+                                    let quizId = '';
+                                    if (quizIdElement && quizIdElement.value) {
+                                        quizId = quizIdElement.value;
+                                    } else if (result.quizId) {
+                                        quizId = result.quizId;
+                                    } else {
+                                        // Если quizId не найден, пытаемся получить из attemptId через API
+                                        console.warn('QuizId не найден, используем attemptId для получения quizId');
+                                    }
+                                    if (quizId) {
+                                        window.location.href = '/quiz/attempt/' + attemptId + '/finish?quizId=' + quizId;
+                                    } else {
+                                        // Если quizId всё ещё не найден, редиректим без quizId (контроллер попытается получить его из attemptId)
+                                        window.location.href = '/quiz/attempt/' + attemptId + '/finish';
+                                    }
+                                }
+                            };
+                            submitButton.type = 'button';
+                        }
                     }
                 } else {
-                    const error = await response.json().catch(() => ({}));
-                    alert('Ошибка: ' + (error.message || 'Не удалось отправить ответ'));
+                    let backendMessage = 'Не удалось отправить ответ';
+                    try {
+                        const error = await response.json();
+                        backendMessage = error.message || error.error || error.detail || backendMessage;
+                    } catch (jsonErr) {
+                        const text = await response.text().catch(() => '');
+                        if (text) {
+                            backendMessage = text;
+                        }
+                    }
+                    alert('Ошибка: ' + backendMessage);
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -396,35 +987,344 @@
             }
         }
 
+        function getCorrectAnswerIds(result) {
+            if (result.correctAnswerIds && result.correctAnswerIds.length > 0) {
+                return result.correctAnswerIds.map(function (id) { return parseInt(id, 10); });
+            }
+            if (result.correctAnswerId != null) {
+                return [parseInt(result.correctAnswerId, 10)];
+            }
+            return [];
+        }
+
+        function showAnswerResult(result) {
+            document.querySelectorAll('#optionsList input[name="answer"]').forEach(function (input) {
+                input.disabled = true;
+            });
+
+            var correctIds = getCorrectAnswerIds(result);
+            document.querySelectorAll('#optionsList input[name="answer"]').forEach(function (input) {
+                var optionItem = input.closest('.option-item');
+                var id = parseInt(input.value, 10);
+                if (correctIds.indexOf(id) !== -1) {
+                    optionItem.classList.add('correct-answer');
+                } else if (input.checked && correctIds.indexOf(id) === -1) {
+                    optionItem.classList.add('selected-wrong');
+                }
+            });
+
+            // Показываем объяснение
+            const explanationSection = document.getElementById('explanationSection');
+            const explanationText = document.getElementById('explanationText');
+            if (explanationSection && explanationText) {
+                if (result.explanation) {
+                    explanationText.textContent = result.explanation;
+                    explanationSection.classList.add('show');
+                } else {
+                    explanationText.textContent = 'Объяснение отсутствует';
+                    explanationSection.classList.add('show');
+                }
+            }
+
+            // Кнопка будет изменена в submitAnswer после показа результата
+        }
+
+        function resetAnswerState() {
+            // Убираем подсветку
+            document.querySelectorAll('.option-item').forEach(item => {
+                item.classList.remove('correct-answer', 'selected-wrong');
+            });
+
+            document.querySelectorAll('#optionsList input[name="answer"]').forEach(function (input) {
+                input.disabled = false;
+            });
+
+            // Скрываем объяснение
+            const explanationSection = document.getElementById('explanationSection');
+            if (explanationSection) {
+                explanationSection.classList.remove('show');
+            }
+
+            // Восстанавливаем кнопку
+            const submitButton = document.getElementById('submitButton');
+            if (submitButton) {
+                submitButton.textContent = 'Ответить';
+                submitButton.disabled = false;
+            }
+        }
+
+        function stopQuestionTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function setCatOverlayVisible(show) {
+            var overlay = document.getElementById('catInBagOverlay');
+            var wrap = document.getElementById('questionContentWrapper');
+            if (!overlay || !wrap) return;
+            if (show) {
+                overlay.classList.remove('cat-overlay-hidden');
+                wrap.classList.add('cat-question-hidden');
+                stopQuestionTimer();
+                startCatLeaderboardPolling();
+                startStakeTimer60s();
+            } else {
+                overlay.classList.add('cat-overlay-hidden');
+                wrap.classList.remove('cat-question-hidden');
+                stopCatLeaderboardPolling()
+                stopStakeTimer();
+            }
+        }
+
+        function startCatLeaderboardPolling() {
+            stopCatLeaderboardPolling(); // защита от двойного интервала
+            loadCatLeaderboardAndScore(); // сразу первая загрузка
+            catLeaderboardInterval = setInterval(function () {
+                loadCatLeaderboardAndScore();
+            }, 1000); // раз в секунду
+        }
+
+        function stopCatLeaderboardPolling() {
+            if (catLeaderboardInterval) {
+                clearInterval(catLeaderboardInterval);
+                catLeaderboardInterval = null;
+            }
+        }
+
+        async function loadCatLeaderboardAndScore() {
+            if (catLeaderboardLoading) return;
+            catLeaderboardLoading = true;
+            const myRequestId = ++catLeaderboardRequestId;
+
+            var token = localStorage.getItem('token');
+            var attemptId = parseInt(getAttemptId(), 10);
+
+            var scoreEl = document.getElementById('catCurrentScoreDisplay');
+            var betInput = document.getElementById('catBetInput');
+            var list = document.getElementById('catLeaderboardList');
+            var errEl = document.getElementById('catLeaderboardError');
+            if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+
+            try {
+                var sr = await fetch('/api/attempts/' + attemptId + '/score', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (sr.ok) {
+                    var sd = await sr.json();
+                    var sc = sd.score;
+                    if (scoreEl) scoreEl.textContent = String(sc);
+                    if (betInput) {
+                        betInput.max = sc > 0 ? String(sc) : '0';
+                        if (sc <= 0) betInput.value = '0';
+                    }
+                }
+            } catch (e) { console.warn(e);
+              if (errEl) {
+                  errEl.textContent = 'Не удалось загрузить рейтинг';
+                  errEl.style.display = 'block';
+              }
+            }
+
+            if (!list) {
+                catLeaderboardLoading = false;
+                return;
+            }
+            list.innerHTML = '';
+
+            if (!sessionId) {
+                catLeaderboardLoading = false;
+                return;
+            }
+
+            try {
+                var r = await fetch('/api/multiplayer/sessions/' + encodeURIComponent(sessionId) + '/live-leaderboard', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!r.ok) throw new Error('Рейтинг');
+                var payload = await r.json();
+                var rows = Array.isArray(payload) ? payload : ((payload && payload.players) ? payload.players : []);
+                if (myRequestId !== catLeaderboardRequestId) {
+                    catLeaderboardLoading = false;
+                    return;
+                }
+                (rows || []).forEach(function (p) {
+                    var tr = document.createElement('tr');
+                    var tdPos = document.createElement('td');
+                    tdPos.textContent = p.position != null ? String(p.position) : '';
+                    var tdName = document.createElement('td');
+                    tdName.textContent = p.username || '';
+                    var tdScore = document.createElement('td');
+                    tdScore.textContent = p.score != null ? String(p.score) : '';
+                    tr.appendChild(tdPos);
+                    tr.appendChild(tdName);
+                    tr.appendChild(tdScore);
+                    list.appendChild(tr);
+                });
+            } catch (e) {
+                console.warn(e);
+            }
+            catLeaderboardLoading = false;
+        }
+
+        function stopStakeTimer() {
+            if (stakeTimerInterval) {
+                clearInterval(stakeTimerInterval);
+                stakeTimerInterval = null;
+            }
+        }
+
+        function getStakeTimerStorageKey() {
+            return 'catStakeDeadlineAt_' + getAttemptId();
+        }
+
+        function getOrCreateStakeDeadlineMs() {
+            var key = getStakeTimerStorageKey();
+            var saved = sessionStorage.getItem(key);
+            if (saved) {
+                var parsed = parseInt(saved, 10);
+                if (!isNaN(parsed)) {
+                    return parsed;
+                }
+            }
+            var deadline = Date.now() + stakeTimerMs;
+            sessionStorage.setItem(key, String(deadline));
+            return deadline;
+        }
+
+        function clearStakeDeadline() {
+            sessionStorage.removeItem(getStakeTimerStorageKey());
+        }
+
+        function renderStakeTimerText() {
+            var timerEl = document.getElementById('catStakeTimerText');
+            if (timerEl) {
+                timerEl.textContent = stakeTimeLeft + ' сек';
+            }
+        }
+
+        function startStakeTimer60s() {
+            // На всякий случай делаем паузу таймера вопроса, чтобы окно ставки не закрывалось через время
+            stopQuestionTimer();
+            stopStakeTimer();
+            var deadlineMs = getOrCreateStakeDeadlineMs();
+            stakeTimeLeft = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+            renderStakeTimerText();
+            stakeTimerInterval = setInterval(async function () {
+                stakeTimeLeft = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
+                renderStakeTimerText();
+                if (stakeTimeLeft <= 0) {
+                    stakeTimeLeft = 0;
+                    renderStakeTimerText();
+                    stopStakeTimer();
+                    // Если пользователь не нажал, отправляем ставку 0
+                    try {
+                        const rawStake = document.getElementById('catBetInput')?.value;
+                        let autoStake = parseInt(rawStake, 10);
+                        if (isNaN(autoStake) || autoStake < 0) autoStake = 0;
+
+                        var res = await fetch('/api/attempts/stake', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + (localStorage.getItem('token') || '')
+                            },
+                           body: JSON.stringify({
+                                attemptId: parseInt(getAttemptId(), 10),
+                                stake: autoStake
+                            })
+                        });
+                        if (!res.ok) {
+                            var j = await res.json().catch(function () { return {}; });
+                            throw new Error(j.message || 'Ставка отклонена');
+                        }
+                        var question = await res.json();
+                        clearStakeDeadline();
+                        updateQuestionOnPage(question);
+                        if (typeof resetTimer === 'function') resetTimer();
+                    } catch (e) {
+                        var err = document.getElementById('catBetValidationError');
+                        if (err) {
+                            err.textContent = e.message || 'Не удалось отправить ставку по таймеру';
+                            err.style.display = 'block';
+                        }
+                    }
+                }
+            }, 1000);
+        }
+
         function updateQuestionOnPage(question) {
             if (!question) {
                 return;
             }
 
-            const questionTextElement = document.getElementById('questionText');
+            var isStakeScreen =
+                question.isCatInBagStakeScreen === true ||
+                question.catInBagStakeScreen === true ||
+                ((question.text === null || question.text === undefined || String(question.text).trim() === '') &&
+                    (!question.options || question.options.length === 0));
+
+            if (isStakeScreen) {
+                 setCatOverlayVisible(true);
+                 return;
+            }
+            setCatOverlayVisible(false);
+
+            if (question.id) {
+                currentQuestionId = question.id;
+                const questionIdInput = document.getElementById('currentQuestionId');
+                if (questionIdInput) {
+                    questionIdInput.value = question.id;
+                }
+            }
+
+            var qType = 'SINGLE_CHOICE';
+            if (question.type) {
+                qType = typeof question.type === 'string' ? question.type : (question.type.name || question.type);
+            }
+            var form = document.getElementById('answerForm');
+            if (form) {
+                form.dataset.questionType = qType;
+                form.dataset.isCatStakeScreen = isStakeScreen ? 'true' : 'false';
+            }
+            var isMultiple = qType === 'MULTIPLE_CHOICE';
+
+            var questionTextElement = document.getElementById('questionText');
             if (questionTextElement && question.text) {
                 questionTextElement.textContent = question.text;
             }
 
-            const options = question.options || [];
-            for (let i = 0; i < 4; i++) {
-                const input = document.getElementById('option-' + i);
-                const label = input ? input.nextElementSibling : null;
+            var options = question.options || [];
+            for (var i = 0; i < 8; i++) {
+                var input = document.getElementById('option-' + i);
+                var label = input ? input.nextElementSibling : null;
+                 var li = input ? input.closest('.option-item') : null;
 
-                if (input && label && options[i]) {
+                if (!input || !label || !li) {
+                    continue;
+                }
+
+                input.type = isMultiple ? 'checkbox' : 'radio';
+                input.name = 'answer';
+
+                if (options[i]) {
+                    li.style.display = '';
                     input.value = options[i].id || '';
+                    label.textContent = options[i].text || '';
                     input.disabled = false;
-                    label.textContent = options[i].text || 'Загрузка варианта ответа...';
                     input.style.opacity = '1';
                     label.style.opacity = '1';
                     input.style.cursor = 'pointer';
                     label.style.cursor = 'pointer';
+                } else {
+                    li.style.display = 'none';
+                    input.value = '';
+                    label.textContent = '';
+                    input.disabled = true;
                 }
+                input.checked = false;
             }
-
-            document.querySelectorAll('input[name="answer"]').forEach(radio => {
-                radio.checked = false;
-            });
         }
 
         function updateQuestionsCounter() {
@@ -436,6 +1336,16 @@
                     remainingElement.textContent = newValue;
                     questionsRemaining = newValue;
                 }
+            }
+            
+            // Обновляем номер текущего вопроса
+            const totalQuestionsElement = document.getElementById('totalQuestions');
+            const currentQuestionNumElement = document.getElementById('currentQuestionNum');
+            if (totalQuestionsElement && currentQuestionNumElement) {
+                const totalQuestions = parseInt(totalQuestionsElement.textContent) || 10;
+                const questionsRemaining = parseInt(document.getElementById('questionsRemaining')?.textContent) || 0;
+                const currentQuestionNum = totalQuestions - questionsRemaining + 1;
+                currentQuestionNumElement.textContent = currentQuestionNum;
             }
         }
 
@@ -460,22 +1370,95 @@
             if (!timeElement || !timeRemaining) return;
 
             timerInterval = setInterval(() => {
-                timeRemaining--;
+                timeRemaining = Math.max(0, timeRemaining - 1);
+                timeElement.textContent = timeRemaining + ' сек';
                 if (timeRemaining <= 0) {
                     clearInterval(timerInterval);
+                    timerInterval = null;
                     const remainingElement = document.getElementById('questionsRemaining');
                     if (remainingElement) {
                         questionsRemaining = parseInt(remainingElement.textContent) || 0;
                     }
-                    submitAnswer(null, null);
+                    const isCatOverlayOpen =
+                      !document.getElementById('catInBagOverlay')?.classList.contains('cat-overlay-hidden');
+
+                    if (!isCatOverlayOpen) {
+                        submitAnswer(null, null);
+                    }
                 } else {
                     timeElement.textContent = timeRemaining + ' сек';
                 }
             }, 1000);
         }
 
+        let sessionId = null;
+        let multiplayerPollInterval = null;
+
+        function getSessionId() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('sessionId');
+        }
+
+        async function checkMultiplayerProgress() {
+            if (!sessionId) return;
+
+            try {
+                const currentQuestionId = document.getElementById('currentQuestionId')?.value;
+                const userId = localStorage.getItem('userId');
+                let url = `/api/multiplayer/sessions/${sessionId}/progress`;
+                const params = [];
+                if (currentQuestionId) {
+                    params.push(`questionId=${currentQuestionId}`);
+                }
+                if (userId) {
+                    params.push(`userId=${userId}`);
+                }
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
+                }
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                if (!response.ok) return;
+
+                const progress = await response.json();
+                const statusEl = document.getElementById('opponentStatus');
+                const multiplayerStatusEl = document.getElementById('multiplayerStatus');
+
+                if (statusEl && multiplayerStatusEl) {
+                    multiplayerStatusEl.style.display = 'block';
+                    
+                    const bothAnswered = progress.bothAnswered || false;
+                    const currentQuestionAnswered = progress.currentQuestionAnswered || false;
+
+                    if (bothAnswered && currentQuestionId && progress.currentQuestionId == currentQuestionId) {
+                        statusEl.textContent = 'Оба ответили';
+                        statusEl.style.color = '#16a34a';
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    } else if (currentQuestionAnswered) {
+                        statusEl.textContent = 'Соперник ответил';
+                        statusEl.style.color = '#f59e0b';
+                    } else {
+                        statusEl.textContent = 'Ожидание соперника...';
+                        statusEl.style.color = '#6b7280';
+                    }
+                }
+            } catch (error) {
+                console.error('Multiplayer progress check error:', error);
+            }
+        }
+
         window.addEventListener('load', () => {
             attemptId = getAttemptId();
+            sessionId = getSessionId();
+            
             const timeElement = document.getElementById('timeRemaining');
             const remainingElement = document.getElementById('questionsRemaining');
             
@@ -489,14 +1472,45 @@
                 timeElement.textContent = timeRemaining + ' сек';
                 startTimer();
             }
+
+            if (sessionId) {
+                multiplayerPollInterval = setInterval(checkMultiplayerProgress, 1500);
+            }
         });
+
+        async function finishMultiplayerAttempt() {
+            try {
+                const response = await fetch(`/api/attempts/${attemptId}/finish`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+
+                if (response.ok) {
+                    setTimeout(() => {
+                        window.location.href = `/multiplayer/session/${sessionId}/results?userId=${localStorage.getItem('userId')}`;
+                    }, 1000);
+                } else {
+                    console.error('Failed to finish attempt');
+                    window.location.href = `/multiplayer/session/${sessionId}/results?userId=${localStorage.getItem('userId')}`;
+                }
+            } catch (error) {
+                console.error('Error finishing attempt:', error);
+                window.location.href = `/multiplayer/session/${sessionId}/results?userId=${localStorage.getItem('userId')}`;
+            }
+        }
 
         window.addEventListener('beforeunload', () => {
             if (timerInterval) {
                 clearInterval(timerInterval);
+                stopStakeTimer();
+            }
+            stopCatLeaderboardPolling();
+            if (multiplayerPollInterval) {
+                clearInterval(multiplayerPollInterval);
             }
         });
     </script>
 </body>
 </html>
-
