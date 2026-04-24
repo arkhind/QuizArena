@@ -629,6 +629,9 @@ public class PageController {
         model.addAttribute("quizId", quizId);
         QuizDetailsDTO quiz = quizService.getQuiz(quizId, userId);
         model.addAttribute("quizName", quiz.name());
+        UserQuizAttempt activeAttempt = attemptRepository
+                .findTopByUserIdAndQuizIdAndSessionIdIsNullAndIsCompletedFalseOrderByIdDesc(userId, quizId);
+        model.addAttribute("activeAttemptId", activeAttempt != null ? activeAttempt.getId() : null);
         return "quiz-leaderboard";
     }
 
