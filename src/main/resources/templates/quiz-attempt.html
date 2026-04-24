@@ -694,7 +694,11 @@
             // Если нет, пытаемся извлечь из URL
             const path = window.location.pathname;
             const match = path.match(/\/attempt\/(\d+)/);
-            return match ? match[1] : null;
+            if (match) {
+                return match[1];
+            }
+            
+            return null;
         }
         
         // Инициализация attemptId и currentQuestionId при загрузке страницы
