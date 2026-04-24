@@ -38,6 +38,15 @@ public class UserQuizAttempt {
   @Column(name = "session_id", length = 100)
   private String sessionId; // null для одиночных попыток, UUID для мультиплеера
 
+  @Column(name = "current_question_id")
+  private Long currentQuestionId;
+
+  @Column(name = "current_question_started_at")
+  private Instant currentQuestionStartedAt;
+
+  @Column(name = "current_question_deadline_at")
+  private Instant currentQuestionDeadlineAt;
+
   @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<AttemptQuestion> attemptQuestions = new ArrayList<>();
 

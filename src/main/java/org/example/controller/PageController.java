@@ -212,6 +212,11 @@ public class PageController {
         model.addAttribute("isCreator", isCreator);
         model.addAttribute("sessionId", sessionId);
         model.addAttribute("isMultiplayerHost", isMultiplayerHost);
+        if (userId != null && sessionId == null) {
+            UserQuizAttempt activeAttempt = attemptRepository
+                    .findTopByUserIdAndQuizIdAndSessionIdIsNullAndIsCompletedFalseOrderByIdDesc(userId, quizId);
+            model.addAttribute("activeAttemptId", activeAttempt != null ? activeAttempt.getId() : null);
+        }
         
         return "quiz";
     }
@@ -303,6 +308,12 @@ public class PageController {
         model.addAttribute("isCreator", isCreator);
         model.addAttribute("sessionId", sessionId);
         model.addAttribute("isMultiplayerHost", isMultiplayerHost);
+        if (userId != null && sessionId == null) {
+            UserQuizAttempt activeAttempt = attemptRepository
+                    .findTopByUserIdAndQuizIdAndSessionIdIsNullAndIsCompletedFalseOrderByIdDesc(userId, quizId);
+            model.addAttribute("activeAttemptId", activeAttempt != null ? activeAttempt.getId() : null);
+        }
+        
         
         // Обработка ошибок
         if ("noQuestions".equals(error)) {
@@ -452,6 +463,7 @@ public class PageController {
     @GetMapping("/quiz/{quizId}/attempt")
     public String startQuizPage(@PathVariable Long quizId,
                                 @RequestParam Long userId,
+                                @RequestParam(required = false, defaultValue = "resume") String mode,
                                 @RequestParam(required = false) String sessionId,
                                 Model model) {
         System.out.println("=== PageController.startQuizPage() ===");
@@ -459,6 +471,13 @@ public class PageController {
         System.out.println("QuizId: " + quizId);
         System.out.println("SessionId: " + sessionId);
         try {
+            if ((sessionId == null || sessionId.isEmpty()) && "restart".equalsIgnoreCase(mode)) {
+                UserQuizAttempt existingAttempt = attemptRepository
+                        .findTopByUserIdAndQuizIdAndSessionIdIsNullAndIsCompletedFalseOrderByIdDesc(userId, quizId);
+                if (existingAttempt != null) {
+                    apiController.finishQuizAttempt(existingAttempt.getId());
+                }
+            }
             // ВАЖНО: StartAttemptRequest принимает (userId, quizId) в таком порядке!
             StartAttemptRequest request = new StartAttemptRequest(userId, quizId, sessionId);
             System.out.println("Создан StartAttemptRequest: userId=" + request.userId() + ", quizId=" + request.quizId() + ", sessionId=" + request.sessionId());
@@ -471,6 +490,7 @@ public class PageController {
         model.addAttribute("quizName", response.quizName());
         model.addAttribute("quizId", response.quizId());
         model.addAttribute("defaultTimeLimit", response.timeRemaining());
+        model.addAttribute("currentQuestionDeadlineEpochMs", response.currentQuestionDeadlineEpochMs());
         if (sessionId != null) {
             model.addAttribute("sessionId", sessionId);
         }
@@ -506,7 +526,9 @@ public class PageController {
     }
 
     @GetMapping("/quiz/attempt/{attemptId}/question")
-    public String quizQuestionPage(@PathVariable Long attemptId, Model model) {
+    public String quizQuestionPage(@PathVariable Long attemptId,
+                                   @RequestParam(required = false) String sessionId,
+                                   Model model) {
         try {
             QuestionDTO nextQuestion = apiController.getNextQuestion(attemptId);
 
@@ -532,15 +554,23 @@ public class PageController {
             model.addAttribute("totalQuestions", progress.totalQuestions());
             model.addAttribute("timeRemaining", progress.timePerQuestionSeconds());
             model.addAttribute("defaultTimeLimit", progress.timePerQuestionSeconds());
+            model.addAttribute("currentQuestionDeadlineEpochMs", progress.currentQuestionDeadlineEpochMs());
             model.addAttribute("attemptId", attemptId);
             model.addAttribute("currentQuestion", nextQuestion);
             model.addAttribute("quizName", quizName);
             model.addAttribute("quizId", quizId);
+            if (sessionId != null) {
+                model.addAttribute("sessionId", sessionId);
+            }
             
             return "quiz-attempt";
             
+        } catch (IllegalStateException e) {
+            return "redirect:/login";
         } catch (IllegalArgumentException e) {
-            return "redirect:/home";
+            return "redirect:/login";
+        } catch (Exception e) {
+            return "redirect:/login";
         }
     }
 

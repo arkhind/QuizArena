@@ -57,9 +57,10 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
     UserQuizAttempt findByUserIdAndQuizIdAndSessionId(Long userId, Long quizId, String sessionId);
 
     UserQuizAttempt findTopByUserIdAndQuizIdAndSessionIdOrderByIdDesc(Long userId, Long quizId, String sessionId);
+
+    UserQuizAttempt findTopByUserIdAndQuizIdAndSessionIdIsNullAndIsCompletedFalseOrderByIdDesc(Long userId, Long quizId);
     
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM user_quiz_attempts WHERE user_id = :userId AND quiz_id = :quizId AND session_id = :sessionId", nativeQuery = true)
     int deleteByUserIdAndQuizIdAndSessionId(@Param("userId") Long userId, @Param("quizId") Long quizId, @Param("sessionId") String sessionId);
 }
-

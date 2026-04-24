@@ -214,6 +214,7 @@
 </head>
 <body>
 <div class="container">
+    <input type="hidden" id="activeAttemptIdInput" th:value="${activeAttemptId}">
     <button class="back-btn" onclick="goBack()">← Назад</button>
     
     <div th:if="${errorMessage != null}" class="error-message" th:text="${errorMessage}"></div>
@@ -306,37 +307,47 @@
         // Переход на страницу с деталями квиза
         window.location.href = '/quiz/' + quizId + '/details';
     }
-
     function startQuiz(quizId) {
         const userId = getUserId();
-        console.log('startQuiz: quizId=' + quizId);
-        console.log('startQuiz: userId from getUserId()=' + userId + ' (type: ' + typeof userId + ')');
-        console.log('startQuiz: localStorage.getItem("userId")=' + localStorage.getItem('userId'));
-        console.log('startQuiz: Все значения в localStorage:');
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            console.log('  ' + key + '=' + localStorage.getItem(key));
-        }
+        const activeAttemptId = document.getElementById("activeAttemptIdInput")?.value;
+        console.log("startQuiz: quizId=" + quizId);
+        console.log("startQuiz: userId from getUserId()=" + userId + " (type: " + typeof userId + ")");
+        console.log('startQuiz: localStorage.getItem("userId")=' + localStorage.getItem("userId"));
         
         if (!userId) {
-            alert('Необходимо войти в систему');
-            window.location.href = '/login';
+            alert("Необходимо войти в систему");
+            window.location.href = "/login";
             return;
         }
-        // Убеждаемся, что userId - это число
-        const userIdNum = parseInt(userId);
-        console.log('startQuiz: userIdNum after parseInt=' + userIdNum);
+        
+        const userIdNum = parseInt(userId, 10);
+        console.log("startQuiz: userIdNum after parseInt=" + userIdNum);
         if (isNaN(userIdNum) || userIdNum <= 0) {
-            console.error('ОШИБКА: Некорректный userId: ' + userId);
-            alert('Ошибка: некорректный ID пользователя. Пожалуйста, войдите в систему заново.');
-            localStorage.removeItem('userId');
-            localStorage.removeItem('token');
-            window.location.href = '/login';
+            console.error("Ошибка: некорректный userId: " + userId);
+            alert("Ошибка: некорректный ID пользователя. Пожалуйста, войдите в систему заново.");
+            localStorage.removeItem("userId");
+            localStorage.removeItem("token");
+            window.location.href = "/login";
             return;
         }
-        console.log('startQuiz: перенаправление на /quiz/' + quizId + '/attempt?userId=' + userIdNum);
-        window.location.href = '/quiz/' + quizId + '/attempt?userId=' + userIdNum;
+        
+        if (activeAttemptId) {
+            const shouldResume = confirm("У вас есть незавершённая попытка. Нажмите OK, чтобы продолжить, или Отмена, чтобы начать заново.");
+            if (shouldResume) {
+                window.location.href = "/quiz/" + quizId + "/attempt?userId=" + userIdNum + "&mode=resume";
+                return;
+            }
+            const shouldRestart = confirm("Начать новую попытку? Прошлая незавершённая попытка будет завершена.");
+            if (!shouldRestart) {
+                return;
+            }
+            window.location.href = "/quiz/" + quizId + "/attempt?userId=" + userIdNum + "&mode=restart";
+            return;
+        }
+        
+        window.location.href = "/quiz/" + quizId + "/attempt?userId=" + userIdNum;
     }
+
 
     function copyQuiz(quizId) {
         alert('Функция копирования квиза будет реализована позже');
