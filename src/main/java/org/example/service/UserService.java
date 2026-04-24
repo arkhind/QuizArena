@@ -106,6 +106,7 @@ public class UserService {
 
         List<AttemptSummary> summaries = attempts.stream()
                 .filter(UserQuizAttempt::isCompleted)
+                .filter(a -> a.getStartTime() != null && a.getFinishTime() != null)
                 .map(attempt -> new AttemptSummary(
                         attempt.getId(),
                         attempt.getQuiz().getName(),
@@ -117,11 +118,13 @@ public class UserService {
         long totalAttempts = attemptRepository.countByUserId(userId);
         double avgScore = attempts.stream()
                 .filter(a -> a.getScore() != null && a.isCompleted())
+                .filter(a -> a.getStartTime() != null && a.getFinishTime() != null)
                 .mapToLong(a -> a.getScore())
                 .average()
                 .orElse(0.0);
         long bestScore = attempts.stream()
                 .filter(a -> a.getScore() != null && a.isCompleted())
+                .filter(a -> a.getStartTime() != null && a.getFinishTime() != null)
                 .mapToLong(a -> a.getScore())
                 .max()
                 .orElse(0L);
@@ -176,4 +179,3 @@ public class UserService {
         return instant != null ? LocalDateTime.ofInstant(instant, ZoneId.systemDefault()) : null;
     }
 }
-

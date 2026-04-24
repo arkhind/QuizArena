@@ -24,6 +24,7 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
      * @return страница с попытками
      */
     @Query("SELECT u FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
+           "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
            "ORDER BY u.score DESC NULLS LAST, u.finishTime ASC")
     Page<UserQuizAttempt> findCompletedByQuizIdOrderByScoreDesc(@Param("quizId") Long quizId, Pageable pageable);
 
@@ -40,8 +41,9 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
      * Находит лучший результат каждого пользователя по квизу (только лучший результат для каждого пользователя).
      */
     @Query("SELECT u FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
+           "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
            "AND u.score = (SELECT MAX(u2.score) FROM UserQuizAttempt u2 WHERE u2.quiz.id = :quizId " +
-           "AND u2.user.id = u.user.id AND u2.isCompleted = true) " +
+           "AND u2.user.id = u.user.id AND u2.isCompleted = true AND u2.startTime IS NOT NULL AND u2.finishTime IS NOT NULL) " +
            "ORDER BY u.score DESC NULLS LAST, u.finishTime ASC")
     Page<UserQuizAttempt> findBestAttemptsByQuizId(@Param("quizId") Long quizId, Pageable pageable);
 
@@ -63,4 +65,8 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM user_quiz_attempts WHERE user_id = :userId AND quiz_id = :quizId AND session_id = :sessionId", nativeQuery = true)
     int deleteByUserIdAndQuizIdAndSessionId(@Param("userId") Long userId, @Param("quizId") Long quizId, @Param("sessionId") String sessionId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM user_quiz_attempts WHERE session_id = :sessionId", nativeQuery = true)
+    int deleteBySessionId(@Param("sessionId") String sessionId);
 }

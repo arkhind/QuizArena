@@ -32,6 +32,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 public class PageController {
@@ -146,6 +147,26 @@ public class PageController {
         response.addCookie(tokenCookie);
     }
 
+    private Optional<org.example.model.Quiz> findAccessibleQuiz(Long quizId, Long userId) {
+        return quizRepository.findById(quizId)
+                .filter(quiz -> !quiz.isPrivate()
+                        || (userId != null
+                        && quiz.getCreatedBy() != null
+                        && quiz.getCreatedBy().getId() != null
+                        && quiz.getCreatedBy().getId().equals(userId)));
+    }
+
+    private boolean canEditQuiz(Long quizId, Long userId) {
+        return userId != null && quizRepository.isCreator(quizId, userId);
+    }
+
+    private String renderNotFound(HttpServletResponse response, Model model) {
+        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        model.addAttribute("errorCode", "404");
+        model.addAttribute("errorMessage", "Страница не найдена");
+        return "error";
+    }
+
     @GetMapping("/history")
     public String historyPage(HttpServletRequest request,
                               HttpServletResponse response,
@@ -174,7 +195,11 @@ public class PageController {
         @RequestParam(required = false) Long quizId,
         @RequestParam(required = false) Long userId,
         @RequestParam(required = false) String sessionId,
+        HttpServletResponse response,
         Model model) {
+        if (quizId != null && findAccessibleQuiz(quizId, userId).isEmpty()) {
+            return renderNotFound(response, model);
+        }
         
         QuizDTO quiz = null;
         LeaderboardDTO leaderboard = null;
@@ -264,11 +289,14 @@ public class PageController {
     }
 
     @GetMapping("/quiz/{quizId}")
-    public String quizPageByPath(@PathVariable Long quizId, HttpServletRequest request, Model model,
+    public String quizPageByPath(@PathVariable Long quizId, HttpServletRequest request, HttpServletResponse response, Model model,
                                   @RequestParam(required = false) String error,
                                   @RequestParam(required = false) String sessionId) {
         // Извлекаем userId из токена для проверки доступа к приватным квизам
         Long userId = jwtService.extractUserIdFromRequest(request);
+        if (findAccessibleQuiz(quizId, userId).isEmpty()) {
+            return renderNotFound(response, model);
+        }
         
         QuizDTO quiz = null;
         LeaderboardDTO leaderboard = null;
@@ -372,9 +400,15 @@ public class PageController {
     }
 
     @GetMapping("/quiz/{quizId}/details")
-    public String quizDetails(@PathVariable Long quizId, HttpServletRequest request, Model model) {
+    public String quizDetails(@PathVariable Long quizId,
+                              HttpServletRequest request,
+                              HttpServletResponse response,
+                              Model model) {
         // Извлекаем userId из токена для проверки доступа к приватным квизам
         Long userId = jwtService.extractUserIdFromRequest(request);
+        if (findAccessibleQuiz(quizId, userId).isEmpty()) {
+            return renderNotFound(response, model);
+        }
         QuizDetailsDTO quiz = apiService.getQuiz(quizId, userId);
         model.addAttribute("quiz", quiz);
         return "quiz-details";
@@ -418,6 +452,9 @@ public class PageController {
             clearAuthAndRedirectToLogin(response);
             return "redirect:/login?logout=1";
         }
+        if (!canEditQuiz(quizId, userId)) {
+            return renderNotFound(response, model);
+        }
         QuizDetailsDTO quiz = apiController.getQuiz(quizId, userId);
 
         model.addAttribute("quiz", quiz);
@@ -435,11 +472,22 @@ public class PageController {
     }
 
     @GetMapping("/multiplayer/create")
-    public String createMultiplayerSession(@RequestParam Long quizId, @RequestParam Long userId, Model model) {
+    public String createMultiplayerSession(@RequestParam Long quizId,
+                                           HttpServletRequest request,
+                                           HttpServletResponse response,
+                                           Model model) {
+        Long userId = resolveCurrentUserId(request);
+        if (userId == null || userRepository.findById(userId).isEmpty()) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?logout=1";
+        }
+        if (findAccessibleQuiz(quizId, userId).isEmpty()) {
+            return renderNotFound(response, model);
+        }
         try {
-            CreateMultiplayerRequest request = new CreateMultiplayerRequest(userId, quizId);
-            MultiplayerSessionDTO session = apiController.createMultiplayerSession(request);
-            return "redirect:/multiplayer/session/" + session.sessionId() + "?userId=" + userId;
+            CreateMultiplayerRequest createRequest = new CreateMultiplayerRequest(userId, quizId);
+            MultiplayerSessionDTO session = apiController.createMultiplayerSession(createRequest);
+            return "redirect:/multiplayer/session/" + session.sessionId();
         } catch (Exception e) {
             model.addAttribute("errorMessage", "Ошибка при создании сессии: " + e.getMessage());
             return "redirect:/quiz/" + quizId;
@@ -448,30 +496,38 @@ public class PageController {
 
     @GetMapping("/multiplayer/join")
     public String joinMultiplayerPage(@RequestParam(required = false) String sessionId, 
-                                      @RequestParam(required = false) Long userId, 
                                       HttpServletRequest request,
                                       Model model) {
         model.addAttribute("sessionId", sessionId);
-        if (userId == null) {
-            Long userIdFromToken = jwtService.extractUserIdFromRequest(request);
-            if (userIdFromToken != null) {
-                model.addAttribute("userId", userIdFromToken);
-            } else {
-                model.addAttribute("userId", 0L);
-            }
-        } else {
+        Long userId = jwtService.extractUserIdFromRequest(request);
+        if (userId != null) {
             model.addAttribute("userId", userId);
+        } else {
+            model.addAttribute("userId", 0L);
         }
         return "multiplayer-join";
     }
 
     @GetMapping("/multiplayer/session/{sessionId}")
-    public String multiplayerSessionPage(@PathVariable String sessionId, @RequestParam Long userId, Model model) {
+    public String multiplayerSessionPage(@PathVariable String sessionId,
+                                         HttpServletRequest request,
+                                         HttpServletResponse response,
+                                         Model model) {
+        Long userId = resolveCurrentUserId(request);
+        if (userId == null || userRepository.findById(userId).isEmpty()) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?logout=1";
+        }
         try {
             MultiplayerSessionDTO session = apiController.getMultiplayerSession(sessionId);
             org.example.model.MultiplayerSession sessionEntity = multiplayerSessionRepository.findBySessionId(sessionId).orElse(null);
             Long quizId = sessionEntity != null ? sessionEntity.getQuiz().getId() : null;
             Long actualHostUserId = session.hostUserId();
+            boolean isParticipant = session.participants() != null && session.participants().stream()
+                    .anyMatch(participant -> participant.userId() != null && participant.userId().equals(userId));
+            if (!isParticipant && !actualHostUserId.equals(userId)) {
+                return "redirect:/multiplayer/join?sessionId=" + sessionId;
+            }
             
             model.addAttribute("session", session);
             model.addAttribute("sessionId", sessionId);
@@ -499,34 +555,37 @@ public class PageController {
 
     @GetMapping("/quiz/attempt/{attemptId}/finish")
     public String finishQuizPage(@PathVariable Long attemptId,
-                                 @RequestParam(required = false) Long quizId,
+                                 HttpServletRequest request,
+                                 HttpServletResponse response,
                                  Model model) {
-        QuizResultDTO result = apiController.finishQuizAttempt(attemptId);
-        
-        // Если quizId не передан, получаем его из attemptId
-        if (quizId == null) {
-            quizId = attemptRepository.findQuizIdByAttemptId(attemptId);
-            if (quizId == null) {
-                model.addAttribute("errorMessage", "Не удалось определить квиз для попытки");
-                return "error";
-            }
+        Long userId = resolveCurrentUserId(request);
+        if (userId == null || userRepository.findById(userId).isEmpty()) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?logout=1";
         }
-        
+
+        UserQuizAttempt attempt = attemptRepository.findById(attemptId).orElse(null);
+        if (attempt == null || attempt.getUser() == null || !userId.equals(attempt.getUser().getId())) {
+            return renderNotFound(response, model);
+        }
+        if (attempt.getSessionId() != null && !attempt.getSessionId().isBlank()
+                && attempt.getStartTime() == null && !attempt.isCompleted()) {
+            return renderNotFound(response, model);
+        }
+
+        Long quizId = attempt.getQuiz() != null ? attempt.getQuiz().getId() : null;
+        if (quizId == null) {
+            return renderNotFound(response, model);
+        }
+
+        QuizResultDTO result = apiController.finishQuizAttempt(attemptId);
+
         String quizName = "Квиз";
         try {
-            QuizDetailsDTO quiz = quizService.getQuiz(quizId, null);
+            QuizDetailsDTO quiz = quizService.getQuiz(quizId, userId);
             quizName = quiz.name();
         } catch (Exception e) {
             quizName = "Квиз";
-        }
-        
-        Long userId = null;
-        try {
-            UserQuizAttempt attempt = attemptRepository.findById(attemptId).orElse(null);
-            if (attempt != null && attempt.getUser() != null) {
-                userId = attempt.getUser().getId();
-            }
-        } catch (Exception ignored) {
         }
 
         LeaderboardDTO leaderboard = null;
@@ -584,6 +643,9 @@ public class PageController {
             clearAuthAndRedirectToLogin(response);
             return "redirect:/login?logout=1";
         }
+        if (findAccessibleQuiz(quizId, userId).isEmpty()) {
+            return renderNotFound(response, model);
+        }
         System.out.println("=== PageController.startQuizPage() ===");
         System.out.println("Получен userId из JWT токена: " + userId);
         System.out.println("QuizId: " + quizId);
@@ -613,9 +675,9 @@ public class PageController {
                     Long completedAttemptId = Long.parseLong(attemptIdStr);
                     if (sessionId != null && !sessionId.isEmpty()) {
                         // Для мультиплеера сначала завершаем попытку, затем ведем на экран результатов сессии
-                        return "redirect:/quiz/attempt/" + completedAttemptId + "/finish?quizId=" + quizId;
+                        return "redirect:/quiz/attempt/" + completedAttemptId + "/finish";
                     }
-                    return "redirect:/quiz/attempt/" + completedAttemptId + "/finish?quizId=" + quizId;
+                    return "redirect:/quiz/attempt/" + completedAttemptId + "/finish";
                 } catch (Exception ignored) {
                     // fallback ниже
                 }
@@ -634,11 +696,15 @@ public class PageController {
     @PostMapping("/quiz/{quizId}/attempt/restart")
     public String restartQuizPage(@PathVariable Long quizId,
                                   HttpServletRequest request,
-                                  HttpServletResponse response) {
+                                  HttpServletResponse response,
+                                  Model model) {
         Long userId = resolveCurrentUserId(request);
         if (userId == null || userRepository.findById(userId).isEmpty()) {
             clearAuthAndRedirectToLogin(response);
             return "redirect:/login?logout=1";
+        }
+        if (findAccessibleQuiz(quizId, userId).isEmpty()) {
+            return renderNotFound(response, model);
         }
 
         UserQuizAttempt existingAttempt = attemptRepository
@@ -660,7 +726,7 @@ public class PageController {
             if (nextQuestion == null) {
                 Long quizId = attemptRepository.findQuizIdByAttemptId(attemptId);
                 if (quizId != null) {
-                    return "redirect:/quiz/attempt/" + attemptId + "/finish?quizId=" + quizId;
+                    return "redirect:/quiz/attempt/" + attemptId + "/finish";
                 } else {
                     return "redirect:/home";
                 }
@@ -701,8 +767,14 @@ public class PageController {
 
     @GetMapping("/multiplayer/session/{sessionId}/results")
     public String multiplayerResultsPage(@PathVariable String sessionId,
-                                         @RequestParam Long userId,
+                                         HttpServletRequest request,
+                                         HttpServletResponse response,
                                          Model model) {
+        Long userId = resolveCurrentUserId(request);
+        if (userId == null || userRepository.findById(userId).isEmpty()) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?logout=1";
+        }
         try {
             MultiplayerResultsDTO results = apiController.getMultiplayerResults(sessionId);
             List<UserQuizAttempt> allAttempts = attemptRepository.findBySessionIdWithUser(sessionId);
@@ -746,8 +818,17 @@ public class PageController {
 
     @GetMapping("/quiz/{quizId}/leaderboard")
     public String quizLeaderboard(@PathVariable Long quizId,
-                                  @RequestParam Long userId,
+                                  HttpServletRequest request,
+                                  HttpServletResponse response,
                                   Model model) {
+        Long userId = resolveCurrentUserId(request);
+        if (userId == null || userRepository.findById(userId).isEmpty()) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?logout=1";
+        }
+        if (findAccessibleQuiz(quizId, userId).isEmpty()) {
+            return renderNotFound(response, model);
+        }
         LeaderboardDTO leaderboard = quizService.getQuizLeaderboard(quizId, userId);
         model.addAttribute("leaderboard", leaderboard);
         model.addAttribute("userPosition", leaderboard.userPosition());
