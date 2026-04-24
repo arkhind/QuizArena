@@ -6,6 +6,7 @@ import org.example.dto.response.auth.AuthResponse;
 import org.example.model.User;
 import org.example.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,10 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public AuthService(UserRepository userRepository) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -31,7 +34,7 @@ public class AuthService {
         User user = new User();
         user.setLogin(request.username());
         // TODO: Хеширование пароля с помощью BCrypt
-        user.setPassword(request.password());
+        user.setPassword(passwordEncoder.encode(request.password()));
         user = userRepository.save(user);
 
         // TODO: Генерация JWT токена
@@ -45,7 +48,7 @@ public class AuthService {
                 .orElseThrow(() -> new SecurityException("Неверный логин или пароль"));
 
         // TODO: Проверка хеша пароля
-        if (!user.getPassword().equals(request.password())) {
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new SecurityException("Неверный логин или пароль");
         }
 

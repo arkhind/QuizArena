@@ -2,6 +2,7 @@ package org.example.service;
 
 import org.example.model.Question;
 import org.example.model.AnswerOption;
+import org.example.model.QuestionType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,8 +39,7 @@ public class QuestionParser {
             if (qMatcher.find()) {
                 Question question = new Question();
                 question.setText(qMatcher.group(1).trim());
-                question.setType("multiple_choice");
-                question.setImageUrl("");
+                question.setType(QuestionType.MULTIPLE_CHOICE);
                 
                 Matcher expMatcher = explanationPattern.matcher(qText);
                 if (expMatcher.find()) {
@@ -54,8 +54,8 @@ public class QuestionParser {
                     
                     AnswerOption option = new AnswerOption();
                     option.setText(optionText);
-                    option.setIsNaOption(false);
-                    option.setIsCorrect(false);
+                    option.setNaOption(false);
+                    option.setCorrect(false);
                     pq.answerOptions.add(option);
                 }
                 
@@ -64,10 +64,10 @@ public class QuestionParser {
                     int correctNum = Integer.parseInt(correctMatcher.group(1));
                     int correctIndex = correctNum - 2;
                     if (correctIndex >= 0 && correctIndex < pq.answerOptions.size()) {
-                        pq.answerOptions.get(correctIndex).setIsCorrect(true);
+                        pq.answerOptions.get(correctIndex).setCorrect(true);
                         for (int i = 0; i < pq.answerOptions.size(); i++) {
                             if (i != correctIndex) {
-                                pq.answerOptions.get(i).setIsCorrect(false);
+                                pq.answerOptions.get(i).setCorrect(false);
                             }
                         }
                     }
