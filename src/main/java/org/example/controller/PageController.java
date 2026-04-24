@@ -26,7 +26,9 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.List;
 
@@ -88,7 +90,17 @@ public class PageController {
     }
 
     @GetMapping("/profile")
-    public String profile(@RequestParam Long userId, Model model) {
+    public String profile(HttpServletRequest request, HttpServletResponse response, Model model) {
+        Long userId = resolveCurrentUserId(request);
+        if (userId == null) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?logout=1";
+        }
+        if (userRepository.findById(userId).isEmpty()) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?logout=1";
+        }
+
         UserProfileDTO userProfile = apiController.getUserProfile(userId);
         UserHistoryDTO userHistory = apiController.getUserHistory(userId);
         List<QuizDTO> createdQuizzes = apiController.getCreatedQuizzes(userId);
@@ -100,15 +112,37 @@ public class PageController {
     }
 
     @GetMapping("/edit-profile")
-    public String editProfile(@RequestParam Long userId, Model model) {
+    public String editProfile(HttpServletRequest request, HttpServletResponse response, Model model) {
+        Long userId = resolveCurrentUserId(request);
+        if (userId == null) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?logout=1";
+        }
+        if (userRepository.findById(userId).isEmpty()) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?logout=1";
+        }
+
         try {
             UserProfileDTO userProfile = apiController.getUserProfile(userId);
             model.addAttribute("userProfile", userProfile);
             model.addAttribute("userId", userId);
             return "edit-profile";
         } catch (Exception e) {
-            return "redirect:/profile?userId=" + userId;
+            return "redirect:/profile";
         }
+    }
+
+    private Long resolveCurrentUserId(HttpServletRequest request) {
+        return jwtService.extractUserIdFromRequest(request);
+    }
+
+    private void clearAuthAndRedirectToLogin(HttpServletResponse response) {
+        Cookie tokenCookie = new Cookie("authToken", "");
+        tokenCookie.setHttpOnly(true);
+        tokenCookie.setPath("/");
+        tokenCookie.setMaxAge(0);
+        response.addCookie(tokenCookie);
     }
 
     @GetMapping("/history")
