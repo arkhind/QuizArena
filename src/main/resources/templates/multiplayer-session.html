@@ -497,7 +497,7 @@
                 const quizIdElement = document.querySelector('[data-quiz-id]');
                 const quizId = quizIdElement ? quizIdElement.getAttribute('data-quiz-id') : null;
                 if (quizId) {
-                    window.location.href = `/quiz/${quizId}/attempt?userId=${userId}&sessionId=${SESSION_ID}`;
+                    window.location.href = `/quiz/${quizId}/attempt?sessionId=${SESSION_ID}`;
                 } else {
                     window.location.href = `/home`;
                 }
