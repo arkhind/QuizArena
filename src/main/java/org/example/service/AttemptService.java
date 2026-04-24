@@ -1044,8 +1044,8 @@ public class AttemptService {
      * Для обновляемого квиза берутся случайные N вопросов из всех доступных.
      * При каждой новой попытке выбираются новые случайные вопросы для замены.
      * 
-     * @param attempt 锌芯锌褘褌泻邪 锌褉芯褏芯卸写械薪懈褟
-     * @param quiz 泻胁懈蟹
+     * @param attempt попытка прохождения
+     * @param quiz квиз
      * @param allQuestions все вопросы квиза
      */
     private void selectQuestionsForAttempt(UserQuizAttempt attempt, Quiz quiz, List<Question> allQuestions) {
