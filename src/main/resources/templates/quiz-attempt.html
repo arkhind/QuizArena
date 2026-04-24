@@ -1211,6 +1211,8 @@
                 stakeTimeLeft = Math.max(0, Math.ceil((deadlineMs - Date.now()) / 1000));
                 renderStakeTimerText();
                 if (stakeTimeLeft <= 0) {
+                    stakeTimeLeft = 0;
+                    renderStakeTimerText();
                     stopStakeTimer();
                     // Если пользователь не нажал, отправляем ставку 0
                     try {
@@ -1364,9 +1366,11 @@
             if (!timeElement || !timeRemaining) return;
 
             timerInterval = setInterval(() => {
-                timeRemaining--;
+                timeRemaining = Math.max(0, timeRemaining - 1);
+                timeElement.textContent = timeRemaining + ' сек';
                 if (timeRemaining <= 0) {
                     clearInterval(timerInterval);
+                    timerInterval = null;
                     const remainingElement = document.getElementById('questionsRemaining');
                     if (remainingElement) {
                         questionsRemaining = parseInt(remainingElement.textContent) || 0;
@@ -1506,4 +1510,3 @@
     </script>
 </body>
 </html>
-
