@@ -478,7 +478,7 @@
      */
     function goBack() {
         const userId = getCurrentUserId();
-        window.location.href = '/my-quizzes?userId=' + userId;
+        window.location.href = '/my-quizzes';
     }
 
     /**
@@ -568,7 +568,7 @@
             if (response.ok) {
                 const result = await response.json();
                 alert('Квиз успешно обновлен!');
-                window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
+                window.location.href = '/my-quizzes';
             } else {
                 let errorText = '';
                 try {
@@ -612,7 +612,7 @@
             }
 
 
-            const response = await fetch('/api/quizzes/' + getQuizId() + '?userId=' + getCurrentUserId(), {
+            const response = await fetch('/api/quizzes/' + getQuizId(), {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -626,7 +626,7 @@
 
             if (response.ok) {
                 alert('Квиз удален');
-                window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
+                window.location.href = '/my-quizzes';
             } else {
                 const error = await response.json().catch(() => ({}));
                 const errorMessage = error.message || error.error ||
