@@ -47,6 +47,9 @@ CREATE TABLE user_quiz_attempts(
     finish_time TIMESTAMP WITH TIME ZONE,
     score BIGINT,
     is_completed BOOLEAN NOT NULL DEFAULT FALSE,
+    current_question_id BIGINT,
+    current_question_started_at TIMESTAMP WITH TIME ZONE,
+    current_question_deadline_at TIMESTAMP WITH TIME ZONE,
     CONSTRAINT user_quiz_attempts_user_id_fk FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
     CONSTRAINT user_quiz_attempts_quiz_id_fk FOREIGN KEY(quiz_id) REFERENCES quizzes(id)
 );
