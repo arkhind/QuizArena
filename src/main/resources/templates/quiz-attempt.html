@@ -472,8 +472,8 @@
 </head>
 <body>
     <div class="sidebar">
-        <a href="/home" class="nav-btn">Главная</a>
-        <a href="#" class="nav-btn" onclick="event.preventDefault(); exitAttempt();">Выйти</a>
+        <a href="/home" class="nav-btn" onclick="event.preventDefault(); exitAttempt('/home');">Главная</a>
+        <a href="#" class="nav-btn" onclick="event.preventDefault(); exitAttempt('/home');">Выйти</a>
     </div>
 
     <div class="main-content">
@@ -817,9 +817,9 @@
             }
         }
 
-        function exitAttempt() {
+        function exitAttempt(targetUrl = '/home') {
             if (confirm('Вы уверены, что хотите выйти из квиза?')) {
-                window.location.href = '/home';
+                window.location.href = targetUrl;
             }
         }
 
