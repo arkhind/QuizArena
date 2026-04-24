@@ -280,9 +280,8 @@
 
         window.refreshResults = function() {
             var sessionId = SESSION_ID || '';
-            var userId = USER_ID || localStorage.getItem('userId') || '';
-            if (sessionId && userId) {
-                window.location.href = '/multiplayer/session/' + sessionId + '/results?userId=' + userId;
+            if (sessionId) {
+                window.location.href = '/multiplayer/session/' + sessionId + '/results';
             } else {
                 location.reload();
             }
