@@ -562,7 +562,6 @@
 
     function startQuizAgain() {
         const quizId = getQuizId();
-        const activeAttemptId = document.getElementById('activeAttemptIdInput')?.value;
         const userId = document.getElementById('resultUserId')?.value || localStorage.getItem('userId');
 
         if (!quizId || !userId) {
@@ -577,25 +576,7 @@
             return;
         }
 
-        if (activeAttemptId) {
-            const shouldResume = confirm('У вас есть незавершённая попытка. Нажмите OK, чтобы продолжить, или Отмена, чтобы начать заново.');
-
-            if (shouldResume) {
-                window.location.href = '/quiz/' + quizId + '/attempt?userId=' + userIdNum + '&mode=resume';
-                return;
-            }
-
-            const shouldRestart = confirm('Начать новую попытку? Прошлая незавершённая попытка будет завершена.');
-
-            if (!shouldRestart) {
-                return;
-            }
-
-            window.location.href = '/quiz/' + quizId + '/attempt?userId=' + userIdNum + '&mode=restart';
-            return;
-        }
-
-        window.location.href = '/quiz/' + quizId + '/attempt?userId=' + userIdNum;
+        window.location.href = '/quiz/' + quizId + '/attempt?userId=' + userIdNum + '&mode=restart';
     }
 
     function goHome() {
