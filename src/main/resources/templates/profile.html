@@ -248,12 +248,7 @@
     }
 
     function goToProfile() {
-        const userId = getCurrentUserId();
-        if (userId) {
-            window.location.href = '/profile?userId=' + userId;
-        } else {
-            window.location.href = '/login';
-        }
+        window.location.href = '/profile';
     }
 
     function goToMyQuizzes() {
@@ -268,7 +263,7 @@
     function goToEditProfile() {
         const userId = getCurrentUserId();
         if (userId) {
-            window.location.href = '/edit-profile?userId=' + userId;
+            window.location.href = '/edit-profile';
         } else {
             window.location.href = '/login';
         }
