@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои квизы - QuizArena</title>
+    <title>Мои Квизы - QuizArena</title>
     <style>
         * {
             margin: 0;
@@ -16,37 +16,37 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: #333;
-        }
-
-        .main-content {
-            padding: 20px;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-
-        .top-nav {
             display: flex;
-            gap: 12px;
-            justify-content: flex-start;
-            margin-bottom: 20px;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            padding: 25px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            height: 200px;
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
         }
 
         .nav-btn {
-            background: white;
+            background: transparent;
             color: #667eea;
             border: 2px solid #667eea;
-            padding: 12px 24px;
+            padding: 15px 25px;
             border-radius: 25px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 18px;
+            width: 100%;
+            transition: all 0.3s;
+            margin-bottom: 15px;
             text-align: center;
             text-decoration: none;
-            display: inline-block;
-            transition: all 0.3s;
+            display: block;
         }
 
         .nav-btn:hover {
@@ -54,12 +54,43 @@
             color: white;
         }
 
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            transition: all 0.3s;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            margin-left: 340px;
+            max-width: calc(100vw - 360px);
+        }
+
+        .container {
+            max-width: none;
+            width: 100%;
+        }
+
         .header {
             background: white;
             border-radius: 10px;
             padding: 25px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -76,15 +107,9 @@
             background: white;
             border-radius: 10px;
             padding: 30px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             width: 100%;
             min-height: 500px;
-        }
-
-        .create-quiz-wrapper {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 30px;
         }
 
         .empty-state {
@@ -114,10 +139,6 @@
             transition: transform 0.2s;
         }
 
-        .create-quiz-btn:hover {
-            transform: translateY(-2px);
-        }
-
         .quiz-list {
             list-style: none;
         }
@@ -132,12 +153,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 20px;
-        }
-
-        .quiz-item:hover {
-            border-color: #cfd8ff;
-            transform: translateY(-2px);
+            position: relative;
+            overflow: visible;
         }
 
         .quiz-info {
@@ -153,10 +170,9 @@
 
         .quiz-meta {
             font-size: 14px;
-            opacity: 0.85;
+            opacity: 0.8;
             display: flex;
             gap: 15px;
-            flex-wrap: wrap;
         }
 
         .quiz-actions {
@@ -186,10 +202,9 @@
         .quiz-btn.delete {
             background: #dc3545;
             color: white;
-        }
-
-        .quiz-btn.delete:hover {
-            background: #c82333;
+            display: inline-block;
+            visibility: visible;
+            opacity: 1;
         }
 
         .modal-overlay {
@@ -289,66 +304,85 @@
             background: #c82333;
         }
 
+        .quiz-btn.delete:hover {
+            background: #c82333;
+        }
+
         @media (max-width: 900px) {
-            .top-nav {
-                flex-direction: column;
+            .sidebar {
+                position: relative;
+                width: calc(100% - 48px);
+                left: 24px;
+                top: 24px;
+                height: auto;
+                margin-bottom: 0;
             }
-
-            .nav-btn {
-                width: 100%;
-            }
-
             .main-content {
+                margin-left: 0;
+                max-width: 100%;
                 padding: 16px 24px 24px;
             }
         }
 
+        /* Убеждаемся, что кнопка удаления всегда видна */
         @media (max-width: 768px) {
             .quiz-item {
                 flex-direction: column;
                 align-items: flex-start;
             }
-
             .quiz-actions {
                 width: 100%;
                 margin-top: 15px;
-                justify-content: stretch;
+                justify-content: flex-end;
             }
-
             .quiz-btn {
                 flex: 1;
             }
-
-            .modal-buttons {
-                flex-direction: column;
-            }
-
-            .modal-btn {
-                width: 100%;
-            }
         }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
 </head>
-<body>
+<body data-active-nav="my-quizzes">
+<aside class="sidebar">
+    <a href="/home" class="brand">
+        <span class="brand-text">QuizArena</span>
+    </a>
+    <nav class="sidebar-nav">
+        <a href="/home" class="nav-btn" data-nav="home">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span>
+            <span>Главная</span>
+        </a>
+        <a href="#" class="nav-btn" data-nav="my-quizzes">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span>
+            <span>Мои квизы</span>
+        </a>
+        <a href="#" class="nav-btn" data-nav="history">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <span>История</span>
+        </a>
+        <a href="#" class="nav-btn" data-nav="profile">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+            <span>Профиль</span>
+        </a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="#" class="user-card" data-nav="profile">
+            <span class="user-avatar" data-user-avatar>?</span>
+            <span class="user-name" data-user-name>Гость</span>
+        </a>
+    </div>
+</aside>
+
 <div class="main-content">
     <div class="container">
-        <div class="top-nav">
-            <a th:href="@{/profile(userId=${userId})}" class="nav-btn">Назад</a>
-            <a th:href="@{/home}" class="nav-btn">Главная</a>
-        </div>
-
         <header class="header">
-            <h1>Мои квизы</h1>
+            <h1>Мои Квизы</h1>
         </header>
 
         <section class="quizzes-section-main">
-            <div class="create-quiz-wrapper">
-                <button class="create-quiz-btn" onclick="goToCreateQuiz()">Создать квиз</button>
-            </div>
-
             <div class="empty-state" th:if="${createdQuizzes == null or createdQuizzes.isEmpty()}">
                 <h3>У вас пока нет квизов</h3>
-                <p>Создайте первый квиз, и он появится в этом списке.</p>
+                <button class="create-quiz-btn" onclick="goToCreateQuiz()">Создать квиз</button>
             </div>
 
             <ul class="quiz-list" th:if="${createdQuizzes != null and !createdQuizzes.isEmpty()}">
@@ -357,7 +391,7 @@
                         <div class="quiz-name" th:text="${quiz.name}">Название квиза</div>
                         <div class="quiz-meta">
                             <span th:text="'Вопросов: ' + ${quiz.questionCount}">Вопросов: -</span>
-                            <span th:if="${quiz.timePerQuestion != null and quiz.timePerQuestion > 0}"
+                            <span th:if="${quiz.timePerQuestion != null and quiz.timePerQuestion > 0}" 
                                   th:text="'Время: ' + ${quiz.timePerQuestion} + ' сек'">Время</span>
                             <span th:if="${quiz.timePerQuestion == null or quiz.timePerQuestion == 0}">Время: не ограничено</span>
                             <span th:text="${quiz.isPublic ? 'Публичный' : 'Приватный'}">Публичный</span>
@@ -371,10 +405,15 @@
                     </div>
                 </li>
             </ul>
+            
+            <div style="text-align: center; margin-top: 30px;" th:if="${createdQuizzes != null and !createdQuizzes.isEmpty()}">
+                <button class="create-quiz-btn" onclick="goToCreateQuiz()">Создать квиз</button>
+            </div>
         </section>
     </div>
 </div>
 
+<!-- Модальное окно -->
 <div id="modalOverlay" class="modal-overlay">
     <div class="modal">
         <div class="modal-title" id="modalTitle">Подтверждение</div>
@@ -398,8 +437,8 @@
     }
 
     function editQuiz(quizId) {
-        const userId = getCurrentUserId();
-        window.location.href = '/quiz/' + quizId + '/edit?userId=' + userId;
+    const userId = getCurrentUserId();
+    window.location.href = '/quiz/' + quizId + '/edit?userId=' + userId;
     }
 
     function showModal(title, message, buttons) {
@@ -407,7 +446,6 @@
         document.getElementById('modalMessage').textContent = message;
         const buttonsContainer = document.getElementById('modalButtons');
         buttonsContainer.innerHTML = '';
-
         buttons.forEach(btn => {
             const button = document.createElement('button');
             button.className = 'modal-btn ' + btn.className;
@@ -415,7 +453,6 @@
             button.onclick = btn.onclick;
             buttonsContainer.appendChild(button);
         });
-
         document.getElementById('modalOverlay').classList.add('show');
     }
 
@@ -423,6 +460,7 @@
         document.getElementById('modalOverlay').classList.remove('show');
     }
 
+    // Закрытие модального окна при клике вне его
     document.addEventListener('DOMContentLoaded', function() {
         const modalOverlay = document.getElementById('modalOverlay');
         if (modalOverlay) {
@@ -454,14 +492,14 @@
                 }
             ]
         );
-    }
+        }
 
     async function performDelete(quizId) {
         const userId = getCurrentUserId();
         if (!userId) {
             showModal(
                 'Ошибка',
-                'Ошибка: пользователь не найден.',
+                'Ошибка: пользователь не найден',
                 [
                     {
                         text: 'OK',
@@ -478,7 +516,7 @@
             if (!token) {
                 showModal(
                     'Ошибка авторизации',
-                    'Вы не авторизованы.',
+                    'Вы не авторизованы',
                     [
                         {
                             text: 'OK',
@@ -504,14 +542,14 @@
             if (response.ok) {
                 showModal(
                     'Успех',
-                    'Квиз успешно удалён.',
+                    'Квиз успешно удалён',
                     [
                         {
                             text: 'OK',
                             className: 'modal-btn-primary',
                             onclick: () => {
                                 hideModal();
-                                window.location.reload();
+                window.location.reload();
                             }
                         }
                     ]
@@ -519,14 +557,12 @@
             } else {
                 const errorText = await response.text();
                 let errorMessage = 'Неизвестная ошибка';
-
                 try {
                     const error = JSON.parse(errorText);
                     errorMessage = error.message || error.error || errorText;
                 } catch (e) {
-                    errorMessage = errorText || ('Ошибка ' + response.status + ': ' + response.statusText);
+                    errorMessage = errorText || `Ошибка ${response.status}: ${response.statusText}`;
                 }
-
                 showModal(
                     'Ошибка',
                     'Ошибка при удалении: ' + errorMessage,
@@ -543,7 +579,7 @@
             console.error('Error:', error);
             showModal(
                 'Ошибка сети',
-                'Проверьте подключение к интернету и попробуйте снова.',
+                'Ошибка сети. Проверьте подключение к интернету.',
                 [
                     {
                         text: 'OK',
@@ -555,5 +591,12 @@
         }
     }
 </script>
+<script src="/js/sidebar.js?v=3" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=3';"></script>
 </body>
 </html>
+
+
+
+
+
+

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -20,7 +20,17 @@
         }
 
         .sidebar {
-            display: none;
+            width: 250px;
+            background: white;
+            padding: 25px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            height: 200px;
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
         }
 
         .nav-btn {
@@ -47,8 +57,8 @@
         .main-content {
             flex: 1;
             padding: 20px;
-            margin-left: 0;
-            max-width: 100%;
+            margin-left: 340px;
+            max-width: calc(100vw - 360px);
         }
 
         .container {
@@ -288,12 +298,24 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
 </head>
 <body>
-<div class="sidebar">
-    <a href="/my-quizzes" class="nav-btn" onclick="event.preventDefault(); goBack()">Назад</a>
-    <a href="/home" class="nav-btn">Главная</a>
-</div>
+<aside class="sidebar">
+    <a href="/home" class="brand">
+        <span class="brand-text">QuizArena</span>
+    </a>
+    <nav class="sidebar-nav">
+        <a href="#" class="nav-btn" onclick="event.preventDefault(); goBack()">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span>
+            <span>Назад</span>
+        </a>
+        <a href="/home" class="nav-btn">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span>
+            <span>Главная</span>
+        </a>
+    </nav>
+</aside>
 
 <div class="main-content">
     <div class="container">
@@ -670,3 +692,7 @@
 </script>
 </body>
 </html>
+
+
+
+

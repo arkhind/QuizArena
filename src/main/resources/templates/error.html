@@ -1,8 +1,8 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
-    <title>Ошибка - QuizArena</title>
+    <title>������ - QuizArena</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -47,12 +47,18 @@
             transform: translateY(-2px);
         }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
 </head>
 <body>
     <div class="error-container">
         <div class="error-code" th:text="${errorCode}">404</div>
-        <div class="error-message" th:text="${errorMessage}">Страница не найдена</div>
-        <a href="/home" class="back-btn">Вернуться на главную</a>
+        <div class="error-message" th:text="${errorMessage}">�������� �� �������</div>
+        <a href="/home" class="back-btn">��������� �� �������</a>
     </div>
 </body>
 </html>
+
+
+
+
+
