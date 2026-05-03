@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Присоединение к сессии</title>
+    <title>������������� � ������</title>
     <style>
         * {
             margin: 0;
@@ -114,18 +114,19 @@
             font-size: 0.9rem;
         }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
 </head>
 <body>
 <div class="join-card">
-    <h2>Присоединение к сессии</h2>
+    <h2>������������� � ������</h2>
     <div class="input-group">
-        <label for="sessionIdInput">ID сессии</label>
-        <input type="text" id="sessionIdInput" placeholder="Введите ID сессии" th:value="${sessionId != null ? sessionId : ''}">
+        <label for="sessionIdInput">ID ������</label>
+        <input type="text" id="sessionIdInput" placeholder="������� ID ������" th:value="${sessionId != null ? sessionId : ''}">
     </div>
     <div id="errorMessage" class="error-message" style="display: none;"></div>
-    <button class="primary-btn" onclick="joinSession()">Присоединиться</button>
-    <a class="cancel-link" onclick="goBack()">Назад</a>
-    <div class="status" id="statusMessage">Введите ID сессии для присоединения</div>
+    <button class="primary-btn" onclick="joinSession()">��������������</button>
+    <a class="cancel-link" onclick="goBack()">�����</a>
+    <div class="status" id="statusMessage">������� ID ������ ��� �������������</div>
 </div>
 
 <script>
@@ -144,21 +145,21 @@
     async function joinSession() {
         const sessionId = getSessionId();
         if (!sessionId) {
-            showError('Введите ID сессии');
+            showError('������� ID ������');
             return;
         }
 
         if (!USER_ID || USER_ID === 0) {
             USER_ID = Number(localStorage.getItem('userId')) || null;
             if (!USER_ID) {
-                showError('Необходимо войти в систему');
+                showError('���������� ����� � �������');
                 setTimeout(() => window.location.href = '/login', 2000);
                 return;
             }
         }
 
         const statusEl = document.getElementById('statusMessage');
-        statusEl.textContent = 'Присоединение...';
+        statusEl.textContent = '�������������...';
         document.querySelector('.primary-btn').disabled = true;
 
         try {
@@ -176,24 +177,24 @@
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                const errorMessage = error.message || `Ошибка ${response.status}`;
+                const errorMessage = error.message || `������ ${response.status}`;
                 showError(errorMessage);
-                statusEl.textContent = 'Ошибка';
+                statusEl.textContent = '������';
                 return;
             }
 
             const joined = await response.json();
             if (joined) {
-                statusEl.textContent = 'Успешно присоединились! Перенаправление...';
+                statusEl.textContent = '������� ��������������! ���������������...';
                 setTimeout(() => {
                     window.location.href = `/multiplayer/session/${sessionId}`;
                 }, 1000);
             } else {
-                showError('Не удалось присоединиться к сессии');
+                showError('�� ������� �������������� � ������');
             }
         } catch (error) {
-            showError(error.message || 'Ошибка при присоединении');
-            statusEl.textContent = 'Ошибка';
+            showError(error.message || '������ ��� �������������');
+            statusEl.textContent = '������';
         } finally {
             document.querySelector('.primary-btn').disabled = false;
         }
