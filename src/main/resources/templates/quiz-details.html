@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Детали квиза - QuizArena</title>
+    <title>������ ����� - QuizArena</title>
     <style>
         * {
             margin: 0;
@@ -96,39 +96,40 @@
             font-size: 1.1rem;
         }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
 </head>
 <body>
 <div class="container">
-    <button class="back-btn" onclick="goBack()">← Назад к квизу</button>
+    <button class="back-btn" onclick="goBack()">< ����� � �����</button>
 
     <header>
-        <h1 th:text="${quiz != null ? quiz.name : 'Квиз'}">Название квиза</h1>
-        <div class="subtitle" th:if="${quiz != null and quiz.description != null}" th:text="${quiz.description}">Описание</div>
+        <h1 th:text="${quiz != null ? quiz.name : '����'}">�������� �����</h1>
+        <div class="subtitle" th:if="${quiz != null and quiz.description != null}" th:text="${quiz.description}">��������</div>
     </header>
 
     <div class="info-section">
-        <h2>Информация о квизе</h2>
+        <h2>���������� � �����</h2>
         <div class="info-content">
             <div class="info-item">
-                <div class="info-label">Количество вопросов</div>
+                <div class="info-label">���������� ��������</div>
                 <div class="info-value" th:text="${quiz != null and quiz.questionNumber != null ? quiz.questionNumber : '-'}">-</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Время на вопрос</div>
+                <div class="info-label">����� �� ������</div>
                 <div class="info-value" th:if="${quiz != null and quiz.timePerQuestion != null and quiz.timePerQuestion > 0}" 
-                     th:text="${quiz.timePerQuestion + ' сек'}">- сек</div>
-                <div class="info-value" th:if="${quiz == null or quiz.timePerQuestion == null or quiz.timePerQuestion == 0}">не ограничено</div>
+                     th:text="${quiz.timePerQuestion + ' ���'}">- ���</div>
+                <div class="info-value" th:if="${quiz == null or quiz.timePerQuestion == null or quiz.timePerQuestion == 0}">�� ����������</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Тип</div>
-                <div class="info-value" th:text="${quiz != null and quiz.isStatic != null ? (quiz.isStatic ? 'Статичный' : 'Обновляемый') : '-'}">-</div>
+                <div class="info-label">���</div>
+                <div class="info-value" th:text="${quiz != null and quiz.isStatic != null ? (quiz.isStatic ? '���������' : '�����������') : '-'}">-</div>
             </div>
             <div class="info-item">
-                <div class="info-label">Видимость</div>
-                <div class="info-value" th:text="${quiz != null and quiz.isPublic != null ? (quiz.isPublic ? 'Публичный' : 'Приватный') : '-'}">-</div>
+                <div class="info-label">���������</div>
+                <div class="info-value" th:text="${quiz != null and quiz.isPublic != null ? (quiz.isPublic ? '���������' : '���������') : '-'}">-</div>
             </div>
             <div class="info-item" th:if="${quiz != null and quiz.author != null}">
-                <div class="info-label">Автор</div>
+                <div class="info-label">�����</div>
                 <div class="info-value" th:text="${quiz.author}">-</div>
             </div>
         </div>
@@ -153,3 +154,7 @@
 </script>
 </body>
 </html>
+
+
+
+

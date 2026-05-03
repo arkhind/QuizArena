@@ -1,10 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Результаты квиза</title>
-
     <style>
         * {
             margin: 0;
@@ -13,295 +12,151 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             color: #333;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: white;
+            padding: 25px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            height: 200px;
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+            padding: 15px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+            text-align: center;
+            text-decoration: none;
+            display: block;
+        }
+
+        .nav-btn:hover {
+            background: #667eea;
+            color: white;
         }
 
         .main-content {
-            padding: 14px;
+            flex: 1;
+            padding: 20px;
+            margin-left: 340px;
+            max-width: calc(100vw - 360px);
         }
 
         .container {
+            max-width: none;
             width: 100%;
         }
 
         .header {
             background: white;
             border-radius: 10px;
-            padding: 24px;
+            padding: 25px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         .header h1 {
-            text-align: center;
-            font-size: 36px;
             color: #333;
+            font-size: 2.5em;
+            text-align: center;
+            margin: 0;
         }
 
         .content-section {
             background: white;
             border-radius: 10px;
-            padding: 28px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
         }
 
         .score-display {
-            min-height: 250px;
-            border-radius: 14px;
-            color: white;
-            margin-bottom: 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
             text-align: center;
-        }
-
-        .score-content {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 18px;
-        }
-
-        .place-row {
-            display: flex;
-            align-items: center;
-            gap: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            color: white;
+            margin-bottom: 30px;
         }
 
         .score-value {
-            font-size: 88px;
-            line-height: 1;
-            font-weight: 700;
+            font-size: 4em;
+            font-weight: bold;
+            margin-bottom: 10px;
         }
 
-        .place-info {
-            text-align: left;
-        }
-
-        .place-label {
-            font-size: 26px;
-            opacity: 0.95;
-        }
-
-        .place-total {
-            font-size: 34px;
-            font-weight: 700;
-            margin-top: 10px;
-        }
-
-        .percent-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 28px;
-            border-radius: 999px;
-            background: rgba(57, 42, 126, 0.45);
-            font-size: 21px;
-            font-weight: 600;
+        .score-label {
+            font-size: 1.2em;
+            opacity: 0.9;
         }
 
         .results-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin-bottom: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
         }
 
         .result-item {
-            background: #fbfbfc;
-            padding: 28px 20px;
-            border-radius: 10px;
-            border: 2px solid #edf0f5;
-            text-align: center;
-            min-height: 145px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 18px;
-        }
-
-        .result-icon {
-            width: 38px;
-            height: 38px;
-            flex-shrink: 0;
-        }
-
-        .icon-green {
-            color: #42c978;
-        }
-
-        .icon-blue {
-            color: #667eea;
-        }
-
-        .icon-purple {
-            color: #8b4fd3;
-        }
-
-        .icon-orange {
-            color: #ff8a2a;
-        }
-
-        .result-text {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
             text-align: center;
         }
 
         .result-label {
-            font-size: 16px;
+            font-size: 14px;
             color: #666;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .result-value {
-            font-size: 34px;
-            font-weight: 700;
+            font-size: 24px;
+            font-weight: bold;
             color: #333;
         }
 
-        .result-subvalue {
-            font-size: 16px;
-            color: #333;
-            margin-top: 6px;
-        }
-
-        .leaderboard-section {
-            background: #fff;
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            padding: 24px;
-            margin-top: 20px;
-        }
-
-        .leaderboard-title {
-            font-size: 28px;
-            font-weight: 700;
-            color: #222;
-            margin-bottom: 6px;
-        }
-
-        .leaderboard-subtitle {
-            color: #666;
-            margin-bottom: 22px;
-            font-size: 16px;
-        }
-
-        .leaderboard-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .leaderboard-table thead {
-            background: #f8f9fa;
-        }
-
-        .leaderboard-table th {
-            padding: 16px;
-            text-align: left;
-            font-weight: 700;
-            border-bottom: 2px solid #e9ecef;
-            color: #222;
-        }
-
-        .leaderboard-table td {
-            padding: 16px;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .leaderboard-table tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        .user-row {
-            background: #f0efff;
-            font-weight: 600;
-        }
-
-        .rank {
-            font-weight: 700;
-            font-size: 22px;
-            color: #667eea;
-            text-align: center;
-            width: 60px;
-            display: inline-block;
-        }
-
-        .rank.first {
-            color: #6f47d8;
-        }
-
-        .rank.second {
-            color: #b5b5b5;
-        }
-
-        .rank.third {
-            color: #cd7f32;
-        }
-
-        .player-name {
-            font-weight: 500;
-            color: #222;
-        }
-
-        .you-badge {
-            display: inline-block;
-            margin-left: 10px;
-            padding: 4px 12px;
-            border-radius: 999px;
-            background: #6f47d8;
-            color: white;
-            font-size: 13px;
-            font-weight: 700;
-        }
-
-        .player-score {
-            color: #222;
-            font-weight: 700;
-        }
-
-        .player-time {
-            color: #777;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #999;
-        }
 
         .button-group {
             display: flex;
-            gap: 26px;
+            gap: 15px;
             justify-content: center;
             margin-top: 30px;
             flex-wrap: wrap;
         }
 
         button {
-            padding: 16px 48px;
-            border-radius: 12px;
-            font-size: 18px;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
             cursor: pointer;
             font-weight: 500;
-            transition: 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
         }
 
         .leaderboard-btn {
-            border: none;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-        }
-
-        .leaderboard-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 8px 18px rgba(102, 126, 234, 0.3);
         }
 
         .home-btn {
@@ -310,245 +165,72 @@
             border: 2px solid #667eea;
         }
 
-        .home-btn:hover {
-            background: #667eea;
-            color: white;
-        }
-
-        .button-icon {
-            width: 22px;
-            height: 22px;
-        }
-
-        @media (max-width: 1100px) {
-            .results-grid {
-                grid-template-columns: repeat(2, 1fr);
+        @media (max-width: 900px) {
+            .sidebar {
+                position: relative;
+                width: 100%;
+                margin-bottom: 20px;
             }
-        }
 
-        @media (max-width: 700px) {
             .main-content {
-                padding: 8px;
-            }
-
-            .content-section {
-                padding: 18px;
-            }
-
-            .header h1 {
-                font-size: 28px;
-            }
-
-            .place-row {
-                flex-direction: column;
-                gap: 12px;
-            }
-
-            .place-info {
-                text-align: center;
-            }
-
-            .score-value {
-                font-size: 70px;
+                margin-left: 0;
+                max-width: 100%;
             }
 
             .results-grid {
                 grid-template-columns: 1fr;
             }
-
-            .leaderboard-table {
-                font-size: 14px;
-            }
-
-            .leaderboard-table th,
-            .leaderboard-table td {
-                padding: 10px;
-            }
-
-            button {
-                width: 100%;
-                justify-content: center;
-            }
         }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
 </head>
-
 <body>
+<aside class="sidebar">
+    <a href="/home" class="brand">
+        <span class="brand-text">QuizArena</span>
+    </a>
+    <nav class="sidebar-nav">
+        <a href="/home" class="nav-btn">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span>
+            <span>Главная</span>
+        </a>
+        <a href="/quiz" class="nav-btn">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14v16H5z"/><path d="M9 9h6"/><path d="M9 13h6"/></svg></span>
+            <span>Все квизы</span>
+        </a>
+    </nav>
+</aside>
+
 <div class="main-content">
     <div class="container">
-        <input type="hidden" id="activeAttemptIdInput" th:value="${activeAttemptId}">
-        <input type="hidden" id="resultUserId" th:value="${userId}">
-
         <header class="header">
-            <h1 th:text="${quizName != null ? quizName : 'Результаты квиза'}">геометрия</h1>
+            <h1 th:text="${quizName != null ? quizName : 'Результаты квиза'}">Результаты квиза</h1>
         </header>
 
         <div class="content-section">
             <div class="score-display">
-                <div class="score-content">
-                    <div class="place-row">
-                        <div class="score-value" th:text="${position != null ? position : '-'}">1</div>
-
-                        <div class="place-info">
-                            <div class="place-label">Ваше место</div>
-                            <div class="place-total">
-                                <span th:text="${position != null ? position : '-'}">1</span>
-                                <span th:if="${leaderboardSize != null and leaderboardSize > 0}"
-                                      th:text="' из ' + ${leaderboardSize}"> из 2</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="percent-badge">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <circle cx="9" cy="7" r="4"
-                                    stroke="currentColor" stroke-width="2"/>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"
-                                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"
-                                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <span th:text="'Вы обошли ' + ${outperformedPercent != null ? outperformedPercent : 0} + '% игроков'">
-                            Вы обошли 0% игроков
-                        </span>
-                    </div>
+                <div class="score-value" th:text="${score != null ? score : 0}"></div>
+                <div class="score-label">Ваш результат</div>
+                <div class="position-badge" th:if="${position != null}">
+                    Место: <span th:text="${position}">-</span>
                 </div>
             </div>
 
             <div class="results-grid">
                 <div class="result-item">
-                    <svg class="result-icon icon-green" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                        <path d="M8 12.5l2.5 2.5L16.5 9"
-                              stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-
-                    <div class="result-text">
-                        <div class="result-label">Правильных ответов</div>
-                        <div class="result-value" th:text="${correctAnswers != null ? correctAnswers : 0}">5</div>
-                        <div class="result-subvalue" th:if="${totalQuestions != null}" th:text="'из ' + ${totalQuestions}">из 5</div>
-                    </div>
+                    <div class="result-label">Правильных ответов</div>
+                    <div class="result-value" th:text="${correctAnswers != null ? correctAnswers : 0}"></div>
+                    <div class="result-label" th:if="${totalQuestions != null}" th:text="'из ' + ${totalQuestions}">из </div>
                 </div>
-
                 <div class="result-item">
-                    <svg class="result-icon icon-blue" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                        <path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4"
-                              stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                        <circle cx="12" cy="17" r="1" fill="currentColor"/>
-                    </svg>
-
-                    <div class="result-text">
-                        <div class="result-label">Всего вопросов</div>
-                        <div class="result-value" th:text="${totalQuestions != null ? totalQuestions : 0}">5</div>
-                    </div>
-                </div>
-
-                <div class="result-item">
-                    <svg class="result-icon icon-purple" viewBox="0 0 24 24" fill="none">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                        <path d="M12 6v6l4 2"
-                              stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-
-                    <div class="result-text">
-                        <div class="result-label">Время прохождения</div>
-                        <div class="result-value" th:text="${formattedTimeSpent != null ? formattedTimeSpent : '00:00'}">01:20</div>
-                        <div class="result-subvalue">мин:сек</div>
-                    </div>
-                </div>
-
-                <div class="result-item">
-                    <svg class="result-icon icon-orange" viewBox="0 0 24 24" fill="none">
-                        <path d="M3 17l6-6 4 4 7-8"
-                              stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M16 7h4v4"
-                              stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-
-                    <div class="result-text">
-                        <div class="result-label">Точность</div>
-                        <div class="result-value"
-                             th:text="${totalQuestions != null and totalQuestions > 0 and correctAnswers != null ? (correctAnswers * 100 / totalQuestions) + '%' : '0%'}">
-                            100%
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="leaderboard-section">
-                <div class="leaderboard-title">Таблица лидеров</div>
-                <div class="leaderboard-subtitle" th:text="${quizName != null ? quizName : ''}">геометрия</div>
-
-                <table class="leaderboard-table"
-                       th:if="${leaderboard != null and leaderboard.entries() != null and !leaderboard.entries().isEmpty()}">
-                    <thead>
-                    <tr>
-                        <th>Место</th>
-                        <th>Игрок</th>
-                        <th>Результат</th>
-                        <th>Время</th>
-                    </tr>
-                    </thead>
-
-                    <tbody>
-                    <tr th:each="entry : ${leaderboard.entries()}"
-                        th:classappend="${userPosition != null and entry.position() != null and entry.position().equals(userPosition)} ? 'user-row' : ''">
-                        <td>
-                            <span class="rank"
-                                  th:classappend="${entry.position() != null and entry.position() == 1} ? 'first' : (${entry.position() != null and entry.position() == 2} ? 'second' : (${entry.position() != null and entry.position() == 3} ? 'third' : ''))"
-                                  th:text="${entry.position()}">1</span>
-                        </td>
-
-                        <td class="player-name">
-                            <span th:text="${entry.username()}">лера</span>
-                            <span class="you-badge"
-                                  th:if="${userPosition != null and entry.position() != null and entry.position().equals(userPosition)}">
-                                Вы
-                            </span>
-                        </td>
-
-                        <td class="player-score">
-                            <span th:text="${entry.score()}">5</span>
-                            <span th:if="${totalQuestions != null}" th:text="' из ' + ${totalQuestions}"> из 5</span>
-                        </td>
-
-                        <td class="player-time"
-                            th:text="${entry.timeSpent() != null ? entry.timeSpent() + ' сек' : '-'}">
-                            60 сек
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-
-                <div class="empty-state"
-                     th:if="${leaderboard == null or leaderboard.entries() == null or leaderboard.entries().isEmpty()}">
-                    <h3>Таблица лидеров пуста</h3>
+                    <div class="result-label">Всего вопросов</div>
+                    <div class="result-value" th:text="${totalQuestions != null ? totalQuestions : 0}"></div>
                 </div>
             </div>
 
             <div class="button-group">
-                <button class="leaderboard-btn" onclick="startQuizAgain()">
-                    <svg class="button-icon" viewBox="0 0 24 24" fill="none">
-                        <path d="M21 12a9 9 0 1 1-2.64-6.36"
-                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M21 3v6h-6"
-                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    Пройти ещё раз
-                </button>
-
-                <button class="home-btn" onclick="goHome()">
-                    <svg class="button-icon" viewBox="0 0 24 24" fill="none">
-                        <path d="M3 10.5L12 3l9 7.5"
-                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M5 10v10h14V10"
-                              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    На главную
-                </button>
+                <button class="leaderboard-btn" onclick="viewLeaderboard()">Таблица лидеров</button>
+                <button class="home-btn" onclick="goHome()">На главную</button>
             </div>
         </div>
     </div>
@@ -560,20 +242,11 @@
         return urlParams.get('quizId');
     }
 
-    function startQuizAgain() {
+    function viewLeaderboard() {
         const quizId = getQuizId();
-        const userId = document.getElementById('resultUserId')?.value || localStorage.getItem('userId');
-
-        if (!quizId || !userId) {
-            window.location.href = '/login';
-            return;
-        }
-
-        const userIdNum = parseInt(userId, 10);
-
-        if (isNaN(userIdNum) || userIdNum <= 0) {
-            window.location.href = '/login';
-            return;
+        const userId = localStorage.getItem('userId') || '1';
+        if (quizId) {
+            window.location.href = '/quiz/' + quizId + '/leaderboard?userId=' + userId;
         }
 
         const form = document.createElement('form');
@@ -589,3 +262,7 @@
 </script>
 </body>
 </html>
+
+
+
+

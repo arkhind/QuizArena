@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Авторизация - QuizArena</title>
+    <title>����������� - QuizArena</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -71,20 +71,21 @@
             display: block;
         }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
 </head>
 <body>
 <div class="auth-box">
-    <h2>Авторизация</h2>
+    <h2>�����������</h2>
     <form id="loginForm">
         <div class="form-group">
-            <input type="text" id="username" name="username" placeholder="Логин" required>
+            <input type="text" id="username" name="username" placeholder="�����" required>
         </div>
         <div class="form-group">
-            <input type="password" id="password" name="password" placeholder="Пароль" required>
+            <input type="password" id="password" name="password" placeholder="������" required>
         </div>
         <div class="error-message" id="errorMessage"></div>
-        <button type="submit">Войти</button>
-        <button type="button" class="register-btn" onclick="goToRegister()">Зарегистрироваться</button>
+        <button type="submit">�����</button>
+        <button type="button" class="register-btn" onclick="goToRegister()">������������������</button>
     </form>
 </div>
 <script>
@@ -128,15 +129,18 @@
                 if (data.userId) {
                     localStorage.setItem('userId', data.userId);
                 }
+                if (data.username) {
+                    localStorage.setItem('username', data.username);
+                }
 
                 window.location.href = '/home';
             } else {
                 const error = await response.json();
-                errorMessage.textContent = error.message || 'Неверный логин или пароль';
+                errorMessage.textContent = error.message || '�������� ����� ��� ������';
                 errorMessage.classList.add('show');
             }
         } catch (error) {
-            errorMessage.textContent = 'Ошибка сети';
+            errorMessage.textContent = '������ ����';
             errorMessage.classList.add('show');
             console.error('Error:', error);
         }
