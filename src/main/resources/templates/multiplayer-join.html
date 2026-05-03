@@ -187,7 +187,7 @@
             if (joined) {
                 statusEl.textContent = '������� ��������������! ���������������...';
                 setTimeout(() => {
-                    window.location.href = `/multiplayer/session/${sessionId}?userId=${USER_ID}`;
+                    window.location.href = `/multiplayer/session/${sessionId}`;
                 }, 1000);
             } else {
                 showError('�� ������� �������������� � ������');
@@ -221,9 +221,3 @@
 </script>
 </body>
 </html>
-
-
-
-
-
-

@@ -318,12 +318,7 @@
 
 <script>
     function goToProfile() {
-        const userId = localStorage.getItem('userId');
-        if (userId) {
-            window.location.href = '/profile?userId=' + userId;
-        } else {
-            window.location.href = '/login';
-        }
+        window.location.href = '/profile';
     }
 
     function goToQuiz(quizId) {
