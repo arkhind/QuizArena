@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>���������� �����������</title>
+    <title>Мультиплеерная сессия</title>
     <style>
         * {
             margin: 0;
@@ -150,29 +150,29 @@
 </head>
 <body>
 <div class="session-card">
-    <h2>���������� �����������</h2>
-    <div class="quiz-title" id="quizName" th:text="${quizName != null ? quizName : '�������� �����'}" th:attr="data-quiz-id=${quizId}">�������� �����</div>
-    <button class="session-link" id="sessionLink" type="button" onclick="copySessionLink(event)" style="background: none; border: none; color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer; padding: 0; margin: 12px 0 20px; display: inline-block;">����������� ������ �� ������</button>
-    <div class="copy-feedback" id="copyFeedback">������ �����������!</div>
+    <h2>Мультиплеерная сессия</h2>
+    <div class="quiz-title" id="quizName" th:text="${quizName != null ? quizName : 'Название квиза'}" th:attr="data-quiz-id=${quizId}">Название квиза</div>
+    <button class="session-link" id="sessionLink" type="button" onclick="copySessionLink(event)" style="background: none; border: none; color: #667eea; text-decoration: none; font-weight: 500; cursor: pointer; padding: 0; margin: 12px 0 20px; display: inline-block;">Скопировать ссылку на сессию</button>
+    <div class="copy-feedback" id="copyFeedback">Ссылка скопирована!</div>
 
     <div class="participants-box">
         <div class="participants-header">
-            <span>���������</span>
+            <span>Участники</span>
             <span id="participantCount">0/10</span>
         </div>
         <div class="participants-grid" id="participantsGrid">
-            <!-- ����������� �������� -->
+            <!-- Участники сессии -->
         </div>
     </div>
 
     <button class="primary-btn" id="startSessionBtn" onclick="startSession()" th:if="${currentUserId != null and hostUserId != null and currentUserId == hostUserId}">
-        ? ������
+        Начать
     </button>
 
-    <a class="cancel-link" onclick="cancelSession()">��������</a>
+    <a class="cancel-link" onclick="cancelSession()">Отменить</a>
 
-    <div class="status" id="sessionStatus" th:text="${(currentUserId != null and hostUserId != null and currentUserId == hostUserId) ? '�������� ����������� ����������...' : '�������� ������ �����'}">
-        �������� ����������� ����������...
+    <div class="status" id="sessionStatus" th:text="${(currentUserId != null and hostUserId != null and currentUserId == hostUserId) ? 'Ожидание присоединения участников...' : 'Ожидание начала игры'}">
+        Ожидание присоединения участников...
     </div>
     <div th:if="${errorMessage != null}" class="error-message" style="background-color: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 8px; margin-top: 15px;" th:text="${errorMessage}"></div>
 </div>
@@ -208,8 +208,8 @@
     console.log('SESSION_ID final value:', SESSION_ID);
     console.log('HOST_USER_ID final value:', HOST_USER_ID);
 
-     // ���������, ���� ����� �������� �����������
-     // document.getElementById('quizName').textContent = `����: ${window.initialQuizTitle}`;
+     // Раскомментируйте, если нужно подставлять название квиза из JS.
+     // document.getElementById('quizName').textContent = `Квиз: ${window.initialQuizTitle}`;
 
     function renderParticipants(participants) {
         const grid = document.getElementById('participantsGrid');
@@ -229,7 +229,7 @@
             } else {
                 slot.textContent = '+';
                 slot.className = 'participant empty-seat';
-                slot.title = '��������� �����';
+                slot.title = 'Свободное место';
             }
             grid.appendChild(slot);
         }
@@ -240,7 +240,7 @@
 
     async function fetchSession() {
         if (!SESSION_ID || SESSION_ID === 'null' || SESSION_ID === 'abc123xyz' || SESSION_ID === null) {
-            const errorMsg = '������: ID ������ �� ������. SESSION_ID=' + SESSION_ID + ' (type: ' + typeof SESSION_ID + ')';
+            const errorMsg = 'Ошибка: ID сессии не найден. SESSION_ID=' + SESSION_ID + ' (type: ' + typeof SESSION_ID + ')';
             console.error(errorMsg);
             console.error('Available in model:', {
                 sessionId: /*[[${sessionId}]]*/ 'not set',
@@ -265,7 +265,7 @@
             if (!response.ok) {
                 const errorText = await response.text().catch(() => '');
                 console.error('Error response:', response.status, errorText);
-                throw new Error(`������ ������ ${response.status}`);
+                throw new Error(`Ошибка запроса ${response.status}`);
             }
 
             const session = await response.json();
@@ -279,18 +279,18 @@
             
             if (isHost) {
                 document.getElementById('sessionStatus').textContent =
-                    `������: ${translateStatus(session.status)}`;
+                    `Статус: ${translateStatus(session.status)}`;
             } else {
                 if (session.status === 'STARTED') {
-                    document.getElementById('sessionStatus').textContent = '���� �������!';
+                    document.getElementById('sessionStatus').textContent = 'Игра началась!';
                 } else {
-                    document.getElementById('sessionStatus').textContent = '�������� ������ �����';
+                    document.getElementById('sessionStatus').textContent = 'Ожидание начала игры';
                 }
             }
         } catch (error) {
             console.error('Error fetching session:', error);
             document.getElementById('sessionStatus').textContent =
-                `�� ������� ��������� ������ ������: ${error.message}`;
+                `Не удалось загрузить данные сессии: ${error.message}`;
         }
      }
     async function startSession() {
@@ -309,7 +309,7 @@
 
             if (!response.ok) {
                 const error = await response.json().catch(() => ({}));
-                const errorMessage = error.message || (response.status === 400 ? '������ ������ ����������� ������. ����� ������� 2 ���������.' : `������ ������ ${response.status}`);
+                const errorMessage = error.message || (response.status === 400 ? 'Нужно больше участников. Минимум нужны 2 участника.' : `Ошибка запроса ${response.status}`);
                 throw new Error(errorMessage);
             }
 
@@ -318,9 +318,9 @@
             const isHost = currentUserId && hostUserId && currentUserId === hostUserId;
             
             if (isHost) {
-                document.getElementById('sessionStatus').textContent = '������ ��������';
+                document.getElementById('sessionStatus').textContent = 'Сессия запущена';
             } else {
-                document.getElementById('sessionStatus').textContent = '���� �������!';
+                document.getElementById('sessionStatus').textContent = 'Игра началась!';
             }
         } catch (error) {
             document.getElementById('sessionStatus').textContent = error.message;
@@ -333,7 +333,7 @@
         
         try {
             if (isHost) {
-                // ���� �������� ������
+                // Хост отменяет сессию
                 const response = await fetch(`${API_BASE}/sessions/cancel`, {
                     method: 'POST',
                     headers: {
@@ -348,10 +348,10 @@
 
                 if (!response.ok) {
                     const error = await response.json().catch(() => ({}));
-                    throw new Error(error.message || `������ ������ ${response.status}`);
+                    throw new Error(error.message || `Ошибка запроса ${response.status}`);
                 }
             } else {
-                // �������� ������� �� ������
+                // Участник выходит из сессии
                 const response = await fetch(`${API_BASE}/sessions/${SESSION_ID}/leave?userId=${currentUserId}`, {
                     method: 'POST',
                     headers: {
@@ -361,7 +361,7 @@
 
                 if (!response.ok) {
                     const error = await response.json().catch(() => ({}));
-                    throw new Error(error.message || `������ ������ ${response.status}`);
+                    throw new Error(error.message || `Ошибка запроса ${response.status}`);
                 }
             }
 
@@ -373,10 +373,10 @@
     }
     function translateStatus(status) {
         switch (status) {
-            case 'WAITING': return '�������� ����������';
-            case 'STARTED': return '��� �����������';
-            case 'FINISHED': return '���������';
-            case 'CANCELLED': return '��������';
+            case 'WAITING': return 'ожидание участников';
+            case 'STARTED': return 'идёт игра';
+            case 'FINISHED': return 'завершена';
+            case 'CANCELLED': return 'отменена';
             default: return status;
         }
     }
@@ -397,7 +397,7 @@
                 console.log('SESSION_ID extracted from URL for copy:', currentSessionId);
             } else {
                 console.error('SESSION_ID not found in URL or variable');
-                alert('������: ID ������ �� ������. ����������, �������� ��������.');
+                alert('Ошибка: ID сессии не найден. Пожалуйста, обновите страницу.');
                 return;
             }
         }
@@ -452,11 +452,11 @@
                 }
             } else {
                 console.error('Fallback: Unable to copy');
-                prompt('���������� ������ �������:', text);
+                prompt('Скопируйте ссылку вручную:', text);
             }
         } catch (err) {
             console.error('Fallback: Oops, unable to copy', err);
-            prompt('���������� ������ �������:', text);
+            prompt('Скопируйте ссылку вручную:', text);
         } finally {
             document.body.removeChild(textArea);
         }
@@ -483,12 +483,12 @@
             
             if (isHost) {
                 document.getElementById('sessionStatus').textContent =
-                    `������: ${translateStatus(session.status)}`;
+                    `Статус: ${translateStatus(session.status)}`;
             } else {
                 if (session.status === 'STARTED') {
-                    document.getElementById('sessionStatus').textContent = '���� �������!';
+                    document.getElementById('sessionStatus').textContent = 'Игра началась!';
                 } else {
-                    document.getElementById('sessionStatus').textContent = '�������� ������ �����';
+                    document.getElementById('sessionStatus').textContent = 'Ожидание начала игры';
                 }
             }
 

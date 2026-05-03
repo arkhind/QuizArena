@@ -2,7 +2,7 @@
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
-    <title>������ - QuizArena</title>
+    <title>Ошибка - QuizArena</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -52,12 +52,11 @@
 <body>
     <div class="error-container">
         <div class="error-code" th:text="${errorCode}">404</div>
-        <div class="error-message" th:text="${errorMessage}">�������� �� �������</div>
-        <a href="/home" class="back-btn">��������� �� �������</a>
+        <div class="error-message" th:text="${errorMessage}">Страница не найдена</div>
+        <a href="/home" class="back-btn">Вернуться на главную</a>
     </div>
 </body>
 </html>
-
 
 
 
