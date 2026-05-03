@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>�������� ����� - QuizArena</title>
+    <title>Создание квиза - QuizArena</title>
     <style>
         * {
             margin: 0;
@@ -224,13 +224,13 @@
 </head>
 <body>
 <div class="form-container">
-    <h1>�������� �����</h1>
+    <h1>Создание квиза</h1>
 
     <form id="createQuizForm" onsubmit="handleSubmit(event)">
-        <!-- �������� ����� -->
+        <!-- Название квиза -->
         <div class="form-group">
             <label>
-                <span class="required">*</span> ������� ��������:
+                <span class="required">*</span> Название квиза:
             </label>
             <input type="text"
                    id="quizName"
@@ -238,21 +238,21 @@
                    required>
         </div>
 
-        <!-- ��������/����� -->
+        <!-- Описание/промпт -->
         <div class="form-group">
             <label>
-                <span class="required">*</span> �������� (������ ��� ��):
+                <span class="required">*</span> Описание (промпт для ИИ):
             </label>
             <textarea id="quizPrompt"
                       name="prompt"
                       required></textarea>
         </div>
 
-        <!-- �������� ����� -->
+        <!-- Материал квиза -->
         <div class="form-group">
             <div class="file-upload-section" id="fileUploadSection">
                 <span class="file-upload-label" id="fileUploadLabel">
-                    �������� �������� (.pdf, .txt, .doc, .docx)
+                    Загрузить материал (.pdf, .txt, .doc, .docx)
                 </span>
                 <input type="file"
                        id="quizMaterial"
@@ -263,11 +263,11 @@
             <div class="file-name" id="fileName" style="display: none;"></div>
         </div>
 
-        <!-- �������� ��������� -->
+        <!-- Параметры квиза -->
         <div class="number-inputs">
             <div class="form-group">
                 <label>
-                    <span class="required">*</span> ���������� ��������:
+                    <span class="required">*</span> Количество вопросов:
                 </label>
                 <input type="number"
                        id="questionNumber"
@@ -277,13 +277,13 @@
                        max="200"
                        required>
                 <small style="color: #666; display: block; margin-top: 5px;">
-                    �������� 30 �������� (�� 200 ��������� � ���� ������)
+                    Максимум 30 вопросов (из 200 доступных в базе данных)
                 </small>
             </div>
 
             <div class="form-group">
                 <label>
-                    <span class="required">*</span> ����� �� ����� (���):
+                    <span class="required">*</span> Время на ответ (сек):
                 </label>
                 <input type="number"
                        id="timeLimit"
@@ -294,15 +294,15 @@
             </div>
         </div>
 
-        <!-- ��� ����� -->
+        <!-- Тип квиза -->
         <div class="form-group quiz-type-section">
             <label>
-                <span class="required">*</span> �������� ��� �����:
+                <span class="required">*</span> Настройки квиза:
             </label>
 
-            <!-- ����������� -->
+            <!-- Видимость -->
             <div class="type-category">
-                <span class="type-category-label">1. ���������:</span>
+                <span class="type-category-label">1. Видимость:</span>
                 <div class="radio-group">
                     <div class="radio-option">
                         <input type="radio"
@@ -310,21 +310,21 @@
                                name="visibility"
                                value="public"
                                checked>
-                        <label for="public">���������</label>
+                        <label for="public">Публичный</label>
                     </div>
                     <div class="radio-option">
                         <input type="radio"
                                id="private"
                                name="visibility"
                                value="private">
-                        <label for="private">���������</label>
+                        <label for="private">Приватный</label>
                     </div>
                 </div>
             </div>
 
-            <!-- ����������� -->
+            <!-- Содержимое -->
             <div class="type-category">
-                <span class="type-category-label">2. ��� �����������:</span>
+                <span class="type-category-label">2. Тип содержимого:</span>
                 <div class="radio-group">
                     <div class="radio-option">
                         <input type="radio"
@@ -332,33 +332,33 @@
                                name="contentType"
                                value="static"
                                checked>
-                        <label for="static">���������</label>
+                        <label for="static">Статичный</label>
                     </div>
                     <div class="radio-option">
                         <input type="radio"
                                id="updatable"
                                name="contentType"
                                value="updatable">
-                        <label for="updatable">�����������</label>
+                        <label for="updatable">Обновляемый</label>
                     </div>
                 </div>
             </div>
 
-            <!--��� ��������(���� defaultQuestionType � API)-->
+            <!-- Тип вопросов (поле defaultQuestionType в API) -->
             <div class="type-category">
-                <span class="type-category-label">3. ��� ��������:</span>
+                <span class="type-category-label">3. Тип вопросов:</span>
                 <div class="radio-group">
                     <div class="radio-option">
                         <input type="radio" id="defSingle" name="defaultQuestionType" value="SINGLE_CHOICE" checked>
-                        <label for="defSingle">��������� �����</label>
+                        <label for="defSingle">Одиночный выбор</label>
                     </div>
                     <div class="radio-option">
                         <input type="radio" id="defMulti" name="defaultQuestionType" value="MULTIPLE_CHOICE">
-                        <label for="defMulti">������������� �����</label>
+                        <label for="defMulti">Множественный выбор</label>
                     </div>
                     <div class="radio-option">
                         <input type="radio" id="defHundredToOne" name="defaultQuestionType" value="HUNDRED_TO_ONE">
-                        <label for="defHundredToOne">100�1</label>
+                        <label for="defHundredToOne">100 к 1</label>
                     </div>
                 </div>
             </div>
@@ -366,13 +366,13 @@
 
         <div class="error-message" id="errorMessage"></div>
 
-        <!-- ������ -->
+        <!-- Кнопки -->
         <div class="button-group">
             <button type="button" class="cancel-btn" onclick="goBack()">
-                ������
+                Отмена
             </button>
             <button type="submit" class="submit-btn">
-                ������� ����
+                Создать квиз
             </button>
         </div>
     </form>
@@ -403,7 +403,7 @@
     function updateFileLabel(fileName) {
         const label = document.getElementById('fileUploadLabel');
         const fileNameDiv = document.getElementById('fileName');
-        label.textContent = '���� ������: ' + fileName;
+        label.textContent = 'Файл выбран: ' + fileName;
         fileNameDiv.textContent = fileName;
         fileNameDiv.style.display = 'block';
     }
@@ -441,7 +441,7 @@
             });
 
             if (!response.ok) {
-                let errorText = '������';
+                let errorText = 'Ошибка';
                 try {
                     const error = await response.text();
                     try {
@@ -451,14 +451,14 @@
                         errorText = error;
                     }
                 } catch (e) {
-                    errorText = '������ : ' + response.status;
+                    errorText = 'Ошибка: ' + response.status;
                 }
-                if (response.status === 400 && (errorText.includes('�������') || errorText.includes('����������'))) {
-                    alert('������ ��� �������� ����� �������� ����������');
-                } else if (errorText.includes('�������') || errorText.includes('����������') || errorText.includes('UNETHICAL_PROMPT')) {
-                    alert('������ ��� �������� ����� �������� ����������');
+                if (response.status === 400 && (errorText.includes('неэтичн') || errorText.includes('неэтичными'))) {
+                    alert('Данные для создания квиза являются неэтичными');
+                } else if (errorText.includes('неэтичн') || errorText.includes('неэтичными') || errorText.includes('UNETHICAL_PROMPT')) {
+                    alert('Данные для создания квиза являются неэтичными');
                 } else {
-                    errorMessage.textContent = '������ ��� �������� �����: ' + errorText;
+                    errorMessage.textContent = 'Ошибка при создании квиза: ' + errorText;
                     errorMessage.classList.add('show');
                 }
                 return;
@@ -478,7 +478,7 @@
                     body: fileFormData
                 });
                 if(!materialsStatus.ok){
-                    alert('������ ��� �������� �����');
+                    alert('Ошибка при загрузке файла');
                     return;
                 }
             }
@@ -486,7 +486,7 @@
             alert('Квиз успешно создан!');
             window.location.href = '/my-quizzes';
         } catch (error) {
-            errorMessage.textContent = '������ ����.';
+            errorMessage.textContent = 'Ошибка сети.';
             errorMessage.classList.add('show');
             console.error('Error:', error);
         }
@@ -494,7 +494,6 @@
 </script>
 </body>
 </html>
-
 
 
 
