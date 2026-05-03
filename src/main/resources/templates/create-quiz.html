@@ -380,12 +380,12 @@
 
 <script>
     function getCurrentUserId() {
-        return localStorage.getItem('userId') || new URLSearchParams(window.location.search).get('userId') || '1';
+        const hiddenUserId = document.getElementById('userId')?.value;
+        return hiddenUserId || localStorage.getItem('userId') || '1';
     }
 
     function goBack() {
-        const userId = getCurrentUserId();
-        window.location.href = '/my-quizzes' + (userId ? '?userId=' + userId : '');
+        window.location.href = '/my-quizzes';
     }
 
 
@@ -483,9 +483,8 @@
                 }
             }
 
-            alert('���� ������� ������!');
-            const userId = getCurrentUserId();
-            window.location.href = '/my-quizzes' + (userId ? '?userId=' + userId : '');
+            alert('Квиз успешно создан!');
+            window.location.href = '/my-quizzes';
         } catch (error) {
             errorMessage.textContent = '������ ����.';
             errorMessage.classList.add('show');

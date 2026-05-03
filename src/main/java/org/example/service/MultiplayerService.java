@@ -399,6 +399,11 @@ public class MultiplayerService {
         session.setStatus("CANCELLED");
         sessionRepository.save(session);
 
+        if (session.getStartedAt() == null) {
+            userAnswerRepository.deleteBySessionId(session.getSessionId());
+            attemptRepository.deleteBySessionId(session.getSessionId());
+        }
+
         return true;
     }
 

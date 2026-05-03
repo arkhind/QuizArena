@@ -403,7 +403,7 @@
         }
         
         const userId = localStorage.getItem('userId') || HOST_USER_ID;
-        const linkText = window.location.origin + '/multiplayer/join?sessionId=' + currentSessionId + '&userId=' + userId;
+        const linkText = window.location.origin + '/multiplayer/join?sessionId=' + currentSessionId;
         
         console.log('Copying link:', linkText);
         console.log('SESSION_ID used:', currentSessionId);
@@ -498,7 +498,7 @@
                 const quizIdElement = document.querySelector('[data-quiz-id]');
                 const quizId = quizIdElement ? quizIdElement.getAttribute('data-quiz-id') : null;
                 if (quizId) {
-                    window.location.href = `/quiz/${quizId}/attempt?userId=${userId}&sessionId=${SESSION_ID}`;
+                    window.location.href = `/quiz/${quizId}/attempt?sessionId=${SESSION_ID}`;
                 } else {
                     window.location.href = `/home`;
                 }
@@ -515,7 +515,3 @@
 </script>
 </body>
 </html>
-
-
-
-

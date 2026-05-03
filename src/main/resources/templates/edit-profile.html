@@ -266,8 +266,7 @@
      * Получает userId из URL или localStorage.
      */
     function goBack() {
-        const userId = getCurrentUserId();
-        window.location.href = '/profile?userId=' + userId;
+        window.location.href = '/profile';
     }
 
     /**
@@ -390,8 +389,3 @@
 <script src="/js/sidebar.js?v=3" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=3';"></script>
 </body>
 </html>
-
-
-
-
-

@@ -268,36 +268,29 @@
     }
 
     function goToProfile() {
-        const userId = getCurrentUserId();
-        if (userId) {
-            window.location.href = '/profile?userId=' + userId;
-        } else {
-            window.location.href = '/login';
-        }
+        window.location.href = '/profile';
     }
 
     function goToMyQuizzes() {
-        const userId = getCurrentUserId();
-        if (userId) {
-            window.location.href = '/my-quizzes?userId=' + userId;
+        if (getCurrentUserId()) {
+            window.location.href = '/my-quizzes';
         } else {
             window.location.href = '/login';
         }
     }
 
-    function goToProfileSettings() {
+    function goToEditProfile() {
         const userId = getCurrentUserId();
         if (userId) {
-            window.location.href = '/edit-profile?userId=' + userId;
+            window.location.href = '/edit-profile';
         } else {
             window.location.href = '/login';
         }
     }
 
     function goToHistory() {
-        const userId = getCurrentUserId();
-        if (userId) {
-            window.location.href = '/history?userId=' + userId;
+        if (getCurrentUserId()) {
+            window.location.href = '/history';
         } else {
             window.location.href = '/login';
         }
@@ -314,8 +307,3 @@
 <script src="/js/sidebar.js?v=3" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=3';"></script>
 </body>
 </html>
-
-
-
-
-

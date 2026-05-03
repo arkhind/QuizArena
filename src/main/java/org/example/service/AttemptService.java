@@ -537,6 +537,11 @@ public class AttemptService {
         UserQuizAttempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new IllegalArgumentException("Попытка не найдена"));
 
+        if (attempt.getSessionId() != null && !attempt.getSessionId().isBlank()
+                && attempt.getStartTime() == null && !attempt.isCompleted()) {
+            throw new IllegalStateException("Мультиплеерная попытка ещё не началась");
+        }
+
         if (attempt.isCompleted()) {
             // Идемпотентность: если finish вызван повторно, возвращаем уже сохранённый результат.
             List<AttemptQuestion> attemptQuestions = attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attemptId);

@@ -93,6 +93,14 @@
         window.location.href = '/register';
     }
 
+    (function clearClientSessionIfNeeded() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('logout') === '1') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userId');
+        }
+    })();
+
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
 
@@ -140,7 +148,3 @@
 </script>
 </body>
 </html>
-
-
-
-

@@ -287,6 +287,40 @@
         } else {
             window.location.href = '/home';
         }
+
+        const userIdNum = parseInt(userId, 10);
+        if (isNaN(userIdNum) || userIdNum <= 0) {
+            localStorage.removeItem('userId');
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+            return;
+        }
+
+        if (activeAttemptId) {
+            const shouldResume = confirm('У вас есть незавершённая попытка. Нажмите OK, чтобы продолжить, или Отмена, чтобы начать заново.');
+            if (shouldResume) {
+                window.location.href = '/quiz/' + quizId + '/attempt';
+                return;
+            }
+
+            const shouldRestart = confirm('Начать новую попытку? Прошлая незавершённая попытка будет завершена.');
+            if (!shouldRestart) {
+                return;
+            }
+
+            submitRestartAttempt(quizId);
+            return;
+        }
+
+        window.location.href = '/quiz/' + quizId + '/attempt';
+    }
+
+    function submitRestartAttempt(quizId) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/quiz/' + quizId + '/attempt/restart';
+        document.body.appendChild(form);
+        form.submit();
     }
 </script>
 </body>

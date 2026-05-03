@@ -328,15 +328,37 @@
         const userIdNum = parseInt(userId);
         console.log('startQuiz: userIdNum after parseInt=' + userIdNum);
         if (isNaN(userIdNum) || userIdNum <= 0) {
-            console.error('������: ������������ userId: ' + userId);
-            alert('������: ������������ ID ������������. ����������, ������� � ������� ������.');
-            localStorage.removeItem('userId');
-            localStorage.removeItem('token');
-            window.location.href = '/login';
+            console.error("Ошибка: некорректный userId: " + userId);
+            alert("Ошибка: некорректный ID пользователя. Пожалуйста, войдите в систему заново.");
+            localStorage.removeItem("userId");
+            localStorage.removeItem("token");
+            window.location.href = "/login";
             return;
         }
-        console.log('startQuiz: ��������������� �� /quiz/' + quizId + '/attempt?userId=' + userIdNum);
-        window.location.href = '/quiz/' + quizId + '/attempt?userId=' + userIdNum;
+        
+        if (activeAttemptId) {
+            const shouldResume = confirm("У вас есть незавершённая попытка. Нажмите OK, чтобы продолжить, или Отмена, чтобы начать заново.");
+            if (shouldResume) {
+                window.location.href = "/quiz/" + quizId + "/attempt";
+                return;
+            }
+            const shouldRestart = confirm("Начать новую попытку? Прошлая незавершённая попытка будет завершена.");
+            if (!shouldRestart) {
+                return;
+            }
+            submitRestartAttempt(quizId);
+            return;
+        }
+        
+        window.location.href = "/quiz/" + quizId + "/attempt";
+    }
+
+    function submitRestartAttempt(quizId) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/quiz/' + quizId + '/attempt/restart';
+        document.body.appendChild(form);
+        form.submit();
     }
 
     function copyQuiz(quizId) {
@@ -358,7 +380,7 @@
             window.location.href = '/login';
             return;
         }
-        window.location.href = '/multiplayer/create?quizId=' + quizId + '&userId=' + userIdNum;
+        window.location.href = '/multiplayer/create?quizId=' + quizId;
     }
 
     function goBack() {
@@ -367,7 +389,3 @@
 </script>
 </body>
 </html>
-
-
-
-
