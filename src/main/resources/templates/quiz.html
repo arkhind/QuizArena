@@ -276,9 +276,13 @@
 </div>
 
 <script th:inline="javascript">
+    const pageQuizId = /*[[${quizId}]]*/ null;
     const activeAttemptId = /*[[${activeAttemptId}]]*/ null;
 
     function getQuizId() {
+        if (pageQuizId != null && pageQuizId !== '') {
+            return String(pageQuizId);
+        }
         // Получаем quizId из пути URL (/quiz/{quizId})
         const path = window.location.pathname;
         const match = path.match(/\/quiz\/(\d+)/);
@@ -290,55 +294,17 @@
         return urlParams.get('quizId');
     }
 
-    function getUserId() {
-        // Сначала проверяем localStorage, чтобы не терять актуального пользователя из URL
-        const storedUserId = localStorage.getItem('userId');
-        if (storedUserId) {
-            console.log('getUserId: используем userId из localStorage:', storedUserId);
-            return storedUserId;
-        }
-        // Если в localStorage пусто, берём из URL (для прямого перехода)
-        const urlUserId = new URLSearchParams(window.location.search).get('userId');
-        if (urlUserId) {
-            console.log('getUserId: userId в localStorage отсутствует, используем из URL:', urlUserId);
-            // Сохраняем в localStorage для дальнейшей навигации
-            localStorage.setItem('userId', urlUserId);
-            return urlUserId;
-        }
-        console.warn('getUserId: userId не найден ни в localStorage, ни в URL');
-        return null;
-    }
-
     function goToQuizDetails(quizId) {
-        // Переход на страницу с деталями квиза
+        if (!quizId) {
+            window.location.href = '/quiz';
+            return;
+        }
         window.location.href = '/quiz/' + quizId + '/details';
     }
 
     function startQuiz(quizId) {
-        const userId = getUserId();
-        console.log('startQuiz: quizId=' + quizId);
-        console.log('startQuiz: userId from getUserId()=' + userId + ' (type: ' + typeof userId + ')');
-        console.log('startQuiz: localStorage.getItem("userId")=' + localStorage.getItem('userId'));
-        console.log('startQuiz: все значения в localStorage:');
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            console.log('  ' + key + '=' + localStorage.getItem(key));
-        }
-        
-        if (!userId) {
-            alert('Необходимо войти в систему');
-            window.location.href = '/login';
-            return;
-        }
-        // Проверяем, что userId - это число
-        const userIdNum = parseInt(userId);
-        console.log('startQuiz: userIdNum after parseInt=' + userIdNum);
-        if (isNaN(userIdNum) || userIdNum <= 0) {
-            console.error("Ошибка: некорректный userId: " + userId);
-            alert("Ошибка: некорректный ID пользователя. Пожалуйста, войдите в систему заново.");
-            localStorage.removeItem("userId");
-            localStorage.removeItem("token");
-            window.location.href = "/login";
+        if (!quizId) {
+            window.location.href = '/quiz';
             return;
         }
         
@@ -360,6 +326,10 @@
     }
 
     function submitRestartAttempt(quizId) {
+        if (!quizId) {
+            window.location.href = '/quiz';
+            return;
+        }
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '/quiz/' + quizId + '/attempt/restart';
@@ -372,18 +342,8 @@
     }
 
     function startMultiplayer(quizId) {
-        const userId = getUserId();
-        if (!userId) {
-            alert('Необходимо войти в систему');
-            window.location.href = '/login';
-            return;
-        }
-        const userIdNum = parseInt(userId);
-        if (isNaN(userIdNum) || userIdNum <= 0) {
-            alert('Ошибка: некорректный ID пользователя. Пожалуйста, войдите в систему заново.');
-            localStorage.removeItem('userId');
-            localStorage.removeItem('token');
-            window.location.href = '/login';
+        if (!quizId) {
+            window.location.href = '/quiz';
             return;
         }
         window.location.href = '/multiplayer/create?quizId=' + quizId;

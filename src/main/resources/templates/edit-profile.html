@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -214,6 +214,7 @@
 
         <div class="form-container">
             <form id="editProfileForm">
+                <input type="hidden" id="userId" th:value="${userId}">
                 <div class="form-group">
                     <label for="username">Новый логин</label>
                     <input type="text"
@@ -260,7 +261,9 @@
     </div>
 </div>
 
-<script>
+<script th:inline="javascript">
+    const PAGE_USER_ID = /*[[${userId}]]*/ null;
+
     /**
      * Возврат на страницу профиля.
      * Получает userId из URL или localStorage.
@@ -276,7 +279,16 @@
      * @returns {string} ID пользователя
      */
     function getCurrentUserId() {
-        // Пробуем получить из URL параметров
+        const formUserId = document.getElementById('userId')?.value;
+        if (formUserId) {
+            return formUserId;
+        }
+
+        if (PAGE_USER_ID != null && PAGE_USER_ID !== '') {
+            return String(PAGE_USER_ID);
+        }
+
+        // Пробуем получить из URL параметров только как fallback для превью
         const urlParams = new URLSearchParams(window.location.search);
         const urlUserId = urlParams.get('userId');
         if (urlUserId) {
@@ -289,8 +301,7 @@
             return storedUserId;
         }
 
-        // Дефолтное значение
-        return '1';
+        return null;
     }
 
     // Обработчик отправки формы

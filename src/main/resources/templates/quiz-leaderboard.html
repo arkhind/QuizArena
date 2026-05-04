@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -273,8 +273,13 @@
     </div>
 </div>
 
-<script>
+<script th:inline="javascript">
+    const PAGE_QUIZ_ID = /*[[${quizId}]]*/ null;
+
     function getQuizId() {
+        if (PAGE_QUIZ_ID != null && PAGE_QUIZ_ID !== '') {
+            return String(PAGE_QUIZ_ID);
+        }
         const path = window.location.pathname;
         const match = path.match(/\/quiz\/(\d+)/);
         return match ? match[1] : null;
@@ -282,45 +287,11 @@
 
     function goBack() {
         const quizId = getQuizId();
-        if (quizId) {
-            window.location.href = '/quiz/' + quizId;
-        } else {
+        if (!quizId) {
             window.location.href = '/home';
-        }
-
-        const userIdNum = parseInt(userId, 10);
-        if (isNaN(userIdNum) || userIdNum <= 0) {
-            localStorage.removeItem('userId');
-            localStorage.removeItem('token');
-            window.location.href = '/login';
             return;
         }
-
-        if (activeAttemptId) {
-            const shouldResume = confirm('У вас есть незавершённая попытка. Нажмите OK, чтобы продолжить, или Отмена, чтобы начать заново.');
-            if (shouldResume) {
-                window.location.href = '/quiz/' + quizId + '/attempt';
-                return;
-            }
-
-            const shouldRestart = confirm('Начать новую попытку? Прошлая незавершённая попытка будет завершена.');
-            if (!shouldRestart) {
-                return;
-            }
-
-            submitRestartAttempt(quizId);
-            return;
-        }
-
-        window.location.href = '/quiz/' + quizId + '/attempt';
-    }
-
-    function submitRestartAttempt(quizId) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/quiz/' + quizId + '/attempt/restart';
-        document.body.appendChild(form);
-        form.submit();
+        window.location.href = '/quiz/' + quizId;
     }
 </script>
 </body>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -493,7 +493,10 @@
     </div>
 </div>
 
-<script>
+<script th:inline="javascript">
+    const PAGE_USER_ID = /*[[${userId}]]*/ null;
+    const PAGE_QUIZ_ID = /*[[${quizId}]]*/ null;
+
     /**
      * Возврат на страницу "Мои квизы".
      * Получает userId из скрытого поля или localStorage.
@@ -516,7 +519,11 @@
             return formUserId;
         }
 
-        // Пробуем получить из localStorage
+        if (PAGE_USER_ID != null && PAGE_USER_ID !== '') {
+            return String(PAGE_USER_ID);
+        }
+
+        // Пробуем получить из localStorage только как fallback для превью
         const storedUserId = localStorage.getItem('userId');
         if (storedUserId) {
             return storedUserId;
@@ -529,8 +536,7 @@
             return urlUserId;
         }
 
-        // Дефолтное значение
-        return '1';
+        return null;
     }
 
     /**
@@ -539,7 +545,14 @@
      * @returns {string} ID квиза
      */
     function getQuizId() {
-        return document.getElementById('quizId').value;
+        const formQuizId = document.getElementById('quizId')?.value;
+        if (formQuizId) {
+            return formQuizId;
+        }
+        if (PAGE_QUIZ_ID != null && PAGE_QUIZ_ID !== '') {
+            return String(PAGE_QUIZ_ID);
+        }
+        return null;
     }
 
     /**
@@ -553,11 +566,18 @@
 
         const form = document.getElementById('editQuizForm');
         const formData = new FormData(form);
+        const quizId = Number(getQuizId());
+        const userId = Number(getCurrentUserId());
+
+        if (!quizId || Number.isNaN(quizId) || !userId || Number.isNaN(userId)) {
+            alert('Не удалось определить квиз или пользователя. Войдите в систему заново.');
+            return;
+        }
 
         // Собираем данные формы в объект для отправки
         const quizData = {
-            quizId: parseInt(getQuizId()),
-            userId: parseInt(getCurrentUserId()),
+            quizId: quizId,
+            userId: userId,
             name: formData.get('name').trim(),
             prompt: formData.get('description').trim(), // description -> prompt для соответствия DTO
             questionNumber: parseInt(formData.get('questionNumber')),
