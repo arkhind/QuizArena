@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -236,24 +236,24 @@
     </div>
 </div>
 
-<script>
+<script th:inline="javascript">
+    const PAGE_QUIZ_ID = /*[[${quizId}]]*/ null;
+
     function getQuizId() {
+        if (PAGE_QUIZ_ID != null && PAGE_QUIZ_ID !== '') {
+            return String(PAGE_QUIZ_ID);
+        }
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('quizId');
     }
 
     function viewLeaderboard() {
         const quizId = getQuizId();
-        const userId = localStorage.getItem('userId') || '1';
-        if (quizId) {
-            window.location.href = '/quiz/' + quizId + '/leaderboard?userId=' + userId;
+        if (!quizId) {
+            window.location.href = '/quiz';
+            return;
         }
-
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/quiz/' + quizId + '/attempt/restart';
-        document.body.appendChild(form);
-        form.submit();
+        window.location.href = '/quiz/' + quizId + '/leaderboard';
     }
 
     function goHome() {

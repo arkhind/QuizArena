@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -129,7 +129,7 @@
     <div class="status" id="statusMessage">Введите ID сессии для присоединения</div>
 </div>
 
-<script>
+<script th:inline="javascript">
     const API_BASE = '/api/multiplayer';
     let USER_ID = /*[[${userId}]]*/ Number(localStorage.getItem('userId')) || null;
     

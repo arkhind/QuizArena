@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -177,15 +177,17 @@
     <div th:if="${errorMessage != null}" class="error-message" style="background-color: #fee; border: 1px solid #fcc; color: #c33; padding: 12px; border-radius: 8px; margin-top: 15px;" th:text="${errorMessage}"></div>
 </div>
 
-<script>
+<script th:inline="javascript">
     let SESSION_ID = null;
-    let HOST_USER_ID = Number(localStorage.getItem('userId')) || 1;
+    let HOST_USER_ID = null;
+    let CURRENT_USER_ID = null;
     const MAX_PARTICIPANTS = 10;
     const API_BASE = '/api/multiplayer';
     
     (function() {
         const sessionIdFromModel = /*[[${sessionId}]]*/ null;
         const hostUserIdFromModel = /*[[${hostUserId}]]*/ null;
+        const currentUserIdFromModel = /*[[${currentUserId}]]*/ null;
         
         if (sessionIdFromModel) {
             SESSION_ID = sessionIdFromModel;
@@ -193,7 +195,18 @@
         if (hostUserIdFromModel) {
             HOST_USER_ID = Number(hostUserIdFromModel);
         }
+        if (currentUserIdFromModel) {
+            CURRENT_USER_ID = Number(currentUserIdFromModel);
+        }
     })();
+
+    function getCurrentUserId() {
+        if (CURRENT_USER_ID) {
+            return CURRENT_USER_ID;
+        }
+        const storedUserId = Number(localStorage.getItem('userId'));
+        return storedUserId || null;
+    }
     
     if (!SESSION_ID || SESSION_ID === 'null' || SESSION_ID === null) {
         const pathMatch = window.location.pathname.match(/\/multiplayer\/session\/([^\/\?]+)/);
@@ -273,7 +286,7 @@
             document.getElementById('quizName').textContent = session.quizName;
             renderParticipants(session.participants || []);
             
-            const currentUserId = Number(localStorage.getItem('userId'));
+            const currentUserId = getCurrentUserId();
             const hostUserId = HOST_USER_ID;
             const isHost = currentUserId && hostUserId && currentUserId === hostUserId;
             
@@ -313,7 +326,7 @@
                 throw new Error(errorMessage);
             }
 
-            const currentUserId = Number(localStorage.getItem('userId'));
+            const currentUserId = getCurrentUserId();
             const hostUserId = HOST_USER_ID;
             const isHost = currentUserId && hostUserId && currentUserId === hostUserId;
             
@@ -327,7 +340,7 @@
         }
     }
     async function cancelSession() {
-        const currentUserId = Number(localStorage.getItem('userId'));
+        const currentUserId = getCurrentUserId();
         const hostUserId = HOST_USER_ID;
         const isHost = currentUserId && hostUserId && currentUserId === hostUserId;
         
@@ -402,12 +415,10 @@
             }
         }
         
-        const userId = localStorage.getItem('userId') || HOST_USER_ID;
         const linkText = window.location.origin + '/multiplayer/join?sessionId=' + currentSessionId;
         
         console.log('Copying link:', linkText);
         console.log('SESSION_ID used:', currentSessionId);
-        console.log('userId used:', userId);
         
         const feedback = document.getElementById('copyFeedback');
         
@@ -477,7 +488,7 @@
 
             const session = await response.json();
             renderParticipants(session.participants || []);
-            const currentUserId = Number(localStorage.getItem('userId'));
+            const currentUserId = getCurrentUserId();
             const hostUserId = HOST_USER_ID;
             const isHost = currentUserId && hostUserId && currentUserId === hostUserId;
             
@@ -494,7 +505,6 @@
 
             if (session.status === 'STARTED') {
                 clearInterval(pollInterval);
-                const userId = localStorage.getItem('userId') || HOST_USER_ID;
                 const quizIdElement = document.querySelector('[data-quiz-id]');
                 const quizId = quizIdElement ? quizIdElement.getAttribute('data-quiz-id') : null;
                 if (quizId) {
