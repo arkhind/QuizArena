@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.vscode
+target
+build
+uploads
+python
+LLM_service
+monitoring
+*.iml
+.env
+.env.*
+!.env.example
