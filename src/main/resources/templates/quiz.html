@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -232,6 +232,7 @@
             <div class="action-buttons">
                 <button class="btn btn-primary"
                         th:if="${quizzes != null and !quizzes.isEmpty() and hasQuestions != null and hasQuestions and (sessionId == null or isMultiplayerHost == true)}"
+                        onclick="startQuiz(getQuizId())"
                         th:onclick="'startQuiz(' + ${quizzes[0].id} + ')'">Начать квиз</button>
                 <button class="btn btn-primary"
                         th:if="${quizzes != null and !quizzes.isEmpty() and (hasQuestions == null or !hasQuestions) and (sessionId == null or isMultiplayerHost == true)}"
@@ -239,12 +240,15 @@
                 <button class="btn btn-primary"
                         th:if="${quizzes != null and !quizzes.isEmpty() and hasQuestions != null and hasQuestions}"
                         style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);"
-                        th:onclick="'startMultiplayer(' + ${quizzes[0].id} + ')'">Начать сессию</button>
+                        onclick="startMultiplayer(getQuizId())"
+                        th:onclick="'startMultiplayer(' + ${quizzes[0].id} + ')'">Начать мультиплеер</button>
                 <button class="btn btn-secondary"
                         th:if="${quizzes != null and !quizzes.isEmpty()}"
+                        onclick="goToQuizDetails(getQuizId())"
                         th:onclick="'goToQuizDetails(' + ${quizzes[0].id} + ')'">Подробнее о квизе</button>
                 <button class="btn btn-secondary"
                         th:if="${quizzes != null and !quizzes.isEmpty()}"
+                        onclick="copyQuiz(getQuizId())"
                         th:onclick="'copyQuiz(' + ${quizzes[0].id} + ')'">Скопировать квиз</button>
             </div>
         </div>
@@ -271,7 +275,9 @@
     </div>
 </div>
 
-<script>
+<script th:inline="javascript">
+    const activeAttemptId = /*[[${activeAttemptId}]]*/ null;
+
     function getQuizId() {
         // Получаем quizId из пути URL (/quiz/{quizId})
         const path = window.location.pathname;
