@@ -269,10 +269,7 @@ public class QuestionGenerationService {
                     question.setQuiz(quiz);
                     question.setText(mq.question().trim());
                     question.setType(type);
-                    question.setIsGenerated(true);
                     question.setGenerationSetId(questionSet.getId());
-                    question.setIsValid(true);
-                    question.setIsDuplicate(false);
 
                     String explanation = mq.explanation() != null ? mq.explanation().trim() : "";
                     question.setExplanation(explanation.isEmpty() ? "Объяснение отсутствует" : explanation);
@@ -296,7 +293,6 @@ public class QuestionGenerationService {
                             }
                         }
                         ao.setCorrect(isCorrect);
-                        ao.setNaOption(false);
                         answerOptionRepository.save(ao);
                     }
 
@@ -346,7 +342,7 @@ public class QuestionGenerationService {
         String t = mlType != null ? mlType.trim().toLowerCase() : "";
         return switch (t) {
             case "multiple_choice" -> QuestionType.MULTIPLE_CHOICE;
-            case "true_false" -> QuestionType.TRUE_FALSE;
+            case "true_false" -> QuestionType.SINGLE_CHOICE;
             case "100k1", "q100k1", "hundred_to_one" -> QuestionType.HUNDRED_TO_ONE;
             case "single_choice" -> QuestionType.SINGLE_CHOICE;
             default -> preferredFallback != null ? preferredFallback : QuestionType.SINGLE_CHOICE;

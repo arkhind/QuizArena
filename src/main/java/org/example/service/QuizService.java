@@ -28,7 +28,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -548,41 +550,106 @@ public class QuizService {
             throw new IllegalArgumentException("Квиз не найден");
         }
 
-        // Пробуем получить из Redis
+        long completedUsersCount = attemptRepository.countCompletedUsersByQuizId(quizId);
         LeaderboardDTO redisLeaderboard = leaderboardService.getLeaderboard(quizId, userId);
-        if (redisLeaderboard != null) {
+        if (isCompleteCachedLeaderboard(redisLeaderboard, completedUsersCount)) {
             return redisLeaderboard;
         }
 
-        // Fallback на БД
-        Pageable pageable = PageRequest.of(0, 100);
-        Page<org.example.model.UserQuizAttempt> attempts = attemptRepository.findBestAttemptsByQuizId(quizId, pageable);
+        Pageable pageable = PageRequest.of(0, 10000);
+        Page<org.example.model.UserQuizAttempt> attempts = attemptRepository.findCompletedByQuizIdOrderByScoreDesc(quizId, pageable);
+
+        Map<Long, org.example.model.UserQuizAttempt> bestAttemptsByUser = new HashMap<>();
+        for (org.example.model.UserQuizAttempt attempt : attempts.getContent()) {
+            if (attempt.getUser() == null) {
+                continue;
+            }
+            Long attemptUserId = attempt.getUser().getId();
+            org.example.model.UserQuizAttempt bestAttempt = bestAttemptsByUser.get(attemptUserId);
+            if (bestAttempt == null || compareLeaderboardAttempts(attempt, bestAttempt) < 0) {
+                bestAttemptsByUser.put(attemptUserId, attempt);
+            }
+        }
+
+        List<org.example.model.UserQuizAttempt> sortedAttempts = new ArrayList<>(bestAttemptsByUser.values());
+        sortedAttempts.sort(this::compareLeaderboardAttempts);
 
         List<LeaderboardEntry> entries = new ArrayList<>();
+        List<LeaderboardService.CachedLeaderboardEntry> cacheEntries = new ArrayList<>();
         int userPosition = -1;
         Long userScore = null;
 
-        for (int i = 0; i < attempts.getContent().size(); i++) {
-            org.example.model.UserQuizAttempt attempt = attempts.getContent().get(i);
-            long timeSpent = 0;
-            if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
-                timeSpent = java.time.Duration.between(attempt.getStartTime(), attempt.getFinishTime()).getSeconds();
-            }
+        int limit = Math.min(sortedAttempts.size(), 100);
+        for (int i = 0; i < limit; i++) {
+            org.example.model.UserQuizAttempt attempt = sortedAttempts.get(i);
+            long timeSpent = getTimeSpent(attempt);
+            Integer accuracyPercent = getAccuracyPercent(attempt);
+            Long leaderboardScore = getLeaderboardScore(attempt);
 
             entries.add(new LeaderboardEntry(
                     i + 1,
                     attempt.getUser().getLogin(),
-                    attempt.getScore() != null ? attempt.getScore().intValue() : 0,
-                    timeSpent
+                    leaderboardScore.intValue(),
+                    timeSpent,
+                    accuracyPercent
+            ));
+            cacheEntries.add(new LeaderboardService.CachedLeaderboardEntry(
+                    attempt.getUser().getId(),
+                    attempt.getUser().getLogin(),
+                    leaderboardScore,
+                    timeSpent,
+                    accuracyPercent
             ));
 
             if (attempt.getUser().getId().equals(userId)) {
                 userPosition = i + 1;
-                userScore = attempt.getScore() != null ? attempt.getScore().intValue() : 0L;
+                userScore = leaderboardScore;
             }
         }
 
+        leaderboardService.replaceLeaderboard(quizId, cacheEntries);
+
         return new LeaderboardDTO(entries, userPosition, userScore != null ? userScore.intValue() : null);
+    }
+
+    private boolean isCompleteCachedLeaderboard(LeaderboardDTO leaderboard, long completedUsersCount) {
+        if (leaderboard == null || leaderboard.entries() == null) {
+            return false;
+        }
+        long expectedEntries = Math.min(completedUsersCount, 100);
+        return leaderboard.entries().size() >= expectedEntries;
+    }
+
+    private Long getLeaderboardScore(org.example.model.UserQuizAttempt attempt) {
+        if (attempt.getBaseScore() != null) {
+            return attempt.getBaseScore();
+        }
+        return attempt.getScore() != null ? attempt.getScore() : 0L;
+    }
+
+    private Integer getAccuracyPercent(org.example.model.UserQuizAttempt attempt) {
+        return attempt.getAccuracyPercent() != null ? attempt.getAccuracyPercent() : 0;
+    }
+
+    private long getTimeSpent(org.example.model.UserQuizAttempt attempt) {
+        if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
+            return java.time.Duration.between(attempt.getStartTime(), attempt.getFinishTime()).getSeconds();
+        }
+        return 0;
+    }
+
+    private int compareLeaderboardAttempts(org.example.model.UserQuizAttempt a, org.example.model.UserQuizAttempt b) {
+        int scoreCompare = getLeaderboardScore(b).compareTo(getLeaderboardScore(a));
+        if (scoreCompare != 0) {
+            return scoreCompare;
+        }
+
+        int accuracyCompare = getAccuracyPercent(b).compareTo(getAccuracyPercent(a));
+        if (accuracyCompare != 0) {
+            return accuracyCompare;
+        }
+
+        return Long.compare(getTimeSpent(a), getTimeSpent(b));
     }
 
     public QuizResponseDTO copyQuiz(Long quizId, Long newCreatorId) {

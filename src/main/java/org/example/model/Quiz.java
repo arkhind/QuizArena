@@ -51,7 +51,8 @@ public class Quiz {
   @Column(name = "created_at")
   private Instant createdAt;
 
-  @Column(name = "default_question_type")
+  @Enumerated(EnumType.STRING)
+  @Column(name = "default_question_type", length = 32)
   private QuestionType defaultQuestionType;
 
   @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)

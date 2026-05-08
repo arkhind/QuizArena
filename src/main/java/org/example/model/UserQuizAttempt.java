@@ -32,6 +32,12 @@ public class UserQuizAttempt {
 
   private Long score;
 
+  @Column(name = "base_score")
+  private Long baseScore;
+
+  @Column(name = "accuracy_percent")
+  private Integer accuracyPercent;
+
   @Column(name = "is_completed")
   private boolean isCompleted;
 
@@ -46,6 +52,12 @@ public class UserQuizAttempt {
 
   @Column(name = "current_question_deadline_at")
   private Instant currentQuestionDeadlineAt;
+
+  @Column(name = "cat_stake")
+  private Integer catStake;
+
+  @Column(name = "cat_stake_bonus")
+  private Integer catStakeBonus;
 
   @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<AttemptQuestion> attemptQuestions = new ArrayList<>();

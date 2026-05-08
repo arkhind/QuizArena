@@ -63,7 +63,7 @@ public class AuthService {
 
         User user = new User();
         user.setLogin(login);
-        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
 
         log.debug("Сохранение пользователя в БД...");
         user = userRepository.save(user);
@@ -107,7 +107,7 @@ public class AuthService {
 
         log.debug("Пользователь найден в БД, id={}, login='{}'", user.getId(), user.getLogin());
 
-        boolean passwordMatches = passwordEncoder.matches(request.password(), user.getPassword());
+        boolean passwordMatches = passwordEncoder.matches(request.password(), user.getPasswordHash());
 
         if (!passwordMatches) {
             log.warn("Неверный пароль для пользователя id={}, login='{}'", user.getId(), user.getLogin());

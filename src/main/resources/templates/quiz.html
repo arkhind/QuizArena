@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -13,19 +13,20 @@
         }
 
         body {
-            background-color: #f5f7fa;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: #333;
             line-height: 1.6;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
+            min-height: 100vh;
+            margin: 0;
         }
 
         .container {
             display: flex;
             flex-direction: column;
             gap: 20px;
-            max-width: 100%;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
             overflow: hidden;
         }
 
@@ -48,7 +49,40 @@
             opacity: 0.9;
         }
 
-        .main-content {
+        .quiz-meta-card {
+            background: white;
+            border-radius: 12px;
+            padding: 18px 22px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 14px 18px;
+        }
+
+        .quiz-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #2c3e50;
+            font-size: 1rem;
+            font-weight: 600;
+            min-width: 0;
+        }
+
+        .quiz-meta-item svg {
+            width: 22px;
+            height: 22px;
+            flex: 0 0 auto;
+            color: #667eea;
+        }
+
+        .quiz-meta-label {
+            color: #7f8c8d;
+            font-weight: 500;
+            margin-right: 4px;
+        }
+
+        .quiz-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
@@ -172,22 +206,6 @@
             color: #999;
         }
 
-        .back-btn {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-bottom: 20px;
-            transition: transform 0.2s;
-        }
-
-        .back-btn:hover {
-            transform: translateY(-2px);
-        }
-
         .error-message {
             background-color: #fee;
             border: 1px solid #fcc;
@@ -211,12 +229,13 @@
             cursor: not-allowed;
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
+    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
 </head>
 <body>
+<div th:replace='~{fragments/sidebar :: sidebar}'></div>
+
+<div class="main-content">
 <div class="container">
-    <button class="back-btn" onclick="goBack()">< Назад</button>
-    
     <div th:if="${errorMessage != null}" class="error-message" th:text="${errorMessage}"></div>
     <div th:if="${hasQuestions != null and !hasQuestions}" class="warning-message">
         В этом квизе пока нет вопросов. Попробуйте позже.
@@ -226,7 +245,31 @@
         <h1 th:text="${quizzes != null and !quizzes.isEmpty() ? quizzes[0].name : 'Квиз'}">Название квиза</h1>
     </header>
 
-    <div class="main-content">
+    <section class="quiz-meta-card" th:if="${quizzes != null and !quizzes.isEmpty()}">
+        <div class="quiz-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+            <span><span class="quiz-meta-label">Автор:</span><span th:text="${quizzes[0].author != null ? quizzes[0].author : '-'}">-</span></span>
+        </div>
+        <div class="quiz-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span><span class="quiz-meta-label">Вопросов:</span><span th:text="${quizzes[0].questionCount != null ? quizzes[0].questionCount : 0}">0</span></span>
+        </div>
+        <div class="quiz-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <span><span class="quiz-meta-label">Время:</span><span th:text="${quizzes[0].timePerQuestion != null and quizzes[0].timePerQuestion > 0 ? quizzes[0].timePerQuestion + ' сек на вопрос' : 'не ограничено'}">-</span></span>
+        </div>
+        <div class="quiz-meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+            <span><span class="quiz-meta-label">Тип:</span><span th:text="${quizzes[0].isStatic != null ? (quizzes[0].isStatic ? 'статичный' : 'обновляемый') : '-'}">-</span></span>
+        </div>
+        <div class="quiz-meta-item">
+            <svg th:if="${quizzes[0].isPublic == null or quizzes[0].isPublic}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 0 20"/><path d="M12 2a15.3 15.3 0 0 0 0 20"/></svg>
+            <svg th:if="${quizzes[0].isPublic != null and !quizzes[0].isPublic}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span><span class="quiz-meta-label">Видимость:</span><span th:text="${quizzes[0].isPublic != null ? (quizzes[0].isPublic ? 'публичный' : 'приватный') : '-'}">-</span></span>
+        </div>
+    </section>
+
+    <div class="quiz-content">
         <div class="actions">
             <h2>Действия</h2>
             <div class="action-buttons">
@@ -244,10 +287,6 @@
                         th:onclick="'startMultiplayer(' + ${quizzes[0].id} + ')'">Начать мультиплеер</button>
                 <button class="btn btn-secondary"
                         th:if="${quizzes != null and !quizzes.isEmpty()}"
-                        onclick="goToQuizDetails(getQuizId())"
-                        th:onclick="'goToQuizDetails(' + ${quizzes[0].id} + ')'">Подробнее о квизе</button>
-                <button class="btn btn-secondary"
-                        th:if="${quizzes != null and !quizzes.isEmpty()}"
                         onclick="copyQuiz(getQuizId())"
                         th:onclick="'copyQuiz(' + ${quizzes[0].id} + ')'">Скопировать квиз</button>
             </div>
@@ -263,7 +302,8 @@
                          th:text="${entry.position()}"></div>
                     <div class="player-info">
                         <div class="player-name" th:text="${entry.username()}">User</div>
-                        <div class="player-score" th:text="${entry.score() + ' очков'}">- очков</div>
+                        <div class="player-score"
+                             th:text="${entry.score() + ' очков · точность ' + (entry.accuracyPercent() != null ? entry.accuracyPercent() : 0) + '%'}">- очков · точность -</div>
                     </div>
                 </li>
             </ul>
@@ -273,6 +313,7 @@
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <script th:inline="javascript">
@@ -292,14 +333,6 @@
         // Если не нашли в пути, берём из query-параметров
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('quizId');
-    }
-
-    function goToQuizDetails(quizId) {
-        if (!quizId) {
-            window.location.href = '/quiz';
-            return;
-        }
-        window.location.href = '/quiz/' + quizId + '/details';
     }
 
     function startQuiz(quizId) {
@@ -349,9 +382,7 @@
         window.location.href = '/multiplayer/create?quizId=' + quizId;
     }
 
-    function goBack() {
-        window.location.href = '/home';
-    }
 </script>
+<script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>

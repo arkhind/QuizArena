@@ -74,6 +74,12 @@ public class PageController {
         return "register";
     }
 
+    @GetMapping("/logout")
+    public String logout(HttpServletResponse response) {
+        clearAuthAndRedirectToLogin(response);
+        return "redirect:/login?logout=1";
+    }
+
     @GetMapping("/home")
     public String home(@RequestParam(required = false) String search,
                        @RequestParam(required = false, defaultValue = "0") Integer page,
@@ -397,21 +403,6 @@ public class PageController {
         }
         
         return "quiz";
-    }
-
-    @GetMapping("/quiz/{quizId}/details")
-    public String quizDetails(@PathVariable Long quizId,
-                              HttpServletRequest request,
-                              HttpServletResponse response,
-                              Model model) {
-        // Извлекаем userId из токена для проверки доступа к приватным квизам
-        Long userId = jwtService.extractUserIdFromRequest(request);
-        if (findAccessibleQuiz(quizId, userId).isEmpty()) {
-            return renderNotFound(response, model);
-        }
-        QuizDetailsDTO quiz = apiService.getQuiz(quizId, userId);
-        model.addAttribute("quiz", quiz);
-        return "quiz-details";
     }
 
     @GetMapping("/my-quizzes")
@@ -777,6 +768,11 @@ public class PageController {
         }
         try {
             MultiplayerResultsDTO results = apiController.getMultiplayerResults(sessionId);
+            org.example.model.MultiplayerSession sessionEntity = multiplayerSessionRepository.findBySessionId(sessionId)
+                    .orElse(null);
+            Long quizId = sessionEntity != null && sessionEntity.getQuiz() != null
+                    ? sessionEntity.getQuiz().getId()
+                    : null;
             List<UserQuizAttempt> allAttempts = attemptRepository.findBySessionIdWithUser(sessionId);
             List<UserQuizAttempt> completedAttempts = allAttempts.stream()
                     .filter(UserQuizAttempt::isCompleted)
@@ -797,6 +793,7 @@ public class PageController {
             model.addAttribute("results", results);
             model.addAttribute("sessionId", sessionId);
             model.addAttribute("userId", userId);
+            model.addAttribute("quizId", quizId);
             model.addAttribute("quizName", results.quizName());
             model.addAttribute("allCompleted", allCompleted);
             model.addAttribute("totalParticipants", totalParticipants);

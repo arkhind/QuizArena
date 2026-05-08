@@ -81,7 +81,7 @@
             display: block;
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
+    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
 </head>
 <body>
 <div class="auth-box">
@@ -105,9 +105,17 @@
 
 <script>
     function goToLogin() {
-        window.location.href = '/login';
+        const next = new URLSearchParams(window.location.search).get('next');
+        window.location.href = next ? '/login?next=' + encodeURIComponent(next) : '/login';
     }
 
+    function getSafeNextUrl() {
+        const next = new URLSearchParams(window.location.search).get('next');
+        if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) {
+            return '/home';
+        }
+        return next;
+    }
 
     document.getElementById('confirmPassword').addEventListener('input', function() {
         const password = document.getElementById('password').value;
@@ -161,7 +169,7 @@
                     localStorage.setItem('username', data.username);
                 }
 
-                window.location.href = '/home';
+                window.location.href = getSafeNextUrl();
             } else {
                 const error = await response.json();
                 errorMessage.textContent = error.message || 'Ошибка при регистрации';
@@ -176,6 +184,5 @@
 </script>
 </body>
 </html>
-
 
 

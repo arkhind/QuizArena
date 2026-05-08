@@ -63,7 +63,7 @@ public class UserService {
         }
 
         if (request.newPassword() != null && !request.newPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(request.newPassword()));
+            user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         }
 
         user = userRepository.save(user);

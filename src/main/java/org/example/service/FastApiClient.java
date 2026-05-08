@@ -157,9 +157,8 @@ public class FastApiClient {
         }
         return switch (preferredQuestionType) {
             case MULTIPLE_CHOICE -> "multiple_choice";
-            case TRUE_FALSE -> "true_false";
             case HUNDRED_TO_ONE -> "100k1";
-            case SINGLE_CHOICE, TEXT -> "single_choice";
+            case SINGLE_CHOICE -> "single_choice";
         };
     }
 }

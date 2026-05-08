@@ -15,7 +15,8 @@
             'history': '/history' + (userId ? '?userId=' + userId : ''),
             'profile': '/profile' + (userId ? '?userId=' + userId : ''),
             'edit-profile': '/edit-profile' + (userId ? '?userId=' + userId : ''),
-            'create-quiz': '/quiz/create'
+            'create-quiz': '/quiz/create',
+            'logout': '/logout'
         };
 
         document.querySelectorAll('[data-nav]').forEach(function (el) {
@@ -28,6 +29,16 @@
         var displayName = username && username.trim().length > 0 ? username : 'Гость';
         var avatar = document.querySelector('[data-user-avatar]');
         var nameEl = document.querySelector('[data-user-name]');
+        document.querySelectorAll('.user-card[data-nav="edit-profile"]').forEach(function (el) {
+            el.setAttribute('aria-label', 'Профиль');
+        });
+        document.querySelectorAll('[data-nav="logout"]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                localStorage.removeItem('token');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('username');
+            });
+        });
         if (avatar) {
             var ch = displayName.charAt(0);
             avatar.textContent = ch ? ch.toUpperCase() : '?';
