@@ -88,6 +88,7 @@ public class AttemptService {
         Map<Long, Boolean> answerResults;
         Instant startTime;
         double score;
+        double baseScore;
 
         // Для вопроса типа HUNDRED_TO_ONE: questionId -> (answerOptionId -> nominal)
         Map<Long, Map<Long, BigDecimal>> hundredToOneNominalsByQuestionId;
@@ -145,6 +146,7 @@ public class AttemptService {
                 attempt.setStartTime(Instant.now());
                 attempt.setCompleted(false);
                 attempt.setScore(null);
+                attempt.setBaseScore(null);
                 attempt.setSessionId(request.sessionId());
                 attempt = attemptRepository.save(attempt);
                 selectQuestionsForAttempt(attempt, quiz, allQuestions);
@@ -167,6 +169,7 @@ public class AttemptService {
                 attempt.setStartTime(Instant.now());
                 attempt.setCompleted(false);
                 attempt.setScore(null);
+                attempt.setBaseScore(null);
                 attempt.setSessionId(null);
                 attempt = attemptRepository.save(attempt);
                 selectQuestionsForAttempt(attempt, quiz, allQuestions);
@@ -204,6 +207,7 @@ public class AttemptService {
             st.quizId = quiz.getId();
             st.hundredToOneNominalsByQuestionId = new ConcurrentHashMap<>();
             st.score = attempt.getScore() != null ? attempt.getScore() : 0.0;
+            st.baseScore = attempt.getBaseScore() != null ? attempt.getBaseScore() : st.score;
             st.catQuestionIndex = resolvedCatQuestionIndex;
             st.stakeForCurrentQuestion = null;
             attemptStates.put(attempt.getId(), st);
@@ -353,44 +357,45 @@ public class AttemptService {
             metricsService.recordIncorrectAnswer();
         }
 
-        Integer timeSpentSeconds = null;
-        if (attempt.getCurrentQuestionStartedAt() != null) {
-            timeSpentSeconds = Math.max(0, (int) Duration.between(attempt.getCurrentQuestionStartedAt(), answeredAt).getSeconds());
-        }
-
         UserAnswer userAnswer = new UserAnswer();
         userAnswer.setAttempt(attempt);
         userAnswer.setQuestion(question);
         userAnswer.setSelectedAnswer(selectedOption);
         userAnswer.setIsCorrect(isCorrect);
-        userAnswer.setAnsweredAt(answeredAt);
-        userAnswer.setTimeSpentSeconds(timeSpentSeconds);
         userAnswerRepository.save(userAnswer);
 
         clearCurrentQuestionState(attempt);
 
         AttemptState st = attemptStates.get(request.attemptId());
         if (st != null) {
+            st.baseScore += scoreEarnedDouble;
             st.score += scoreEarnedDouble;
             if (st.catQuestionIndex != null && st.stakeForCurrentQuestion != null) {
                 int qIndex = getQuestionIndexInAttempt(request.attemptId(), questionId);
                 if (qIndex == st.catQuestionIndex) {
                     int stake = st.stakeForCurrentQuestion;
+                    int catStakeBonus;
                     if (Boolean.TRUE.equals(isCorrect)) {
                         st.score += stake;
                         scoreEarned += stake;
+                        catStakeBonus = stake;
                     } else {
                         st.score -= stake;
                         scoreEarned -= stake;
+                        catStakeBonus = -stake;
                     }
+                    attempt.setCatStake(stake);
+                    attempt.setCatStakeBonus(catStakeBonus);
                     st.stakeForCurrentQuestion = null;
                 }
             }
+            attempt.setBaseScore(Math.round(st.baseScore));
             attempt.setScore(Math.round(st.score));
             attemptRepository.save(attempt);
         } else {
             Long currentScore = attempt.getScore() != null ? attempt.getScore() : 0L;
             attempt.setScore(currentScore + scoreEarned);
+            attempt.setBaseScore(attempt.getScore());
             attemptRepository.save(attempt);
         }
 
@@ -554,7 +559,7 @@ public class AttemptService {
                 timeSpent = java.time.Duration.between(attempt.getStartTime(), attempt.getFinishTime()).getSeconds();
             }
 
-            int position = calculatePosition(attempt.getQuiz().getId(), attempt.getUser().getId(), finalScore, timeSpent);
+            int position = calculatePosition(attempt.getQuiz().getId(), attempt.getUser().getId());
             return new QuizResultDTO(
                     attemptId,
                     finalScore,
@@ -590,11 +595,19 @@ public class AttemptService {
         double rawScore = st != null
                 ? st.score
                 : (attempt.getScore() != null ? attempt.getScore().doubleValue() : 0.0);
+        double rawBaseScore = st != null
+                ? st.baseScore
+                : (attempt.getBaseScore() != null ? attempt.getBaseScore().doubleValue() : rawScore);
         long finalScoreLong = Math.round(rawScore);
+        long leaderboardScoreLong = Math.round(rawBaseScore);
 
+        attempt.setBaseScore(leaderboardScoreLong);
         attempt.setScore(finalScoreLong);
+        attempt.setAccuracyPercent(calculateAccuracyPercent(correctAnswers, totalQuestions));
         attempt = attemptRepository.save(attempt);
         int finalScore = (int) finalScoreLong;
+        int leaderboardScore = (int) leaderboardScoreLong;
+        int accuracyPercent = attempt.getAccuracyPercent() != null ? attempt.getAccuracyPercent() : 0;
 
         // 5. Вычисляем время прохождения
         long timeSpent = 0;
@@ -607,12 +620,13 @@ public class AttemptService {
                 attempt.getQuiz().getId(),
                 attempt.getUser().getId(),
                 attempt.getUser().getLogin(),
-                finalScore,
-                timeSpent
+                leaderboardScore,
+                timeSpent,
+                accuracyPercent
         );
 
         // 7. Вычисляем позицию в рейтинге по лучшим попыткам каждого пользователя
-        int position = calculatePosition(attempt.getQuiz().getId(), attempt.getUser().getId(), finalScore, timeSpent);
+        int position = calculatePosition(attempt.getQuiz().getId(), attempt.getUser().getId());
 
         if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
             long durationNanos = java.time.Duration.between(attempt.getStartTime(), attempt.getFinishTime()).toNanos();
@@ -672,6 +686,20 @@ public class AttemptService {
         UserQuizAttempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new IllegalArgumentException("Попытка не найдена"));
         return attempt.getScore() != null ? attempt.getScore().doubleValue() : 0.0;
+    }
+
+    private Long getLeaderboardScore(UserQuizAttempt attempt) {
+        if (attempt.getBaseScore() != null) {
+            return attempt.getBaseScore();
+        }
+        return attempt.getScore() != null ? attempt.getScore() : 0L;
+    }
+
+    private int calculateAccuracyPercent(int correctAnswers, int totalQuestions) {
+        if (totalQuestions <= 0) {
+            return 0;
+        }
+        return (int) Math.round((correctAnswers * 100.0) / totalQuestions);
     }
 
     /**
@@ -740,9 +768,7 @@ public class AttemptService {
         List<Question> validQuestions = questions.stream()
                 .filter(q -> q != null 
                         && q.getText() != null 
-                        && !q.getText().trim().isEmpty()
-                        && (q.getIsValid() == null || q.getIsValid())
-                        && (q.getIsDuplicate() == null || !q.getIsDuplicate()))
+                        && !q.getText().trim().isEmpty())
                 .collect(Collectors.toList());
         
         if (validQuestions.isEmpty()) {
@@ -841,6 +867,8 @@ public class AttemptService {
             st.userId = attempt.getUser() != null ? attempt.getUser().getId() : null;
             st.quizId = attempt.getQuiz() != null ? attempt.getQuiz().getId() : null;
             st.hundredToOneNominalsByQuestionId = new ConcurrentHashMap<>();
+            st.score = attempt.getScore() != null ? attempt.getScore() : 0.0;
+            st.baseScore = attempt.getBaseScore() != null ? attempt.getBaseScore() : st.score;
             attemptStates.put(attemptId, st);
         }
 
@@ -934,7 +962,7 @@ public class AttemptService {
         return 1;
     }
 
-    private int calculatePosition(Long quizId, Long currentUserId, int score, long timeSpent) {
+    private int calculatePosition(Long quizId, Long currentUserId) {
         // Получаем все завершённые попытки для этого квиза.
         Pageable pageable = PageRequest.of(0, 10000); // Увеличиваем лимит, чтобы учесть все попытки.
         Page<UserQuizAttempt> allAttempts = attemptRepository
@@ -944,7 +972,7 @@ public class AttemptService {
         Map<Long, UserQuizAttempt> bestAttemptsByUser = new java.util.HashMap<>();
         
         for (UserQuizAttempt attempt : allAttempts.getContent()) {
-            if (attempt.getUser() == null || attempt.getScore() == null) {
+            if (attempt.getUser() == null || getLeaderboardScore(attempt) == null) {
                 continue;
             }
             
@@ -956,13 +984,22 @@ public class AttemptService {
                 bestAttemptsByUser.put(userId, attempt);
             } else {
                 // Сравниваем с текущей лучшей попыткой.
-                Long bestScore = bestAttempt.getScore();
-                Long currentScore = attempt.getScore();
+                Long bestScore = getLeaderboardScore(bestAttempt);
+                Long currentScore = getLeaderboardScore(attempt);
                 
                 if (currentScore > bestScore) {
                     // Текущая попытка лучше по счёту.
                     bestAttemptsByUser.put(userId, attempt);
                 } else if (currentScore.equals(bestScore)) {
+                    int bestAccuracy = bestAttempt.getAccuracyPercent() != null ? bestAttempt.getAccuracyPercent() : 0;
+                    int currentAccuracy = attempt.getAccuracyPercent() != null ? attempt.getAccuracyPercent() : 0;
+                    if (currentAccuracy > bestAccuracy) {
+                        bestAttemptsByUser.put(userId, attempt);
+                        continue;
+                    }
+                    if (currentAccuracy < bestAccuracy) {
+                        continue;
+                    }
                     // При одинаковом счёте сравниваем по времени.
                     long bestTime = 0;
                     long currentTime = 0;
@@ -992,12 +1029,18 @@ public class AttemptService {
         // Сортируем лучшие попытки: сначала по счёту, затем по времени.
         List<UserQuizAttempt> sortedBestAttempts = new ArrayList<>(bestAttemptsByUser.values());
         sortedBestAttempts.sort((a, b) -> {
-            Long scoreA = a.getScore() != null ? a.getScore() : 0L;
-            Long scoreB = b.getScore() != null ? b.getScore() : 0L;
+            Long scoreA = getLeaderboardScore(a);
+            Long scoreB = getLeaderboardScore(b);
             
             int scoreCompare = scoreB.compareTo(scoreA);
             if (scoreCompare != 0) {
                 return scoreCompare;
+            }
+            int accuracyA = a.getAccuracyPercent() != null ? a.getAccuracyPercent() : 0;
+            int accuracyB = b.getAccuracyPercent() != null ? b.getAccuracyPercent() : 0;
+            int accuracyCompare = Integer.compare(accuracyB, accuracyA);
+            if (accuracyCompare != 0) {
+                return accuracyCompare;
             }
             
             // При одинаковом счёте сравниваем по времени.
@@ -1058,9 +1101,7 @@ public class AttemptService {
         List<Question> validQuestions = allQuestions.stream()
                 .filter(q -> q != null 
                         && q.getText() != null 
-                        && !q.getText().trim().isEmpty()
-                        && (q.getIsValid() == null || q.getIsValid())
-                        && (q.getIsDuplicate() == null || !q.getIsDuplicate()))
+                        && !q.getText().trim().isEmpty())
                 .collect(Collectors.toList());
         
         // Если валидных вопросов нет, используем просто вопросы с непустым текстом.

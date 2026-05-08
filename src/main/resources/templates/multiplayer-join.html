@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -114,7 +114,7 @@
             font-size: 0.9rem;
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
+    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
 </head>
 <body>
 <div class="join-card">
@@ -131,7 +131,8 @@
 
 <script th:inline="javascript">
     const API_BASE = '/api/multiplayer';
-    let USER_ID = /*[[${userId}]]*/ Number(localStorage.getItem('userId')) || null;
+    const PAGE_USER_ID = /*[[${userId}]]*/ null;
+    let USER_ID = Number(PAGE_USER_ID) || Number(localStorage.getItem('userId')) || null;
     
     if (!USER_ID || USER_ID === 0) {
         USER_ID = Number(localStorage.getItem('userId')) || null;
@@ -153,7 +154,8 @@
             USER_ID = Number(localStorage.getItem('userId')) || null;
             if (!USER_ID) {
                 showError('Необходимо войти в систему');
-                setTimeout(() => window.location.href = '/login', 2000);
+                const next = window.location.pathname + window.location.search;
+                setTimeout(() => window.location.href = '/login?next=' + encodeURIComponent(next), 2000);
                 return;
             }
         }
@@ -166,9 +168,9 @@
             const response = await fetch(`${API_BASE}/sessions/join`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Content-Type': 'application/json'
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     sessionId: sessionId,
                     userId: USER_ID
@@ -213,11 +215,13 @@
         window.location.href = '/home';
     }
 
-    const sessionIdFromUrl = new URLSearchParams(window.location.search).get('sessionId');
-    if (sessionIdFromUrl) {
-        document.getElementById('sessionIdInput').value = sessionIdFromUrl;
-        joinSession();
-    }
+    window.addEventListener('DOMContentLoaded', () => {
+        const sessionIdFromUrl = new URLSearchParams(window.location.search).get('sessionId');
+        if (sessionIdFromUrl) {
+            document.getElementById('sessionIdInput').value = sessionIdFromUrl;
+            joinSession();
+        }
+    });
 </script>
 </body>
 </html>

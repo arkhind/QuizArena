@@ -8,6 +8,8 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
@@ -74,7 +76,7 @@ public class AuthInterceptor implements HandlerInterceptor {
                     response.getWriter().write("{\"error\":\"Требуется авторизация\"}");
                     return false;
                 }
-                response.sendRedirect("/login");
+                response.sendRedirect("/login?next=" + URLEncoder.encode(getRequestTarget(request), StandardCharsets.UTF_8));
                 return false;
             }
         }
@@ -91,5 +93,14 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
         return PROTECTED_PATHS.stream().anyMatch(path::startsWith);
+    }
+
+    private String getRequestTarget(HttpServletRequest request) {
+        String target = request.getRequestURI();
+        String queryString = request.getQueryString();
+        if (queryString != null && !queryString.isBlank()) {
+            target += "?" + queryString;
+        }
+        return target;
     }
 }

@@ -188,7 +188,6 @@ public class QuestionParser {
 
                 option.setText(optionText);
                 option.setCorrect(hasCorrectMarker);
-                option.setNaOption(false);
                 
                 optionsByNumber.put(optionNumber, option);
                 pq.answerOptions.add(option);

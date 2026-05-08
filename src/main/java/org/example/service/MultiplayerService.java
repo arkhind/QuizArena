@@ -102,6 +102,7 @@ public class MultiplayerService {
         hostAttempt.setStartTime(null); // Начнется при старте сессии
         hostAttempt.setCompleted(false);
         hostAttempt.setScore(null);
+        hostAttempt.setBaseScore(null);
         hostAttempt.setSessionId(sessionId);
         attemptRepository.save(hostAttempt);
 
@@ -208,6 +209,7 @@ public class MultiplayerService {
         participantAttempt.setStartTime(null); // Начнется при старте сессии
         participantAttempt.setCompleted(false);
         participantAttempt.setScore(null);
+        participantAttempt.setBaseScore(null);
         participantAttempt.setSessionId(session.getSessionId());
         attemptRepository.save(participantAttempt);
 

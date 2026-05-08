@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -207,24 +207,10 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=3" onerror="this.onerror=null;this.href='../static/css/theme.css?v=3';">
+    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
 </head>
 <body>
-<aside class="sidebar">
-    <a href="/home" class="brand">
-        <span class="brand-text">QuizArena</span>
-    </a>
-    <nav class="sidebar-nav">
-        <a href="/home" class="nav-btn">
-            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span>
-            <span>Главная</span>
-        </a>
-        <button class="nav-btn" onclick="goToHome()">
-            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></span>
-            <span>Вернуться в меню</span>
-        </button>
-    </nav>
-</aside>
+<div th:replace='~{fragments/sidebar :: sidebar}'></div>
 
 <div class="main-content">
     <div class="container">
@@ -247,7 +233,7 @@
                         </li>
                     </ul>
                 </div>
-                <button onclick="refreshResults()" style="background: #ffc107; color: #000; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                <button id="refreshResultsButton" type="button" onclick="refreshResults()" style="background: #ffc107; color: #000; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-size: 16px; font-weight: bold;">
                     Обновить результаты
                 </button>
             </div>
@@ -284,27 +270,32 @@
         var SESSION_ID = /*[[${sessionId}]]*/ '';
         var USER_ID = /*[[${userId}]]*/ localStorage.getItem('userId') || '';
 
+        function getSessionId() {
+            if (SESSION_ID) {
+                return SESSION_ID;
+            }
+            var match = window.location.pathname.match(/\/multiplayer\/session\/([^\/]+)\/results/);
+            return match && match[1] ? decodeURIComponent(match[1]) : '';
+        }
+
         window.goBack = function() {
             window.location.href = '/home';
         };
 
-        window.goToHome = function() {
-            window.location.href = '/home';
-        };
-
         window.refreshResults = function() {
-            var sessionId = SESSION_ID || '';
-            if (sessionId) {
-                window.location.href = '/multiplayer/session/' + sessionId + '/results';
-            } else {
-                location.reload();
+            var button = document.getElementById('refreshResultsButton');
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Обновляем...';
             }
+            var sessionId = getSessionId();
+            var target = sessionId
+                ? '/multiplayer/session/' + encodeURIComponent(sessionId) + '/results'
+                : window.location.pathname;
+            window.location.replace(target + '?refresh=' + Date.now());
         };
     })();
 </script>
+<script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>
-
-
-
-
