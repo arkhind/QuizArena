@@ -30,6 +30,42 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
            "LOWER(q.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     Page<Quiz> searchPublicQuizzes(@Param("searchTerm") String searchTerm, Pageable pageable);
 
+    @Query(
+            value = "SELECT q FROM Quiz q LEFT JOIN UserQuizAttempt u ON u.quiz = q " +
+                    "AND u.isCompleted = true AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
+                    "WHERE q.isPrivate = false GROUP BY q ORDER BY COUNT(u) ASC, q.createdAt DESC",
+            countQuery = "SELECT COUNT(q) FROM Quiz q WHERE q.isPrivate = false"
+    )
+    Page<Quiz> findPublicOrderByCompletedAttemptsAsc(Pageable pageable);
+
+    @Query(
+            value = "SELECT q FROM Quiz q LEFT JOIN UserQuizAttempt u ON u.quiz = q " +
+                    "AND u.isCompleted = true AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
+                    "WHERE q.isPrivate = false GROUP BY q ORDER BY COUNT(u) DESC, q.createdAt DESC",
+            countQuery = "SELECT COUNT(q) FROM Quiz q WHERE q.isPrivate = false"
+    )
+    Page<Quiz> findPublicOrderByCompletedAttemptsDesc(Pageable pageable);
+
+    @Query(
+            value = "SELECT q FROM Quiz q LEFT JOIN UserQuizAttempt u ON u.quiz = q " +
+                    "AND u.isCompleted = true AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
+                    "WHERE q.isPrivate = false AND LOWER(q.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+                    "GROUP BY q ORDER BY COUNT(u) ASC, q.createdAt DESC",
+            countQuery = "SELECT COUNT(q) FROM Quiz q WHERE q.isPrivate = false AND " +
+                    "LOWER(q.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))"
+    )
+    Page<Quiz> searchPublicOrderByCompletedAttemptsAsc(@Param("searchTerm") String searchTerm, Pageable pageable);
+
+    @Query(
+            value = "SELECT q FROM Quiz q LEFT JOIN UserQuizAttempt u ON u.quiz = q " +
+                    "AND u.isCompleted = true AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
+                    "WHERE q.isPrivate = false AND LOWER(q.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) " +
+                    "GROUP BY q ORDER BY COUNT(u) DESC, q.createdAt DESC",
+            countQuery = "SELECT COUNT(q) FROM Quiz q WHERE q.isPrivate = false AND " +
+                    "LOWER(q.name) LIKE LOWER(CONCAT('%', :searchTerm, '%'))"
+    )
+    Page<Quiz> searchPublicOrderByCompletedAttemptsDesc(@Param("searchTerm") String searchTerm, Pageable pageable);
+
     /**
      * Проверяет, является ли пользователь создателем квиза.
      *
@@ -42,4 +78,3 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
     
     long countByCreatedById(Long userId);
 }
-

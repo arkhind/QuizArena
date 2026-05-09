@@ -32,6 +32,10 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
            "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL")
     long countCompletedUsersByQuizId(@Param("quizId") Long quizId);
 
+    @Query("SELECT COUNT(u) FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
+           "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL")
+    long countCompletedAttemptsByQuizId(@Param("quizId") Long quizId);
+
     /**
      * Находит ID квиза по ID попытки прохождения.
      *

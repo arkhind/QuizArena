@@ -189,8 +189,15 @@ public class QuizService {
         Pageable pageable = createPageable(request.page(), request.size(), request.sortBy(), request.ascending());
         
         Page<Quiz> page;
+        String sortBy = request.sortBy() != null ? request.sortBy().trim().toLowerCase() : "";
+        boolean sortByCompletions = "completions".equals(sortBy) || "attempts".equals(sortBy) || "popularity".equals(sortBy);
+        boolean ascending = Boolean.TRUE.equals(request.ascending());
         if (request.query() == null || request.query().trim().isEmpty()) {
-            page = quizRepository.findByIsPrivateFalse(pageable);
+            page = sortByCompletions
+                    ? (ascending
+                            ? quizRepository.findPublicOrderByCompletedAttemptsAsc(pageable)
+                            : quizRepository.findPublicOrderByCompletedAttemptsDesc(pageable))
+                    : quizRepository.findByIsPrivateFalse(pageable);
         } else {
             String query = request.query().trim();
             try {
@@ -203,7 +210,11 @@ public class QuizService {
             } catch (NumberFormatException e) {
                 // Не число, продолжаем обычный поиск
             }
-            page = quizRepository.searchPublicQuizzes(query, pageable);
+            page = sortByCompletions
+                    ? (ascending
+                            ? quizRepository.searchPublicOrderByCompletedAttemptsAsc(query, pageable)
+                            : quizRepository.searchPublicOrderByCompletedAttemptsDesc(query, pageable))
+                    : quizRepository.searchPublicQuizzes(query, pageable);
         }
 
         List<QuizDTO> content = page.getContent().stream()
@@ -735,9 +746,17 @@ public class QuizService {
                 case "created":
                 case "created_at":
                 case "createdat":
+                case "date":
                     actualSortField = "createdAt";
                     break;
+                case "questions":
+                case "questioncount":
+                case "question_count":
+                    actualSortField = "questionNumber";
+                    break;
                 case "popularity":
+                case "completions":
+                case "attempts":
                     // Поля popularity нет, используем createdAt
                     actualSortField = "createdAt";
                     break;
@@ -773,7 +792,8 @@ public class QuizService {
                 timePerQuestionSeconds,
                 !quiz.isPrivate(),
                 quiz.isStatic(),
-                toLocalDateTime(quiz.getCreatedAt())
+                toLocalDateTime(quiz.getCreatedAt()),
+                attemptRepository.countCompletedAttemptsByQuizId(quiz.getId())
         );
     }
 

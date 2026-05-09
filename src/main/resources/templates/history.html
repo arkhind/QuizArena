@@ -217,6 +217,25 @@
                 </tbody>
             </table>
 
+            <div class="pagination" th:if="${totalElements != null and totalElements > 0}">
+                <div class="pagination-summary"
+                     th:text="'Показано ' + ${shownFrom} + '–' + ${shownTo} + ' из ' + ${totalElements} + ' ' + ${pageItemLabel}">
+                    Показано 1–5 из 10 попыток
+                </div>
+                <div class="pagination-controls" th:if="${totalPages > 1}">
+                    <span class="page-btn disabled" th:if="${currentPage == 0}" aria-disabled="true">← Назад</span>
+                    <a class="page-btn" th:if="${currentPage > 0}"
+                       th:href="@{/history(page=${currentPage - 1})}">← Назад</a>
+                    <a class="page-btn" th:each="page : ${#numbers.sequence(1, totalPages)}"
+                       th:classappend="${page == currentPage + 1 ? 'active' : ''}"
+                       th:href="@{/history(page=${page - 1})}"
+                       th:text="${page}">1</a>
+                    <a class="page-btn" th:if="${currentPage + 1 < totalPages}"
+                       th:href="@{/history(page=${currentPage + 1})}">Вперёд →</a>
+                    <span class="page-btn disabled" th:if="${currentPage + 1 >= totalPages}" aria-disabled="true">Вперёд →</span>
+                </div>
+            </div>
+
             <div class="empty-state" th:if="${attempts == null or attempts.isEmpty()}">
                 <h3>История пуста</h3>
                 <p>Вы еще не проходили квизы</p>
@@ -228,7 +247,6 @@
 <script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>
-
 
 
 

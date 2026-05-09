@@ -36,6 +36,8 @@ import java.util.Optional;
 
 @Controller
 public class PageController {
+    private static final int PAGE_SIZE = 5;
+
     private final ApiController apiController;
     private final QuizService quizService;
     private final UserQuizAttemptRepository attemptRepository;
@@ -83,17 +85,29 @@ public class PageController {
     @GetMapping("/home")
     public String home(@RequestParam(required = false) String search,
                        @RequestParam(required = false, defaultValue = "0") Integer page,
+                       @RequestParam(required = false, defaultValue = "created") String sortBy,
+                       @RequestParam(required = false, defaultValue = "false") Boolean ascending,
                        Model model) {
         String searchQuery = search != null ? search : "";
-        int pageNumber = page != null ? page : 0;
+        int pageNumber = sanitizePage(page);
+        String normalizedSortBy = normalizeHomeSort(sortBy);
+        boolean sortAscending = Boolean.TRUE.equals(ascending);
         
-        QuizSearchRequest request = new QuizSearchRequest(searchQuery, "popularity", true, pageNumber, 20);
+        QuizSearchRequest request = new QuizSearchRequest(searchQuery, normalizedSortBy, sortAscending, pageNumber, PAGE_SIZE);
         QuizSearchResponse response = apiService.searchPublicQuizzes(request);
         
         model.addAttribute("quizzes", response.content());
-        model.addAttribute("totalPages", response.totalPages());
-        model.addAttribute("currentPage", response.currentPage());
+        addPaginationAttributes(
+                model,
+                response.currentPage(),
+                response.totalPages(),
+                response.totalElements() != null ? response.totalElements().intValue() : 0,
+                "/home",
+                "квизов"
+        );
         model.addAttribute("search", searchQuery);
+        model.addAttribute("sortBy", normalizedSortBy);
+        model.addAttribute("ascending", sortAscending);
         return "home";
     }
 
@@ -176,6 +190,7 @@ public class PageController {
     @GetMapping("/history")
     public String historyPage(HttpServletRequest request,
                               HttpServletResponse response,
+                              @RequestParam(required = false, defaultValue = "0") Integer page,
                               Model model) {
         Long userId = resolveCurrentUserId(request);
         if (userId == null || userRepository.findById(userId).isEmpty()) {
@@ -184,14 +199,18 @@ public class PageController {
         }
         try {
             UserHistoryDTO history = apiController.getUserHistory(userId);
+            List<AttemptSummary> attempts = history.attempts() != null ? history.attempts() : List.of();
+            int currentPage = clampPage(sanitizePage(page), attempts.size());
 
-            model.addAttribute("attempts", history.attempts());
+            model.addAttribute("attempts", pageItems(attempts, currentPage));
             model.addAttribute("userId", userId);
+            addPaginationAttributes(model, currentPage, totalPages(attempts.size()), attempts.size(), "/history", "попыток");
 
             return "history";
         } catch (Exception e) {
             model.addAttribute("attempts", List.of());
             model.addAttribute("userId", userId);
+            addPaginationAttributes(model, 0, 0, 0, "/history", "попыток");
             return "history";
         }
     }
@@ -225,7 +244,8 @@ public class PageController {
                     quizDetails.timePerQuestion(),
                     quizDetails.isPublic(),
                     quizDetails.isStatic(),
-	                quizDetails.createdAt()
+	                quizDetails.createdAt(),
+                    attemptRepository.countCompletedAttemptsByQuizId(quizId)
 	            );
                 generationStatus = quizService.getGenerationStatus(quizId);
             } catch (Exception e) {
@@ -324,7 +344,8 @@ public class PageController {
                 quizDetails.timePerQuestion(),
                 quizDetails.isPublic(),
                 quizDetails.isStatic(),
-                quizDetails.createdAt()
+                quizDetails.createdAt(),
+                attemptRepository.countCompletedAttemptsByQuizId(quizId)
             );
             generationStatus = quizService.getGenerationStatus(quizId);
         } catch (Exception e) {
@@ -414,6 +435,7 @@ public class PageController {
     @GetMapping("/my-quizzes")
     public String myQuizzes(HttpServletRequest request,
                             HttpServletResponse response,
+                            @RequestParam(required = false, defaultValue = "0") Integer page,
                             Model model) {
         if (request.getParameter("userId") != null) {
             return "redirect:/my-quizzes";
@@ -424,9 +446,65 @@ public class PageController {
             return "redirect:/login?logout=1";
         }
         java.util.List<QuizDTO> createdQuizzes = apiService.getCreatedQuizzes(userId);
-        model.addAttribute("createdQuizzes", createdQuizzes);
+        int currentPage = clampPage(sanitizePage(page), createdQuizzes.size());
+        model.addAttribute("createdQuizzes", pageItems(createdQuizzes, currentPage));
         model.addAttribute("userId", userId);
+        addPaginationAttributes(model, currentPage, totalPages(createdQuizzes.size()), createdQuizzes.size(), "/my-quizzes", "квизов");
         return "my-quizzes";
+    }
+
+    private int sanitizePage(Integer page) {
+        return page != null && page > 0 ? page : 0;
+    }
+
+    private String normalizeHomeSort(String sortBy) {
+        if (sortBy == null) {
+            return "created";
+        }
+        return switch (sortBy) {
+            case "completions", "questions", "created" -> sortBy;
+            default -> "created";
+        };
+    }
+
+    private int totalPages(int totalElements) {
+        return totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / PAGE_SIZE);
+    }
+
+    private int clampPage(int page, int totalElements) {
+        int totalPages = totalPages(totalElements);
+        if (totalPages == 0) {
+            return 0;
+        }
+        return Math.min(page, totalPages - 1);
+    }
+
+    private <T> List<T> pageItems(List<T> items, int page) {
+        if (items == null || items.isEmpty()) {
+            return List.of();
+        }
+        int fromIndex = Math.min(page * PAGE_SIZE, items.size());
+        int toIndex = Math.min(fromIndex + PAGE_SIZE, items.size());
+        return items.subList(fromIndex, toIndex);
+    }
+
+    private void addPaginationAttributes(
+            Model model,
+            int currentPage,
+            int totalPages,
+            int totalElements,
+            String pageUrl,
+            String itemLabel
+    ) {
+        int shownFrom = totalElements == 0 ? 0 : currentPage * PAGE_SIZE + 1;
+        int shownTo = totalElements == 0 ? 0 : Math.min(shownFrom + PAGE_SIZE - 1, totalElements);
+        model.addAttribute("currentPage", currentPage);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalElements", totalElements);
+        model.addAttribute("shownFrom", shownFrom);
+        model.addAttribute("shownTo", shownTo);
+        model.addAttribute("pageUrl", pageUrl);
+        model.addAttribute("pageItemLabel", itemLabel);
     }
 
     @GetMapping("/quiz/create")

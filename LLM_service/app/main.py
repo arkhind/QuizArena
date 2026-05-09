@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, Form, HTTPException
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import ValidationError
 
@@ -66,15 +66,6 @@ def _parse_question_types(raw_value: str | None) -> list[QuestionType]:
     return result or [QuestionType.single_choice]
 
 
-async def _extract_uploaded_files(request: Request) -> list[UploadFile]:
-    form = await request.form()
-    files: list[UploadFile] = []
-    for item in form.getlist("files"):
-        if getattr(item, "filename", None):
-            files.append(item)
-    return files
-
-
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok", "app": settings.app_name}
@@ -101,7 +92,6 @@ async def create_generation_job(
     topic: str = Form(...),
     number: int = Form(...),
     question_types: str | None = Form(default="single_choice"),
-    files: list[UploadFile] = File(default=[]),
 ) -> JobCreateResponse:
     try:
         request = GenerationRequest(
@@ -111,7 +101,7 @@ async def create_generation_job(
         )
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
-    job = await job_manager.create_job(request=request, files=files)
+    job = await job_manager.create_job(request=request)
     return JobCreateResponse(job_id=job.id, status=job.status, created_at=job.created_at)
 
 
@@ -125,7 +115,6 @@ async def generate(
     topic: str = Form(...),
     number: int = Form(...),
     question_types: str | None = Form(default="single_choice"),
-    files: list[UploadFile] = File(default=[]),
 ) -> JobState:
     try:
         request = GenerationRequest(
@@ -135,7 +124,7 @@ async def generate(
         )
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
-    return await job_manager.generate_now(request=request, files=files)
+    return await job_manager.generate_now(request=request)
 
 
 @app.get("/question/{prompt}/{number}")
@@ -144,7 +133,7 @@ async def legacy_generate(prompt: str, number: int) -> dict:
         request = GenerationRequest(topic=prompt, number=number)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=exc.errors()) from exc
-    job = await job_manager.generate_now(request=request, files=[])
+    job = await job_manager.generate_now(request=request)
     return {
         "job_id": job.id,
         "status": job.status,

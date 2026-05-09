@@ -11,5 +11,6 @@ public record QuizDTO(
   Integer timePerQuestion,
   Boolean isPublic,
   Boolean isStatic,
-  LocalDateTime createdAt
+  LocalDateTime createdAt,
+  Long completionCount
 ) {}

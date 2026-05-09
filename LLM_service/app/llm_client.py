@@ -1,15 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-import base64
-import mimetypes
-import re
-import zipfile
-from pathlib import Path
 from typing import Any
 
 from openai import AsyncOpenAI
-from pypdf import PdfReader
 
 from .config import Settings
 from .prompts import SYSTEM_PROMPT, build_user_prompt
@@ -45,20 +39,12 @@ class LLMClient:
         self,
         *,
         request: GenerationRequest,
-        file_paths: list[Path] | None = None,
     ) -> tuple[str, dict[str, Any] | None]:
-        file_paths = file_paths or []
-
         async with self._semaphore:
             try:
-                return await self._generate_via_responses(request=request, file_paths=file_paths)
-            except Exception as exc:  # noqa: BLE001
-                if file_paths:
-                    return await self._generate_via_chat_completions(
-                        request=request,
-                        file_paths=file_paths,
-                    )
-                return await self._generate_via_chat_completions(request=request, file_paths=[])
+                return await self._generate_via_responses(request=request)
+            except Exception:  # noqa: BLE001
+                return await self._generate_via_chat_completions(request=request)
 
     async def check_prompt_ethics(self, prompt: str) -> bool:
         text = (prompt or "").strip()
@@ -104,33 +90,21 @@ class LLMClient:
         self,
         *,
         request: GenerationRequest,
-        file_paths: list[Path],
     ) -> tuple[str, dict[str, Any] | None]:
-        content: list[dict[str, Any]] = []
-        for path in file_paths:
-            content.append(
-                {
-                    "type": "input_file",
-                    "filename": path.name,
-                    "file_data": self.file_to_data_url(path),
-                }
-            )
-
-        extracted_text = self._build_extracted_text_block(file_paths)
-        if extracted_text:
-            content.append({"type": "input_text", "text": extracted_text})
-
-        content.append(
-            {
-                "type": "input_text",
-                "text": build_user_prompt(request=request, has_files=bool(file_paths)),
-            }
-        )
-
         payload: dict[str, Any] = {
             "model": self.settings.model_name,
             "instructions": SYSTEM_PROMPT,
-            "input": [{"role": "user", "content": content}],
+            "input": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": build_user_prompt(request=request),
+                        }
+                    ],
+                }
+            ],
             "store": False,
         }
 
@@ -155,20 +129,14 @@ class LLMClient:
         self,
         *,
         request: GenerationRequest,
-        file_paths: list[Path],
     ) -> tuple[str, dict[str, Any] | None]:
-        user_content = build_user_prompt(request=request, has_files=bool(file_paths))
-        extracted_text = self._build_extracted_text_block(file_paths)
-        if extracted_text:
-            user_content = extracted_text + "\n\n" + user_content
-
         payload: dict[str, Any] = {
             "model": self.settings.model_name,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": user_content,
+                    "content": build_user_prompt(request=request),
                 },
             ],
         }
@@ -207,56 +175,3 @@ class LLMClient:
         except Exception:  # noqa: BLE001
             return ""
         return normalize_message_content(content).strip()
-
-    def _build_extracted_text_block(self, file_paths: list[Path]) -> str:
-        snippets: list[str] = []
-        for path in file_paths:
-            text = self._extract_plain_text(path)
-            if text:
-                snippets.append(f"Файл {path.name}:\n{text}")
-        if not snippets:
-            return ""
-        return (
-            "Ниже машинно извлеченный текст из прикрепленных файлов. "
-            "Используй его как дополнительный источник вместе с самими файлами:\n\n"
-            + "\n\n".join(snippets)
-        )
-
-    def _extract_plain_text(self, path: Path) -> str:
-        suffix = path.suffix.lower()
-        try:
-            if suffix == ".txt":
-                return self._compact_text(path.read_text(encoding="utf-8", errors="ignore"))
-            if suffix == ".docx":
-                return self._extract_docx_text(path)
-            if suffix == ".pdf":
-                return self._extract_pdf_text(path)
-        except Exception:
-            return ""
-        return ""
-
-    def _extract_docx_text(self, path: Path) -> str:
-        with zipfile.ZipFile(path) as archive:
-            xml = archive.read("word/document.xml").decode("utf-8", errors="ignore")
-        text = re.sub(r"<[^>]+>", " ", xml)
-        return self._compact_text(text)
-
-    def _extract_pdf_text(self, path: Path) -> str:
-        reader = PdfReader(str(path))
-        pages: list[str] = []
-        for index, page in enumerate(reader.pages[:20], start=1):
-            text = page.extract_text() or ""
-            if text.strip():
-                pages.append(f"Страница {index}:\n{text}")
-        return self._compact_text("\n\n".join(pages))
-
-    def _compact_text(self, text: str) -> str:
-        compact = re.sub(r"\s+", " ", text).strip()
-        return compact[:12000]
-
-    @staticmethod
-    def file_to_data_url(path: Path) -> str:
-        raw = path.read_bytes()
-        encoded = base64.b64encode(raw).decode("utf-8")
-        mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
-        return f"data:{mime_type};base64,{encoded}"

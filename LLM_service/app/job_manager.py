@@ -4,16 +4,13 @@ import asyncio
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable
 
 import aiofiles
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException
 
 from .config import Settings
 from .llm_client import LLMClient
 from .schemas import GenerationRequest, JobState, JobStatus
-
-CHUNK_SIZE = 1024 * 1024
 
 
 class JobManager:
@@ -50,23 +47,18 @@ class JobManager:
         self.worker_tasks.clear()
         self._started = False
 
-    async def create_job(self, request: GenerationRequest, files: list[UploadFile]) -> JobState:
+    async def create_job(self, request: GenerationRequest) -> JobState:
         self._ensure_api_key()
 
         job = JobState(request=request)
-        job_dir = self._job_dir(job.id)
-        inputs_dir = job_dir / "inputs"
-        inputs_dir.mkdir(parents=True, exist_ok=True)
-
-        saved_files = await self._save_files(inputs_dir=inputs_dir, files=files)
-        job.files = [str(path) for path in saved_files]
+        self._job_dir(job.id).mkdir(parents=True, exist_ok=True)
         job.add_log("Задание создано и поставлено в очередь")
 
         self.jobs[job.id] = job
         await self.queue.put(job.id)
         return job
 
-    async def generate_now(self, request: GenerationRequest, files: list[UploadFile]) -> JobState:
+    async def generate_now(self, request: GenerationRequest) -> JobState:
         self._ensure_api_key()
 
         job = JobState(
@@ -74,12 +66,7 @@ class JobManager:
             status=JobStatus.running,
             started_at=datetime.utcnow(),
         )
-        job_dir = self._job_dir(job.id)
-        inputs_dir = job_dir / "inputs"
-        inputs_dir.mkdir(parents=True, exist_ok=True)
-
-        saved_files = await self._save_files(inputs_dir=inputs_dir, files=files)
-        job.files = [str(path) for path in saved_files]
+        self._job_dir(job.id).mkdir(parents=True, exist_ok=True)
 
         self.jobs[job.id] = job
         await self._process_job(job.id)
@@ -96,7 +83,6 @@ class JobManager:
             "model_name": self.settings.model_name,
             "api_base_url": self.settings.api_base_url,
             "storage_dir": str(self.settings.resolved_storage_dir),
-            "max_upload_size_mb": self.settings.max_upload_size_mb,
             "max_parallel_llm_calls": self.settings.max_parallel_llm_calls,
             "worker_count": self.settings.worker_count,
             "queue_size": self.queue.qsize(),
@@ -123,10 +109,7 @@ class JobManager:
 
         try:
             client = self._get_client()
-            raw_text, parsed = await client.generate_questions(
-                request=job.request,
-                file_paths=[Path(path) for path in job.files],
-            )
+            raw_text, parsed = await client.generate_questions(request=job.request)
             job.result.raw_response = raw_text
             job.result.parsed_response = parsed
             job.status = JobStatus.finished
@@ -148,60 +131,16 @@ class JobManager:
 
     async def _persist_job(self, job: JobState) -> None:
         job_dir = self._job_dir(job.id)
+        job_dir.mkdir(parents=True, exist_ok=True)
         async with aiofiles.open(job_dir / "job_state.json", "w", encoding="utf-8") as file:
             await file.write(job.model_dump_json(indent=2))
 
     async def _persist_failure(self, job: JobState, tb: str) -> None:
         job_dir = self._job_dir(job.id)
+        job_dir.mkdir(parents=True, exist_ok=True)
         async with aiofiles.open(job_dir / "traceback.txt", "w", encoding="utf-8") as file:
             await file.write(tb)
         await self._persist_job(job)
-
-    async def _save_files(self, inputs_dir: Path, files: Iterable[UploadFile]) -> list[Path]:
-        saved: list[Path] = []
-
-        for upload in files:
-            if not upload.filename:
-                continue
-
-            suffix = Path(upload.filename).suffix.lower()
-            if suffix != ".pdf" and not self.settings.allow_non_pdf_files:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Поддерживаются только PDF-файлы: {upload.filename}",
-                )
-
-            destination = inputs_dir / Path(upload.filename).name
-            written = 0
-
-            try:
-                async with aiofiles.open(destination, "wb") as out:
-                    while True:
-                        chunk = await upload.read(CHUNK_SIZE)
-                        if not chunk:
-                            break
-
-                        written += len(chunk)
-                        if written > self.settings.max_upload_size_bytes:
-                            raise HTTPException(
-                                status_code=413,
-                                detail=(
-                                    f"Файл {upload.filename} превышает лимит "
-                                    f"{self.settings.max_upload_size_mb} MB"
-                                ),
-                            )
-
-                        await out.write(chunk)
-            except Exception:
-                if destination.exists():
-                    destination.unlink(missing_ok=True)
-                raise
-            finally:
-                await upload.close()
-
-            saved.append(destination)
-
-        return saved
 
     def _job_dir(self, job_id: str) -> Path:
         return self.settings.resolved_storage_dir / job_id
