@@ -219,7 +219,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
+    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
 </head>
 <body>
 <div th:replace='~{fragments/sidebar :: sidebar}'></div>
@@ -238,7 +238,6 @@
                     <th>Место</th>
                     <th>Игрок</th>
                     <th>Результат</th>
-                    <th>Точность</th>
                     <th>Время</th>
                 </tr>
                 </thead>
@@ -251,8 +250,8 @@
                                       th:text="${entry.position()}"></span>
                     </td>
                     <td class="player-name" th:text="${entry.username()}"></td>
-                    <td class="player-score" th:text="${entry.score() + ' очков'}"></td>
-                    <td class="player-accuracy" th:text="${(entry.accuracyPercent() != null ? entry.accuracyPercent() : 0) + '%'}"></td>
+                    <td class="player-score"
+                        th:text="${(entry.points() != null ? entry.points() : 0) + ' очков · ' + entry.score() + ' верных · точность ' + (entry.accuracyPercent() != null ? entry.accuracyPercent() : 0) + '%'}"></td>
                     <td class="player-time" th:text="${entry.timeSpent() != null ? entry.timeSpent() + ' сек' : '-'}"></td>
                 </tr>
                 </tbody>
@@ -290,5 +289,3 @@
 <script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>
-
-

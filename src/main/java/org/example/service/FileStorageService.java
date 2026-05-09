@@ -94,6 +94,24 @@ public class FileStorageService {
         return savedFileUrls;
     }
 
+    public Path resolveMaterialUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.isBlank()) {
+            throw new IllegalArgumentException("Путь к материалу пустой");
+        }
+        String prefix = "/uploads/";
+        if (!fileUrl.startsWith(prefix)) {
+            throw new IllegalArgumentException("Некорректный путь к материалу: " + fileUrl);
+        }
+        String relativePath = fileUrl.substring(prefix.length()).replace("/", java.io.File.separator);
+        Path resolved = Paths.get(uploadDir).resolve(relativePath).normalize();
+        Path uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path absoluteResolved = resolved.toAbsolutePath().normalize();
+        if (!absoluteResolved.startsWith(uploadRoot)) {
+            throw new IllegalArgumentException("Некорректный путь к материалу: " + fileUrl);
+        }
+        return absoluteResolved;
+    }
+
     /**
      * Удаляет файлы материалов квиза.
      */

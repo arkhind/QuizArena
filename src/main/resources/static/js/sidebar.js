@@ -1,8 +1,5 @@
 /**
- * helper для общего сайдбара.
- *  - Подставляет userId в href пунктам с data-nav="..."
- *  - Заполняет аватар + имя пользователя из localStorage
- *  - Подсвечивает активный пункт по <body data-active-nav="...">
+ * Helper for the shared sidebar.
  */
 (function () {
     function init() {
@@ -11,7 +8,7 @@
 
         var navMap = {
             'home': '/home',
-            'my-quizzes': '/my-quizzes' + (userId ? '?userId=' + userId : ''),
+            'my-quizzes': '/my-quizzes',
             'history': '/history' + (userId ? '?userId=' + userId : ''),
             'profile': '/profile' + (userId ? '?userId=' + userId : ''),
             'edit-profile': '/edit-profile' + (userId ? '?userId=' + userId : ''),
@@ -29,9 +26,11 @@
         var displayName = username && username.trim().length > 0 ? username : 'Гость';
         var avatar = document.querySelector('[data-user-avatar]');
         var nameEl = document.querySelector('[data-user-name]');
+
         document.querySelectorAll('.user-card[data-nav="edit-profile"]').forEach(function (el) {
             el.setAttribute('aria-label', 'Профиль');
         });
+
         document.querySelectorAll('[data-nav="logout"]').forEach(function (el) {
             el.addEventListener('click', function () {
                 localStorage.removeItem('token');
@@ -39,6 +38,7 @@
                 localStorage.removeItem('username');
             });
         });
+
         if (avatar) {
             var ch = displayName.charAt(0);
             avatar.textContent = ch ? ch.toUpperCase() : '?';

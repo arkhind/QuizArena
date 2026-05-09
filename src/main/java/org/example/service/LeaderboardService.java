@@ -17,16 +17,17 @@ import java.util.Set;
  *   leaderboard:{quizId}        — ZSET, member=userId, score=compositeScore
  *   leaderboard:users:{quizId}  — Hash, field=userId, value="login:score:time"
  *
- * compositeScore = userScore * 1_000_000 - timeSpentSeconds
- * (выше = лучше: сначала очки, при равенстве — меньше время)
+ * compositeScore = points, score, accuracy and time packed into one sortable value.
+ * (выше = лучше: сначала очки, затем баллы, затем точность, затем меньшее время)
  */
 @Service
 public class LeaderboardService {
 
-    private static final String ZSET_KEY = "leaderboard:v3:%d";
-    private static final String USERS_KEY = "leaderboard:v3:users:%d";
+    private static final String ZSET_KEY = "leaderboard:v5:%d";
+    private static final String USERS_KEY = "leaderboard:v5:users:%d";
 
-    public record CachedLeaderboardEntry(Long userId, String login, long score, long timeSpent, Integer accuracyPercent) {}
+    public record CachedLeaderboardEntry(Long userId, String login, long score, long points,
+                                         long timeSpent, Integer accuracyPercent) {}
 
     private final RedisTemplate<String, String> redisTemplate;
 
@@ -38,18 +39,19 @@ public class LeaderboardService {
     /**
      * Обновляет позицию пользователя, если новый результат лучше текущего.
      */
-    public void updateLeaderboard(Long quizId, Long userId, String login, long score, long timeSpent, Integer accuracyPercent) {
+    public void updateLeaderboard(Long quizId, Long userId, String login, long score, long points,
+                                  long timeSpent, Integer accuracyPercent) {
         try {
             String zsetKey = String.format(ZSET_KEY, quizId);
             String usersKey = String.format(USERS_KEY, quizId);
             String userIdStr = String.valueOf(userId);
 
-            double compositeScore = calculateCompositeScore(score, timeSpent, accuracyPercent);
+            double compositeScore = calculateCompositeScore(score, points, timeSpent, accuracyPercent);
 
             Double current = redisTemplate.opsForZSet().score(zsetKey, userIdStr);
             if (current == null || compositeScore > current) {
                 redisTemplate.opsForZSet().add(zsetKey, userIdStr, compositeScore);
-                redisTemplate.opsForHash().put(usersKey, userIdStr, serializeEntry(login, score, timeSpent, accuracyPercent));
+                redisTemplate.opsForHash().put(usersKey, userIdStr, serializeEntry(login, score, points, timeSpent, accuracyPercent));
             }
         } catch (Exception e) {
             System.err.println("LeaderboardService: ошибка обновления лидерборда: " + e.getMessage());
@@ -72,12 +74,12 @@ public class LeaderboardService {
                 redisTemplate.opsForZSet().add(
                         zsetKey,
                         userIdStr,
-                        calculateCompositeScore(entry.score(), entry.timeSpent(), entry.accuracyPercent())
+                        calculateCompositeScore(entry.score(), entry.points(), entry.timeSpent(), entry.accuracyPercent())
                 );
                 redisTemplate.opsForHash().put(
                         usersKey,
                         userIdStr,
-                        serializeEntry(entry.login(), entry.score(), entry.timeSpent(), entry.accuracyPercent())
+                        serializeEntry(entry.login(), entry.score(), entry.points(), entry.timeSpent(), entry.accuracyPercent())
                 );
             }
         } catch (Exception e) {
@@ -113,14 +115,24 @@ public class LeaderboardService {
 
                 String login = parts[0];
                 int score = Integer.parseInt(parts[1]);
-                long time = Long.parseLong(parts[2]);
-                Integer accuracy = parts.length >= 4 ? Integer.parseInt(parts[3]) : null;
+                int points;
+                long time;
+                Integer accuracy;
+                if (parts.length >= 5) {
+                    points = Integer.parseInt(parts[2]);
+                    time = Long.parseLong(parts[3]);
+                    accuracy = Integer.parseInt(parts[4]);
+                } else {
+                    points = score;
+                    time = Long.parseLong(parts[2]);
+                    accuracy = parts.length >= 4 ? Integer.parseInt(parts[3]) : null;
+                }
 
-                entries.add(new LeaderboardEntry(position, login, score, time, accuracy));
+                entries.add(new LeaderboardEntry(position, login, score, points, time, accuracy));
 
                 if (requestingUserId != null && requestingUserId.equals(Long.parseLong(userIdStr))) {
                     userPosition = position;
-                    userScore = score;
+                    userScore = points;
                 }
                 position++;
             }
@@ -139,13 +151,16 @@ public class LeaderboardService {
         return Math.max(0, Math.min(100, accuracyPercent));
     }
 
-    private double calculateCompositeScore(long score, long timeSpent, Integer accuracyPercent) {
+    private double calculateCompositeScore(long score, long points, long timeSpent, Integer accuracyPercent) {
         int accuracy = normalizeAccuracy(accuracyPercent);
-        return score * 1_000_000_000.0 + accuracy * 1_000_000.0 - timeSpent;
+        return points * 1_000_000_000_000.0
+                + score * 1_000_000_000.0
+                + accuracy * 1_000_000.0
+                - timeSpent;
     }
 
-    private String serializeEntry(String login, long score, long timeSpent, Integer accuracyPercent) {
-        return login + ":" + score + ":" + timeSpent + ":" + normalizeAccuracy(accuracyPercent);
+    private String serializeEntry(String login, long score, long points, long timeSpent, Integer accuracyPercent) {
+        return login + ":" + score + ":" + points + ":" + timeSpent + ":" + normalizeAccuracy(accuracyPercent);
     }
 
     /**

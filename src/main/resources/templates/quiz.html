@@ -229,7 +229,7 @@
             cursor: not-allowed;
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
+    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
 </head>
 <body>
 <div th:replace='~{fragments/sidebar :: sidebar}'></div>
@@ -237,7 +237,15 @@
 <div class="main-content">
 <div class="container">
     <div th:if="${errorMessage != null}" class="error-message" th:text="${errorMessage}"></div>
-    <div th:if="${hasQuestions != null and !hasQuestions}" class="warning-message">
+    <div id="generationStatusMessage"
+         th:if="${hasQuestions != null and !hasQuestions and generationStatus != null}"
+         th:class="${generationStatus.failed()} ? 'error-message' : 'warning-message'"
+         th:text="${generationStatus.message()}">
+        Квиз генерируется. Это может занять несколько минут.
+    </div>
+    <div id="generationStatusMessage"
+         th:if="${hasQuestions != null and !hasQuestions and generationStatus == null}"
+         class="warning-message">
         В этом квизе пока нет вопросов. Попробуйте позже.
     </div>
     
@@ -303,7 +311,7 @@
                     <div class="player-info">
                         <div class="player-name" th:text="${entry.username()}">User</div>
                         <div class="player-score"
-                             th:text="${entry.score() + ' очков · точность ' + (entry.accuracyPercent() != null ? entry.accuracyPercent() : 0) + '%'}">- очков · точность -</div>
+                             th:text="${(entry.points() != null ? entry.points() : 0) + ' очков · ' + entry.score() + ' верных · точность ' + (entry.accuracyPercent() != null ? entry.accuracyPercent() : 0) + '%'}">- очков · - верных · точность -</div>
                     </div>
                 </li>
             </ul>
@@ -319,6 +327,8 @@
 <script th:inline="javascript">
     const pageQuizId = /*[[${quizId}]]*/ null;
     const activeAttemptId = /*[[${activeAttemptId}]]*/ null;
+    const initialHasQuestions = /*[[${hasQuestions}]]*/ false;
+    const initialGenerationFailed = /*[[${generationStatus != null ? generationStatus.failed() : false}]]*/ false;
 
     function getQuizId() {
         if (pageQuizId != null && pageQuizId !== '') {
@@ -380,6 +390,62 @@
             return;
         }
         window.location.href = '/multiplayer/create?quizId=' + quizId;
+    }
+
+    function setGenerationStatusMessage(message, failed) {
+        let box = document.getElementById('generationStatusMessage');
+        if (!box) {
+            box = document.createElement('div');
+            box.id = 'generationStatusMessage';
+            const container = document.querySelector('.container');
+            const header = container?.querySelector('header');
+            if (container) {
+                container.insertBefore(box, header || container.firstChild);
+            }
+        }
+        box.className = failed ? 'error-message' : 'warning-message';
+        box.textContent = message;
+    }
+
+    async function pollGenerationStatus() {
+        const quizId = getQuizId();
+        if (!quizId) {
+            return;
+        }
+        try {
+            const response = await fetch('/api/quizzes/' + quizId + '/generation-status', {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                }
+            });
+            if (!response.ok) {
+                return;
+            }
+            const status = await response.json();
+            if (status.status === 'READY') {
+                window.location.reload();
+                return;
+            }
+            if (status.failed) {
+                setGenerationStatusMessage(status.message || 'Не удалось сгенерировать вопросы для этого квиза.', true);
+                clearInterval(generationStatusTimer);
+                return;
+            }
+            if (status.finished) {
+                setGenerationStatusMessage(status.message || 'В этом квизе пока нет вопросов.', false);
+                clearInterval(generationStatusTimer);
+                return;
+            }
+            setGenerationStatusMessage(status.message || 'Квиз генерируется. Это может занять несколько минут.', false);
+        } catch (error) {
+            console.warn('Generation status check failed', error);
+        }
+    }
+
+    let generationStatusTimer = null;
+    if (!initialHasQuestions && !initialGenerationFailed && getQuizId()) {
+        generationStatusTimer = setInterval(pollGenerationStatus, 5000);
+        pollGenerationStatus();
     }
 
 </script>

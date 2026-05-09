@@ -335,6 +335,7 @@ public class MultiplayerService {
             }
             
             int score = attempt.getScore() != null ? attempt.getScore().intValue() : 0;
+            int points = getMultiplayerPoints(attempt);
             long timeSpent = 0;
             if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
                 timeSpent = java.time.Duration.between(
@@ -347,12 +348,18 @@ public class MultiplayerService {
                     0, // position будет установлен после сортировки
                     attempt.getUser().getLogin(),
                     score,
+                    points,
                     timeSpent
             ));
         }
 
         // Сортируем по счету (убывание), затем по времени (возрастание)
         results.sort((a, b) -> {
+            int pointsCompare = Integer.compare(
+                    b.points() != null ? b.points() : 0,
+                    a.points() != null ? a.points() : 0
+            );
+            if (pointsCompare != 0) return pointsCompare;
             int scoreCompare = Integer.compare(b.score(), a.score());
             if (scoreCompare != 0) return scoreCompare;
             return Long.compare(a.timeSpent(), b.timeSpent());
@@ -365,6 +372,7 @@ public class MultiplayerService {
                     i + 1,
                     results.get(i).username(),
                     results.get(i).score(),
+                    results.get(i).points(),
                     results.get(i).timeSpent()
             ));
         }
@@ -380,6 +388,14 @@ public class MultiplayerService {
                 session.getQuiz().getName(),
                 toLocalDateTime(session.getFinishedAt())
         );
+    }
+
+    private int getMultiplayerPoints(UserQuizAttempt attempt) {
+        int basePoints = attempt.getBaseScore() != null
+                ? attempt.getBaseScore().intValue()
+                : (attempt.getScore() != null ? attempt.getScore().intValue() : 0);
+        int catBonus = attempt.getCatStakeBonus() != null ? attempt.getCatStakeBonus() : 0;
+        return basePoints + catBonus;
     }
 
     /**

@@ -5,10 +5,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "quizarena.kafka.quiz-generation")
 public class KafkaQuizGenerationProperties {
     private String requestTopic;
-    private String requestDltTopic;
     private String workerGroupId;
     private int requestPartitions = 3;
     private int workerConcurrency = 3;
+    private long retryBackoffMs = 30000L;
+    private long retryAttempts = 16L;
 
     public String getRequestTopic() {
         return requestTopic;
@@ -16,14 +17,6 @@ public class KafkaQuizGenerationProperties {
 
     public void setRequestTopic(String requestTopic) {
         this.requestTopic = requestTopic;
-    }
-
-    public String getRequestDltTopic() {
-        return requestDltTopic;
-    }
-
-    public void setRequestDltTopic(String requestDltTopic) {
-        this.requestDltTopic = requestDltTopic;
     }
 
     public String getWorkerGroupId() {
@@ -48,5 +41,21 @@ public class KafkaQuizGenerationProperties {
 
     public void setWorkerConcurrency(int workerConcurrency) {
         this.workerConcurrency = workerConcurrency;
+    }
+
+    public long getRetryBackoffMs() {
+        return retryBackoffMs;
+    }
+
+    public void setRetryBackoffMs(long retryBackoffMs) {
+        this.retryBackoffMs = retryBackoffMs;
+    }
+
+    public long getRetryAttempts() {
+        return retryAttempts;
+    }
+
+    public void setRetryAttempts(long retryAttempts) {
+        this.retryAttempts = retryAttempts;
     }
 }

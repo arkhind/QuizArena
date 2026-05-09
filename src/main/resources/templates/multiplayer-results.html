@@ -207,7 +207,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
+    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
 </head>
 <body>
 <div th:replace='~{fragments/sidebar :: sidebar}'></div>
@@ -243,7 +243,8 @@
                 <tr>
                     <th>Место</th>
                     <th>Игрок</th>
-                    <th>Результат</th>
+                    <th>Очки</th>
+                    <th>Верных ответов</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -253,6 +254,7 @@
                         <span class="rank" th:classappend="${result.position() == 1 ? 'first' : (result.position() == 2 ? 'second' : (result.position() == 3 ? 'third' : ''))}" th:text="${result.position()}"></span>
                     </td>
                     <td class="player-name" th:text="${result.username()}"></td>
+                    <td class="player-score" th:text="${result.points() != null ? result.points() : 0}"></td>
                     <td class="player-score" th:text="${result.score()}"></td>
                 </tr>
                 </tbody>

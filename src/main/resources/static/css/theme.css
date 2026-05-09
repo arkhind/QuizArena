@@ -1,4 +1,4 @@
-
+﻿
 
 :root {
     --bg-page: #F5F3FF;
@@ -327,22 +327,26 @@ button.logout-btn,
 .logout-btn {
     background: transparent !important;
     background-image: none !important;
-    color: var(--danger) !important;
-    border: 1px solid var(--border) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid transparent !important;
     border-radius: var(--radius-sm) !important;
     font-weight: 500 !important;
-    padding: 10px 14px !important;
+    padding: 10px 12px !important;
     font-size: 15px !important;
     width: 100% !important;
     margin: 0 !important;
-    display: block !important;
-    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    text-align: left !important;
     cursor: pointer !important;
+    text-decoration: none !important;
+    line-height: 1.3 !important;
 }
 .logout-btn:hover {
-    background: var(--danger) !important;
-    color: #fff !important;
-    border-color: var(--danger) !important;
+    background: var(--primary-soft) !important;
+    color: var(--primary) !important;
+    border-color: transparent !important;
     transform: none !important;
 }
 
@@ -806,38 +810,46 @@ h1, h2, h3 {
         align-items: center !important;
         justify-content: center !important;
     }
-
-    .sidebar .logout-btn::before,
-    .sidebar-footer .logout-btn::before {
-        content: "↪";
-        font-size: 24px;
-        line-height: 1;
-        color: currentColor;
+    .sidebar .logout-btn span:not(.nav-ico),
+    .sidebar-footer .logout-btn span:not(.nav-ico) {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
     }
 
-    .sidebar .logout-btn:hover::after,
-    .sidebar .logout-btn:focus-visible::after,
-    .sidebar-footer .logout-btn:hover::after,
-    .sidebar-footer .logout-btn:focus-visible::after {
-        content: "Выйти";
-        position: absolute;
-        left: calc(100% + 10px);
-        top: 50%;
-        transform: translateY(-50%);
-        width: max-content;
-        padding: 7px 10px;
-        border: 1px solid var(--border-soft);
-        border-radius: 8px;
-        background: var(--bg-card);
-        color: var(--text-primary);
-        box-shadow: var(--shadow-md);
-        font-size: 13px;
-        font-weight: 600;
-        line-height: 1.2;
-        z-index: 1000;
-        pointer-events: none;
+    .sidebar .logout-btn:hover span:not(.nav-ico),
+    .sidebar .logout-btn:focus-visible span:not(.nav-ico),
+    .sidebar-footer .logout-btn:hover span:not(.nav-ico),
+    .sidebar-footer .logout-btn:focus-visible span:not(.nav-ico) {
+        position: absolute !important;
+        left: calc(100% + 10px) !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: max-content !important;
+        max-width: 220px !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 7px 10px !important;
+        overflow: visible !important;
+        clip: auto !important;
+        white-space: nowrap !important;
+        border: 1px solid var(--border-soft) !important;
+        border-radius: 8px !important;
+        background: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        box-shadow: var(--shadow-md) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+        z-index: 1000 !important;
+        pointer-events: none !important;
     }
-
     .sidebar .nav-btn .nav-ico {
         width: 22px !important;
         height: 22px !important;

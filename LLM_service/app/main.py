@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import ValidationError
 
@@ -70,7 +70,7 @@ async def _extract_uploaded_files(request: Request) -> list[UploadFile]:
     form = await request.form()
     files: list[UploadFile] = []
     for item in form.getlist("files"):
-        if isinstance(item, UploadFile) and item.filename:
+        if getattr(item, "filename", None):
             files.append(item)
     return files
 
@@ -98,12 +98,11 @@ async def check_ethics(prompt: str) -> dict:
 
 @app.post("/jobs/generate", response_model=JobCreateResponse)
 async def create_generation_job(
-    request_http: Request,
     topic: str = Form(...),
     number: int = Form(...),
     question_types: str | None = Form(default="single_choice"),
+    files: list[UploadFile] = File(default=[]),
 ) -> JobCreateResponse:
-    files = await _extract_uploaded_files(request_http)
     try:
         request = GenerationRequest(
             topic=topic,
@@ -123,12 +122,11 @@ async def get_job(job_id: str) -> JobState:
 
 @app.post("/generate", response_model=JobState)
 async def generate(
-    request_http: Request,
     topic: str = Form(...),
     number: int = Form(...),
     question_types: str | None = Form(default="single_choice"),
+    files: list[UploadFile] = File(default=[]),
 ) -> JobState:
-    files = await _extract_uploaded_files(request_http)
     try:
         request = GenerationRequest(
             topic=topic,
