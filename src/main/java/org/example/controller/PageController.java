@@ -209,6 +209,7 @@ public class PageController {
         
         QuizDTO quiz = null;
         LeaderboardDTO leaderboard = null;
+        GenerationStatusResponse generationStatus = null;
         boolean hasQuestions = false;
         
         if (quizId != null) {
@@ -224,8 +225,9 @@ public class PageController {
                     quizDetails.timePerQuestion(),
                     quizDetails.isPublic(),
                     quizDetails.isStatic(),
-                    quizDetails.createdAt()
-                );
+	                quizDetails.createdAt()
+	            );
+                generationStatus = quizService.getGenerationStatus(quizId);
             } catch (Exception e) {
                 // Если квиз не найден, оставляем quiz = null
             }
@@ -281,6 +283,7 @@ public class PageController {
         model.addAttribute("quizId", quizId);
         model.addAttribute("userId", userId);
         model.addAttribute("hasQuestions", hasQuestions);
+        model.addAttribute("generationStatus", generationStatus);
         model.addAttribute("isAdmin", isAdmin);
         model.addAttribute("isCreator", isCreator);
         model.addAttribute("sessionId", sessionId);
@@ -306,6 +309,7 @@ public class PageController {
         
         QuizDTO quiz = null;
         LeaderboardDTO leaderboard = null;
+        GenerationStatusResponse generationStatus = null;
         boolean hasQuestions = false;
         
         try {
@@ -322,6 +326,7 @@ public class PageController {
                 quizDetails.isStatic(),
                 quizDetails.createdAt()
             );
+            generationStatus = quizService.getGenerationStatus(quizId);
         } catch (Exception e) {
             // Если квиз не найден, возвращаем пустой список
         }
@@ -380,6 +385,7 @@ public class PageController {
         model.addAttribute("quizId", quizId);
         model.addAttribute("userId", userId);
         model.addAttribute("hasQuestions", hasQuestions);
+        model.addAttribute("generationStatus", generationStatus);
         model.addAttribute("isAdmin", isAdmin);
         model.addAttribute("isCreator", isCreator);
         model.addAttribute("sessionId", sessionId);
@@ -409,6 +415,9 @@ public class PageController {
     public String myQuizzes(HttpServletRequest request,
                             HttpServletResponse response,
                             Model model) {
+        if (request.getParameter("userId") != null) {
+            return "redirect:/my-quizzes";
+        }
         Long userId = resolveCurrentUserId(request);
         if (userId == null || userRepository.findById(userId).isEmpty()) {
             clearAuthAndRedirectToLogin(response);
@@ -607,6 +616,7 @@ public class PageController {
         }
 
         model.addAttribute("score", result.score());
+        model.addAttribute("points", result.points());
         model.addAttribute("correctAnswers", result.correctAnswers());
         model.addAttribute("totalQuestions", result.totalQuestions());
         model.addAttribute("position", result.position());

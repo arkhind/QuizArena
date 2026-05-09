@@ -43,6 +43,18 @@
             color: white;
         }
 
+        mjx-container {
+            overflow-x: auto;
+            overflow-y: hidden;
+            max-width: 100%;
+        }
+
+        .question-text mjx-container[display="true"],
+        .explanation-text mjx-container[display="true"],
+        .option-item label mjx-container[display="true"] {
+            margin: 8px 0;
+        }
+
         .main-content {
             padding: 24px;
             margin-left: 0;
@@ -452,7 +464,23 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
+    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: Array.of(Array.of('\\(', '\\)'), Array.of('$', '$')),
+                displayMath: Array.of(Array.of('\\[', '\\]'), Array.of('$$', '$$')),
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            },
+            startup: {
+                typeset: false
+            }
+        };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 </head>
 <body>
     <div class="main-content">
@@ -601,7 +629,7 @@
                                     </label>
                                 </li>
                                 <li class="option-item"
-                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6} ? 'display:none' : ''">
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 5} ? 'display:none' : ''">
                                     <input type="radio"
                                            th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
                                            name="answer"
@@ -614,7 +642,7 @@
                                     </label>
                                 </li>
                                 <li class="option-item"
-                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 7} ? 'display:none' : ''">
+                                    th:style="${currentQuestion == null or currentQuestion.options == null or currentQuestion.options.size() <= 6} ? 'display:none' : ''">
                                     <input type="radio"
                                            th:type="${currentQuestion != null and currentQuestion.type != null and currentQuestion.type.name() == 'MULTIPLE_CHOICE' ? 'checkbox' : 'radio'}"
                                            name="answer"
@@ -670,6 +698,35 @@
         let stakeTimerInterval = null;
         let stakeTimeLeft = 60;
         const stakeTimerMs = 60000;
+
+        function renderLatexIn(element) {
+            if (!element || !window.MathJax) {
+                return;
+            }
+
+            const render = function () {
+                if (window.MathJax.typesetClear) {
+                    window.MathJax.typesetClear([element]);
+                }
+                if (window.MathJax.typesetPromise) {
+                    window.MathJax.typesetPromise([element]).catch(function (error) {
+                        console.warn('LaTeX render failed', error);
+                    });
+                }
+            };
+
+            if (window.MathJax.startup && window.MathJax.startup.promise) {
+                window.MathJax.startup.promise.then(render).catch(function (error) {
+                    console.warn('MathJax startup failed', error);
+                });
+            } else {
+                render();
+            }
+        }
+
+        function renderQuestionLatex() {
+            renderLatexIn(document.getElementById('questionContentWrapper'));
+        }
 
         function getAttemptId() {
             // Сначала берём id попытки из переменной, заполненной Thymeleaf.
@@ -734,6 +791,7 @@
                     }
                 });
             }
+            renderQuestionLatex();
             markPageReady();
 
 
@@ -1015,6 +1073,7 @@
                     explanationText.textContent = 'Объяснение отсутствует';
                     explanationSection.classList.add('show');
                 }
+                renderLatexIn(explanationSection);
             }
 
         }
@@ -1358,6 +1417,7 @@
                 }
                 input.checked = false;
             }
+            renderQuestionLatex();
         }
 
         function updateQuestionsCounter() {

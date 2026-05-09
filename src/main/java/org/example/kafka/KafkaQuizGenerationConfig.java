@@ -1,48 +1,48 @@
 package org.example.kafka;
 
-import org.example.dto.kafka.QuizGenerationRequestMessage;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.example.dto.kafka.QuizGenerationRequestMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.annotation.EnableKafkaRetryTopic;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
-import org.springframework.kafka.core.*;
-import org.springframework.kafka.listener.DefaultErrorHandler;
-import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
-import org.springframework.util.backoff.FixedBackOff;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-@EnableKafka
+@EnableKafkaRetryTopic
 @EnableConfigurationProperties(KafkaQuizGenerationProperties.class)
 public class KafkaQuizGenerationConfig {
+    @Bean
+    public TaskScheduler kafkaRetryTopicTaskScheduler() {
+        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
+        scheduler.setPoolSize(2);
+        scheduler.setThreadNamePrefix("kafka-retry-topic-");
+        scheduler.initialize();
+        return scheduler;
+    }
+
     @Bean
     public org.apache.kafka.clients.admin.NewTopic quizGenerationRequestTopic(
             KafkaQuizGenerationProperties properties
     ) {
         return TopicBuilder.name(properties.getRequestTopic())
-                .partitions(properties.getRequestPartitions())
-                .replicas(1)
-                .build();
-    }
-
-    @Bean
-    public org.apache.kafka.clients.admin.NewTopic quizGenerationRequestDltTopic(
-            KafkaQuizGenerationProperties properties
-    ) {
-        return TopicBuilder.name(properties.getRequestDltTopic())
                 .partitions(properties.getRequestPartitions())
                 .replicas(1)
                 .build();
@@ -88,39 +88,12 @@ public class KafkaQuizGenerationConfig {
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, QuizGenerationRequestMessage> quizGenerationRequestKafkaListenerContainerFactory(
             ConsumerFactory<String, QuizGenerationRequestMessage> quizGenerationRequestConsumerFactory,
-            DefaultErrorHandler quizGenerationErrorHandler,
             KafkaQuizGenerationProperties properties
     ) {
         ConcurrentKafkaListenerContainerFactory<String, QuizGenerationRequestMessage> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(quizGenerationRequestConsumerFactory);
         factory.setConcurrency(properties.getWorkerConcurrency());
-        factory.setCommonErrorHandler(quizGenerationErrorHandler);
         return factory;
     }
-
-    @Bean
-    public DeadLetterPublishingRecoverer quizGenerationDeadLetterPublishingRecoverer(
-            KafkaTemplate<String, QuizGenerationRequestMessage> quizGenerationRequestKafkaTemplate,
-            KafkaQuizGenerationProperties properties
-    ) {
-        return new DeadLetterPublishingRecoverer(
-                quizGenerationRequestKafkaTemplate,
-                (ConsumerRecord<?, ?> record, Exception ex) -> new TopicPartition(properties.getRequestDltTopic(), record.partition())
-        );
-    }
-
-    @Bean
-    public DefaultErrorHandler quizGenerationErrorHandler(
-            DeadLetterPublishingRecoverer quizGenerationDeadLetterPublishingRecoverer
-    ) {
-        // После 1 повторной попытки сообщение уходит в DLT, не блокируя основную очередь
-        DefaultErrorHandler errorHandler = new DefaultErrorHandler(
-                quizGenerationDeadLetterPublishingRecoverer,
-                new FixedBackOff(2000L, 1L)
-        );
-        errorHandler.addNotRetryableExceptions(IllegalArgumentException.class);
-        return errorHandler;
-    }
-
 }

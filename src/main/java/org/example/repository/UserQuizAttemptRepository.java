@@ -25,7 +25,7 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
      */
     @Query("SELECT u FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
            "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
-           "ORDER BY COALESCE(u.baseScore, u.score) DESC NULLS LAST, u.finishTime ASC")
+           "ORDER BY COALESCE(u.baseScore, u.score) DESC NULLS LAST, u.score DESC NULLS LAST, u.finishTime ASC")
     Page<UserQuizAttempt> findCompletedByQuizIdOrderByScoreDesc(@Param("quizId") Long quizId, Pageable pageable);
 
     @Query("SELECT COUNT(DISTINCT u.user.id) FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
@@ -48,7 +48,7 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
            "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
            "AND COALESCE(u.baseScore, u.score) = (SELECT MAX(COALESCE(u2.baseScore, u2.score)) FROM UserQuizAttempt u2 WHERE u2.quiz.id = :quizId " +
            "AND u2.user.id = u.user.id AND u2.isCompleted = true AND u2.startTime IS NOT NULL AND u2.finishTime IS NOT NULL) " +
-           "ORDER BY COALESCE(u.baseScore, u.score) DESC NULLS LAST, u.finishTime ASC")
+           "ORDER BY COALESCE(u.baseScore, u.score) DESC NULLS LAST, u.score DESC NULLS LAST, u.finishTime ASC")
     Page<UserQuizAttempt> findBestAttemptsByQuizId(@Param("quizId") Long quizId, Pageable pageable);
 
     long countByUserId(Long userId);

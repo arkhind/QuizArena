@@ -5,7 +5,6 @@ import org.example.dto.response.quiz.*;
 import org.example.service.FileStorageService;
 import org.example.service.JwtService;
 import org.example.service.QuizService;
-import org.example.service.TextExtractorService;
 import org.example.service.UnethicalPromptException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -23,18 +22,16 @@ public class QuizController {
 
     private final QuizService quizService;
     private final FileStorageService fileStorageService;
-    private final TextExtractorService textExtractorService;
     private final JwtService jwtService;
 
     @Autowired
-    public QuizController(QuizService quizService, FileStorageService fileStorageService, TextExtractorService textExtractorService, JwtService jwtService) {
+    public QuizController(QuizService quizService, FileStorageService fileStorageService, JwtService jwtService) {
         this.quizService = quizService;
         this.fileStorageService = fileStorageService;
-        this.textExtractorService = textExtractorService;
         this.jwtService = jwtService;
     }
 
-    @PostMapping
+    @PostMapping(consumes = "application/json")
     public ResponseEntity<?> createQuiz(@RequestBody CreateQuizRequest request) {
         try {
             if (request.name() == null || request.name().trim().isEmpty()) {
@@ -74,6 +71,70 @@ public class QuizController {
         }
     }
 
+    @PostMapping(consumes = "multipart/form-data")
+    public ResponseEntity<?> createQuizWithMaterials(
+            @RequestParam("name") String name,
+            @RequestParam("prompt") String prompt,
+            @RequestParam("createdBy") Long createdBy,
+            @RequestParam("questionNumber") Integer questionNumber,
+            @RequestParam("timeLimit") Integer timeLimit,
+            @RequestParam("isPrivate") Boolean isPrivate,
+            @RequestParam("isStatic") Boolean isStatic,
+            @RequestParam(value = "defaultQuestionType", required = false) org.example.model.QuestionType defaultQuestionType,
+            @RequestParam(value = "files", required = false) MultipartFile[] files) {
+        try {
+            boolean hasFiles = files != null && files.length > 0;
+            CreateQuizRequest request = new CreateQuizRequest(
+                    name,
+                    prompt,
+                    createdBy,
+                    hasFiles,
+                    List.of(),
+                    questionNumber,
+                    timeLimit,
+                    isPrivate,
+                    isStatic,
+                    defaultQuestionType
+            );
+
+            ResponseEntity<?> validationError = validateCreateQuizRequest(request);
+            if (validationError != null) {
+                return validationError;
+            }
+
+            QuizResponseDTO response = quizService.createQuiz(request);
+            if (hasFiles) {
+                List<String> fileUrls = fileStorageService.saveQuizMaterials(files, response.quizId());
+                if (!fileUrls.isEmpty()) {
+                    quizService.updateQuizMaterialUrl(response.quizId(), fileUrls.get(0));
+                    quizService.regenerateWithMaterialFiles(response.quizId(), fileUrls);
+                }
+            }
+            return ResponseEntity.ok(response);
+        } catch (UnethicalPromptException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Данные квиза являются неэтичными");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Ошибка при сохранении файлов: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Внутренняя ошибка сервера: " + e.getMessage());
+        }
+    }
+
+    private ResponseEntity<?> validateCreateQuizRequest(CreateQuizRequest request) {
+        if (request.name() == null || request.name().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Название квиза не может быть пустым");
+        }
+        if (request.createdBy() == null || request.createdBy() <= 0) {
+            return ResponseEntity.badRequest().body("Некорректный ID создателя");
+        }
+        return null;
+    }
+
     @PostMapping("/{quizId}/materials")
     public ResponseEntity<?> uploadQuizMaterials(
             @PathVariable Long quizId,
@@ -94,8 +155,7 @@ public class QuizController {
             if (!fileUrls.isEmpty()) {
                 quizService.updateQuizMaterialUrl(quizId, fileUrls.get(0));
             }
-            String materialText = textExtractorService.extractText(files[0]);
-            quizService.regenerateWithMaterial(quizId, materialText);
+            quizService.regenerateWithMaterialFiles(quizId, fileUrls);
 
             return ResponseEntity.ok(fileUrls);
         } catch (IllegalArgumentException e) {
@@ -131,6 +191,25 @@ public class QuizController {
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Доступ запрещен");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Внутренняя ошибка сервера");
+        }
+    }
+
+    @GetMapping("/{quizId}/generation-status")
+    public ResponseEntity<?> getGenerationStatus(@PathVariable Long quizId, HttpServletRequest request) {
+        try {
+            if (quizId == null || quizId <= 0) {
+                return ResponseEntity.badRequest().body("Некорректный ID квиза");
+            }
+            Long userId = jwtService.extractUserIdFromRequest(request);
+            quizService.getQuiz(quizId, userId);
+            return ResponseEntity.ok(quizService.getGenerationStatus(quizId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Доступ запрещен");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Внутренняя ошибка сервера");
@@ -173,12 +252,12 @@ public class QuizController {
                     quizId,
                     request.userId(),
                     request.name(),
-                    request.prompt(),
-                    request.questionNumber(),
+                    null,
+                    null,
                     request.timeLimit(),
                     request.isPrivate(),
                     request.isStatic(),
-                    request.defaultQuestionType()
+                    null
             );
             QuizResponseDTO response = quizService.updateQuiz(updatedRequest);
             return ResponseEntity.ok(response);
@@ -264,4 +343,3 @@ public class QuizController {
         }
     }
 }
-

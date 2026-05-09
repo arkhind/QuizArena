@@ -161,8 +161,6 @@ class JobManager:
         saved: list[Path] = []
 
         for upload in files:
-            if not isinstance(upload, UploadFile):
-                continue
             if not upload.filename:
                 continue
 

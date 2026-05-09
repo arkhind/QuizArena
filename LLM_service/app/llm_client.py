@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import mimetypes
+import re
+import zipfile
 from pathlib import Path
 from typing import Any
 
 from openai import AsyncOpenAI
+from pypdf import PdfReader
 
 from .config import Settings
 from .prompts import SYSTEM_PROMPT, build_user_prompt
@@ -50,11 +54,11 @@ class LLMClient:
                 return await self._generate_via_responses(request=request, file_paths=file_paths)
             except Exception as exc:  # noqa: BLE001
                 if file_paths:
-                    raise RuntimeError(
-                        "Не удалось обработать запрос через Responses API. "
-                        "Для запросов с PDF нужен backend, совместимый с OpenAI Responses API и file inputs."
-                    ) from exc
-                return await self._generate_via_chat_completions(request=request)
+                    return await self._generate_via_chat_completions(
+                        request=request,
+                        file_paths=file_paths,
+                    )
+                return await self._generate_via_chat_completions(request=request, file_paths=[])
 
     async def check_prompt_ethics(self, prompt: str) -> bool:
         text = (prompt or "").strip()
@@ -62,13 +66,13 @@ class LLMClient:
             return False
 
         system = (
-            "Ты модератор контента. Верни только JSON: "
+            "Ты модератор учебного контента. Верни только JSON: "
             '{"unethical": true|false, "reason": "..."}'
         )
         user = (
-            "Проверь, нарушает ли запрос правила безопасности (насилие, ненависть, "
-            "призывы к вреду, криминальные инструкции, сексуальный контент с несовершеннолетними). "
-            "Если безопасно для учебного квиза — unethical=false.\n"
+            "Проверь, нарушает ли запрос правила безопасности: насилие, ненависть, "
+            "призывы к вреду, криминальные инструкции, сексуальный контент с несовершеннолетними. "
+            "Если запрос безопасен для учебного квиза, верни unethical=false.\n"
             f"Запрос: {text}"
         )
 
@@ -88,8 +92,6 @@ class LLMClient:
         try:
             raw_text = await _ask(self.settings.ethics_model_name)
         except Exception:
-            # На некоторых backend'ах отдельная "простая" модель может быть недоступна.
-            # Fallback на основную модель генерации.
             raw_text = await _ask(self.settings.model_name)
 
         parsed = try_parse_json(raw_text)
@@ -113,6 +115,10 @@ class LLMClient:
                     "file_data": self.file_to_data_url(path),
                 }
             )
+
+        extracted_text = self._build_extracted_text_block(file_paths)
+        if extracted_text:
+            content.append({"type": "input_text", "text": extracted_text})
 
         content.append(
             {
@@ -149,14 +155,20 @@ class LLMClient:
         self,
         *,
         request: GenerationRequest,
+        file_paths: list[Path],
     ) -> tuple[str, dict[str, Any] | None]:
+        user_content = build_user_prompt(request=request, has_files=bool(file_paths))
+        extracted_text = self._build_extracted_text_block(file_paths)
+        if extracted_text:
+            user_content = extracted_text + "\n\n" + user_content
+
         payload: dict[str, Any] = {
             "model": self.settings.model_name,
             "messages": [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
                     "role": "user",
-                    "content": build_user_prompt(request=request, has_files=False),
+                    "content": user_content,
                 },
             ],
         }
@@ -196,8 +208,55 @@ class LLMClient:
             return ""
         return normalize_message_content(content).strip()
 
+    def _build_extracted_text_block(self, file_paths: list[Path]) -> str:
+        snippets: list[str] = []
+        for path in file_paths:
+            text = self._extract_plain_text(path)
+            if text:
+                snippets.append(f"Файл {path.name}:\n{text}")
+        if not snippets:
+            return ""
+        return (
+            "Ниже машинно извлеченный текст из прикрепленных файлов. "
+            "Используй его как дополнительный источник вместе с самими файлами:\n\n"
+            + "\n\n".join(snippets)
+        )
+
+    def _extract_plain_text(self, path: Path) -> str:
+        suffix = path.suffix.lower()
+        try:
+            if suffix == ".txt":
+                return self._compact_text(path.read_text(encoding="utf-8", errors="ignore"))
+            if suffix == ".docx":
+                return self._extract_docx_text(path)
+            if suffix == ".pdf":
+                return self._extract_pdf_text(path)
+        except Exception:
+            return ""
+        return ""
+
+    def _extract_docx_text(self, path: Path) -> str:
+        with zipfile.ZipFile(path) as archive:
+            xml = archive.read("word/document.xml").decode("utf-8", errors="ignore")
+        text = re.sub(r"<[^>]+>", " ", xml)
+        return self._compact_text(text)
+
+    def _extract_pdf_text(self, path: Path) -> str:
+        reader = PdfReader(str(path))
+        pages: list[str] = []
+        for index, page in enumerate(reader.pages[:20], start=1):
+            text = page.extract_text() or ""
+            if text.strip():
+                pages.append(f"Страница {index}:\n{text}")
+        return self._compact_text("\n\n".join(pages))
+
+    def _compact_text(self, text: str) -> str:
+        compact = re.sub(r"\s+", " ", text).strip()
+        return compact[:12000]
+
     @staticmethod
     def file_to_data_url(path: Path) -> str:
         raw = path.read_bytes()
         encoded = base64.b64encode(raw).decode("utf-8")
-        return f"data:application/pdf;base64,{encoded}"
+        mime_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        return f"data:{mime_type};base64,{encoded}"

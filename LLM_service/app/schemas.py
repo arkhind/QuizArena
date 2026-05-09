@@ -23,7 +23,7 @@ class QuestionType(str, Enum):
 
 
 class GenerationRequest(BaseModel):
-    topic: str = Field(..., min_length=3)
+    topic: str = Field(..., min_length=1)
     number: int = Field(..., ge=1, le=200)
     question_types: list[QuestionType] = Field(
         default_factory=lambda: [QuestionType.single_choice]

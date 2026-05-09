@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.dto.request.generation.QuestionGenerationRequest;
 import org.example.dto.request.quiz.*;
 import org.example.dto.response.quiz.*;
+import org.example.dto.response.generation.GenerationStatusResponse;
 import org.example.dto.common.LeaderboardEntry;
 import org.example.dto.common.QuizMaterial;
+import org.example.model.GenerationSet;
 import org.example.model.QuestionType;
 import org.example.model.Quiz;
 import org.example.model.User;
@@ -38,7 +40,9 @@ import java.util.stream.Collectors;
 public class QuizService {
     private static final String QUIZ_CACHE_KEY = "quiz:%d";
     private static final Duration QUIZ_CACHE_TTL = Duration.ofMinutes(30);
-    private static final int TEMP_GENERATION_COUNT = 10;
+    private static final int DEBUG_GENERATION_COUNT = 10;
+    private static final String STATUS_READY = "READY";
+    private static final String STATUS_FAILED = "FAILED";
 
     private final QuizRepository quizRepository;
     private final QuestionRepository questionRepository;
@@ -140,7 +144,7 @@ public class QuizService {
             try {
                 // Временно генерируем меньше вопросов для более стабильной отладки
                 // questionNumber - это количество вопросов для сессии, а не для генерации
-                int questionCountForGeneration = TEMP_GENERATION_COUNT;
+                int questionCountForGeneration = resolveGenerationCount(request.questionNumber());
                 
                 // На новом квизе вопросов ещё нет, но оставим логику "на всякий случай"
                 requiresNewTx.execute(status -> {
@@ -287,8 +291,51 @@ public class QuizService {
         return dto;
     }
 
+    @Transactional(readOnly = true)
+    public GenerationStatusResponse getGenerationStatus(Long quizId) {
+        GenerationSet generationSet = generationSetRepository.findTopByQuizIdOrderByCreatedAtDesc(quizId)
+                .orElse(null);
+        if (generationSet == null) {
+            return new GenerationStatusResponse(
+                    quizId,
+                    null,
+                    "NOT_STARTED",
+                    "Генерация для этого квиза ещё не запускалась.",
+                    true,
+                    false
+            );
+        }
+
+        String status = generationSet.getStatus() != null ? generationSet.getStatus() : "UNKNOWN";
+        boolean failed = STATUS_FAILED.equals(status);
+        boolean finished = STATUS_READY.equals(status) || failed;
+        String message;
+        if (STATUS_READY.equals(status)) {
+            message = "Квиз готов.";
+        } else if (failed) {
+            message = generationSet.getFailureMessage() != null && !generationSet.getFailureMessage().isBlank()
+                    ? generationSet.getFailureMessage()
+                    : "Не удалось сгенерировать вопросы для этого квиза.";
+        } else {
+            message = "Квиз генерируется. Это может занять несколько минут, страница обновится, когда вопросы будут готовы.";
+        }
+
+        return new GenerationStatusResponse(
+                quizId,
+                generationSet.getId(),
+                status,
+                message,
+                finished,
+                failed
+        );
+    }
+
     private QuestionType resolveDefaultQuestionType(QuestionType defaultQuestionType) {
         return defaultQuestionType != null ? defaultQuestionType : QuestionType.SINGLE_CHOICE;
+    }
+
+    private int resolveGenerationCount(Integer requestedQuestionCount) {
+        return DEBUG_GENERATION_COUNT;
     }
 
     public boolean deleteQuiz(DeleteQuizRequest request) {
@@ -333,11 +380,8 @@ public class QuizService {
 
         // Сохраняем старые значения для проверки изменений
         String oldPrompt = quiz.getPrompt();
-        boolean oldIsStatic = quiz.isStatic();
         boolean promptChanged = request.prompt() != null && 
                                 (oldPrompt == null || !request.prompt().equals(oldPrompt));
-        boolean staticChanged = request.isStatic() != null && 
-                                request.isStatic() != oldIsStatic;
 
         // Проверяем этичность нового промпта ДО обновления квиза, если промпт изменился
         if (promptChanged && request.prompt() != null && !request.prompt().trim().isEmpty()) {
@@ -385,7 +429,7 @@ public class QuizService {
             try {
                 // Временно генерируем меньше вопросов в базу данных при изменении промпта
                 // questionNumber - это количество вопросов для сессии, а не для генерации
-                int questionCountForGeneration = TEMP_GENERATION_COUNT;
+                int questionCountForGeneration = resolveGenerationCount(quiz.getQuestionNumber());
 
                 // Сначала обнуляем ссылки на answer_options в user_answers, чтобы избежать foreign key constraint
                 userAnswerRepository.nullifySelectedAnswerReferences(request.quizId());
@@ -416,65 +460,6 @@ public class QuizService {
                 e.printStackTrace();
                 // Пробрасываем исключение, чтобы контроллер мог его обработать
                 throw new RuntimeException("Ошибка при генерации вопросов: " + e.getMessage(), e);
-            }
-        } else if (staticChanged && !promptChanged) {
-            // Если изменилась только статичность (без изменения промпта),
-            // проверяем наличие вопросов в БД и генерируем их, если их нет или недостаточно
-            // Важно: на время отладки держим фиксированный небольшой объём вопросов в БД
-            long existingQuestionCount = questionRepository.countByQuizId(request.quizId());
-            int requiredQuestionCount = TEMP_GENERATION_COUNT;
-            
-            if (existingQuestionCount != requiredQuestionCount) {
-                try {
-                    if (existingQuestionCount > requiredQuestionCount) {
-                        // Если вопросов больше лимита, удаляем лишние и оставляем фиксированный объём
-                        System.out.println("QuizService: Изменена статичность квиза. " +
-                                "В БД найдено " + existingQuestionCount + " вопросов, требуется " + requiredQuestionCount + 
-                                ". Удаляем лишние вопросы.");
-                        
-                        // Обнуляем ссылки на answer_options в user_answers
-                        userAnswerRepository.nullifySelectedAnswerReferences(request.quizId());
-                        // Удаляем ответы пользователей
-                        userAnswerRepository.deleteByQuestionQuizId(request.quizId());
-                        // Удаляем все старые вопросы
-                        questionRepository.deleteByQuizId(request.quizId());
-                        existingQuestionCount = 0;
-                    }
-                    
-                    if (existingQuestionCount < requiredQuestionCount) {
-                        System.out.println("QuizService: Изменена статичность квиза. " +
-                                "В БД найдено " + existingQuestionCount + " вопросов, требуется " + requiredQuestionCount + 
-                                ". Генерируем недостающие вопросы.");
-                        
-                        // Генерируем недостающие вопросы (до фиксированного объёма)
-                        int questionsToGenerate = requiredQuestionCount - (int) existingQuestionCount;
-                        
-                        org.example.dto.request.generation.QuestionGenerationRequest genRequest =
-                                new org.example.dto.request.generation.QuestionGenerationRequest(
-                                        request.quizId(),
-                                        quiz.getPrompt(), // Используем текущий промпт (не изменился)
-                                        null, // materials
-                                        quiz.getQuestionNumber(), // Количество вопросов для сессии
-                                        questionsToGenerate, // Генерируем недостающие вопросы
-                                        resolveDefaultQuestionType(quiz.getDefaultQuestionType())
-                                );
-                        questionGenerationService.generateQuizQuestionsKafka(genRequest);
-                    }
-                } catch (UnethicalPromptException e) {
-                    // Пробрасываем исключение для неэтичных промптов
-                    System.err.println("QuizService: Промпт не прошел проверку на этичность при обновлении: " + e.getMessage());
-                    throw e;
-                } catch (Exception e) {
-                    System.err.println("Ошибка при генерации недостающих вопросов после изменения статичности: " + e.getMessage());
-                    e.printStackTrace();
-                    // Пробрасываем исключение, чтобы контроллер мог его обработать
-                    throw new RuntimeException("Ошибка при генерации вопросов: " + e.getMessage(), e);
-                    // Не прерываем обновление квиза, если генерация вопросов не удалась
-                }
-            } else {
-                System.out.println("QuizService: Изменена статичность квиза. " +
-                        "В БД уже есть ровно " + existingQuestionCount + " вопросов. " +
-                        "Используем существующие вопросы из БД без перегенерации.");
             }
         }
 
@@ -509,7 +494,7 @@ public class QuizService {
         questionRepository.deleteByQuizId(quizId);
 
         QuestionGenerationRequest genRequest = new QuestionGenerationRequest(
-                quizId, enrichedPrompt, null, null, TEMP_GENERATION_COUNT,
+                quizId, enrichedPrompt, null, null, resolveGenerationCount(quiz.getQuestionNumber()),
                 resolveDefaultQuestionType(quiz.getDefaultQuestionType())
         );
 
@@ -517,6 +502,40 @@ public class QuizService {
         questionGenerationService.generateQuizQuestionsKafka(genRequest);
 
         // Инвалидируем кэш — вопросы изменились
+        evictQuizCache(quizId);
+    }
+
+    public void regenerateWithMaterialFiles(Long quizId, List<String> fileUrls) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new IllegalArgumentException("Квиз не найден"));
+
+        if (fileUrls == null || fileUrls.isEmpty()) {
+            throw new IllegalArgumentException("Файлы материалов не найдены");
+        }
+
+        userAnswerRepository.nullifySelectedAnswerReferences(quizId);
+        userAnswerRepository.deleteByQuestionQuizId(quizId);
+        questionRepository.deleteByQuizId(quizId);
+
+        List<org.example.dto.common.QuizMaterial> materials = fileUrls.stream()
+                .map(url -> new org.example.dto.common.QuizMaterial(
+                        url.substring(url.lastIndexOf('/') + 1),
+                        url,
+                        null,
+                        null
+                ))
+                .collect(Collectors.toList());
+
+        QuestionGenerationRequest genRequest = new QuestionGenerationRequest(
+                quizId,
+                quiz.getPrompt(),
+                materials,
+                quiz.getQuestionNumber(),
+                resolveGenerationCount(quiz.getQuestionNumber()),
+                resolveDefaultQuestionType(quiz.getDefaultQuestionType())
+        );
+
+        questionGenerationService.generateQuizQuestionsKafka(genRequest);
         evictQuizCache(quizId);
     }
 
@@ -585,11 +604,13 @@ public class QuizService {
             long timeSpent = getTimeSpent(attempt);
             Integer accuracyPercent = getAccuracyPercent(attempt);
             Long leaderboardScore = getLeaderboardScore(attempt);
+            Long points = getAttemptPoints(attempt);
 
             entries.add(new LeaderboardEntry(
                     i + 1,
                     attempt.getUser().getLogin(),
                     leaderboardScore.intValue(),
+                    points.intValue(),
                     timeSpent,
                     accuracyPercent
             ));
@@ -597,13 +618,14 @@ public class QuizService {
                     attempt.getUser().getId(),
                     attempt.getUser().getLogin(),
                     leaderboardScore,
+                    points,
                     timeSpent,
                     accuracyPercent
             ));
 
             if (attempt.getUser().getId().equals(userId)) {
                 userPosition = i + 1;
-                userScore = leaderboardScore;
+                userScore = points;
             }
         }
 
@@ -621,6 +643,10 @@ public class QuizService {
     }
 
     private Long getLeaderboardScore(org.example.model.UserQuizAttempt attempt) {
+        return attempt.getScore() != null ? attempt.getScore() : 0L;
+    }
+
+    private Long getAttemptPoints(org.example.model.UserQuizAttempt attempt) {
         if (attempt.getBaseScore() != null) {
             return attempt.getBaseScore();
         }
@@ -639,6 +665,11 @@ public class QuizService {
     }
 
     private int compareLeaderboardAttempts(org.example.model.UserQuizAttempt a, org.example.model.UserQuizAttempt b) {
+        int pointsCompare = getAttemptPoints(b).compareTo(getAttemptPoints(a));
+        if (pointsCompare != 0) {
+            return pointsCompare;
+        }
+
         int scoreCompare = getLeaderboardScore(b).compareTo(getLeaderboardScore(a));
         if (scoreCompare != 0) {
             return scoreCompare;

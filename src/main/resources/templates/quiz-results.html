@@ -182,7 +182,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
+    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
 </head>
 <body>
 <div th:replace='~{fragments/sidebar :: sidebar}'></div>
@@ -196,7 +196,7 @@
         <div class="content-section">
             <div class="score-display">
                 <div class="score-value" th:text="${score != null ? score : 0}"></div>
-                <div class="score-label">Ваш результат</div>
+                <div class="score-label">Верных ответов</div>
                 <div class="position-badge" th:if="${position != null}">
                     Место: <span th:text="${position}">-</span>
                 </div>
@@ -211,6 +211,10 @@
                 <div class="result-item">
                     <div class="result-label">Всего вопросов</div>
                     <div class="result-value" th:text="${totalQuestions != null ? totalQuestions : 0}"></div>
+                </div>
+                <div class="result-item">
+                    <div class="result-label">Очки</div>
+                    <div class="result-value" th:text="${points != null ? points : 0}"></div>
                 </div>
             </div>
 
@@ -249,7 +253,5 @@
 <script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>
-
-
 
 

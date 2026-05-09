@@ -28,6 +28,15 @@ public class GenerationSet {
     @Column(name = "status", nullable = false, length = 20)
     private String status; // "GENERATING", "VALIDATING", "DEDUPLICATING", "READY", "FAILED"
 
+    @Column(name = "ml_job_id", length = 100)
+    private String mlJobId;
+
+    @Column(name = "failure_reason", length = 50)
+    private String failureReason;
+
+    @Column(name = "failure_message", columnDefinition = "TEXT")
+    private String failureMessage;
+
     @Column(name = "generated_count")
     private Integer generatedCount;
 
@@ -59,4 +68,3 @@ public class GenerationSet {
         this.createdAt = createdAt;
     }
 }
-

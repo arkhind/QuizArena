@@ -306,7 +306,8 @@ public class AttemptService {
         Boolean isCorrect;
         Long correctAnswerId;
         int scoreEarned = 0;
-        double scoreEarnedDouble = 0.0;
+        double pointsEarned = 0.0;
+        double accuracyRatio = 0.0;
         org.example.model.AnswerOption selectedOption = null;
 
         List<org.example.model.AnswerOption> allOptions = answerOptionRepository.findByQuestionId(questionId);
@@ -318,15 +319,18 @@ public class AttemptService {
 
         if (!selectedIds.isEmpty()) {
             selectedOption = answerOptionRepository.findById(selectedIds.get(0)).orElse(null);
+            java.util.Set<Long> selectedIdSet = selectedIds.stream()
+                    .filter(id -> id != null)
+                    .collect(java.util.stream.Collectors.toSet());
 
             if (question.getType() == QuestionType.MULTIPLE_CHOICE) {
-                int a = (int) selectedIds.stream().filter(correctIds::contains).count();
-                int b = (int) selectedIds.stream().filter(id -> !correctIds.contains(id)).count();
+                int a = (int) selectedIdSet.stream().filter(correctIds::contains).count();
+                int b = (int) selectedIdSet.stream().filter(id -> !correctIds.contains(id)).count();
                 int c = correctIds.size();
-                double points = c > 0 ? 2.0 * Math.max(a - b, 0) / c : 0;
-                scoreEarned = (int) Math.round(points);
-                scoreEarnedDouble = points;
-                isCorrect = points > 0;
+                accuracyRatio = c > 0 ? Math.max(a - b, 0) / (double) c : 0.0;
+                isCorrect = c > 0 && selectedIdSet.equals(correctIds);
+                scoreEarned = isCorrect ? calculateScore(question, attempt) : 0;
+                pointsEarned = c > 0 ? 2.0 * Math.max(a - b, 0) / c : 0.0;
             } else if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
                 java.util.Map<Long, BigDecimal> nominals = ensureHundredToOneNominals(request.attemptId(), question);
                 BigDecimal sum = BigDecimal.ZERO;
@@ -339,13 +343,15 @@ public class AttemptService {
                         sum = sum.add(nominal);
                     }
                 }
-                scoreEarned = sum.setScale(0, RoundingMode.HALF_UP).intValue();
-                scoreEarnedDouble = sum.doubleValue();
-                isCorrect = scoreEarned > 0;
+                pointsEarned = sum.doubleValue();
+                isCorrect = pointsEarned > 0;
+                scoreEarned = Boolean.TRUE.equals(isCorrect) ? calculateScore(question, attempt) : 0;
+                accuracyRatio = Boolean.TRUE.equals(isCorrect) ? 1.0 : 0.0;
             } else {
                 isCorrect = selectedIds.size() == 1 && correctIds.contains(selectedIds.get(0));
                 scoreEarned = isCorrect ? calculateScore(question, attempt) : 0;
-                scoreEarnedDouble = scoreEarned;
+                pointsEarned = scoreEarned;
+                accuracyRatio = Boolean.TRUE.equals(isCorrect) ? 1.0 : 0.0;
             }
         } else {
             isCorrect = false;
@@ -362,14 +368,15 @@ public class AttemptService {
         userAnswer.setQuestion(question);
         userAnswer.setSelectedAnswer(selectedOption);
         userAnswer.setIsCorrect(isCorrect);
+        userAnswer.setAccuracyRatio(accuracyRatio);
         userAnswerRepository.save(userAnswer);
 
         clearCurrentQuestionState(attempt);
 
         AttemptState st = attemptStates.get(request.attemptId());
         if (st != null) {
-            st.baseScore += scoreEarnedDouble;
-            st.score += scoreEarnedDouble;
+            st.baseScore += pointsEarned;
+            st.score += pointsEarned;
             if (st.catQuestionIndex != null && st.stakeForCurrentQuestion != null) {
                 int qIndex = getQuestionIndexInAttempt(request.attemptId(), questionId);
                 if (qIndex == st.catQuestionIndex) {
@@ -393,9 +400,9 @@ public class AttemptService {
             attempt.setScore(Math.round(st.score));
             attemptRepository.save(attempt);
         } else {
-            Long currentScore = attempt.getScore() != null ? attempt.getScore() : 0L;
-            attempt.setScore(currentScore + scoreEarned);
-            attempt.setBaseScore(attempt.getScore());
+            Long currentPoints = attempt.getBaseScore() != null ? attempt.getBaseScore() : 0L;
+            attempt.setBaseScore(currentPoints + Math.round(pointsEarned));
+            attempt.setScore(attempt.getBaseScore());
             attemptRepository.save(attempt);
         }
 
@@ -553,6 +560,7 @@ public class AttemptService {
             int totalQuestions = attemptQuestions.size();
             int correctAnswers = (int) userAnswerRepository.countByAttemptIdAndIsCorrectTrue(attemptId);
             int finalScore = attempt.getScore() != null ? attempt.getScore().intValue() : 0;
+            int finalPoints = attempt.getBaseScore() != null ? attempt.getBaseScore().intValue() : finalScore;
 
             long timeSpent = 0;
             if (attempt.getStartTime() != null && attempt.getFinishTime() != null) {
@@ -563,6 +571,7 @@ public class AttemptService {
             return new QuizResultDTO(
                     attemptId,
                     finalScore,
+                    finalPoints,
                     correctAnswers,
                     totalQuestions,
                     position,
@@ -589,24 +598,23 @@ public class AttemptService {
         List<AttemptQuestion> attemptQuestions = attemptQuestionRepository.findByAttemptIdOrderByQuestionOrder(attemptId);
         int totalQuestions = attemptQuestions.size();
         int correctAnswers = (int) userAnswerRepository.countByAttemptIdAndIsCorrectTrue(attemptId);
-        // Для HUNDRED_TO_ONE финальный счёт берём из накопленного значения в AttemptState.
-        // Для остальных типов допускаем fallback на attempt.getScore().
         AttemptState st = attemptStates.get(attemptId);
-        double rawScore = st != null
+        double rawPoints = st != null
                 ? st.score
                 : (attempt.getScore() != null ? attempt.getScore().doubleValue() : 0.0);
-        double rawBaseScore = st != null
+        double rawBasePoints = st != null
                 ? st.baseScore
-                : (attempt.getBaseScore() != null ? attempt.getBaseScore().doubleValue() : rawScore);
-        long finalScoreLong = Math.round(rawScore);
-        long leaderboardScoreLong = Math.round(rawBaseScore);
+                : (attempt.getBaseScore() != null ? attempt.getBaseScore().doubleValue() : rawPoints);
+        long finalPointsLong = Math.round(rawPoints);
+        long leaderboardPointsLong = Math.round(rawBasePoints);
+        long finalScoreLong = correctAnswers;
 
-        attempt.setBaseScore(leaderboardScoreLong);
+        attempt.setBaseScore(leaderboardPointsLong);
         attempt.setScore(finalScoreLong);
-        attempt.setAccuracyPercent(calculateAccuracyPercent(correctAnswers, totalQuestions));
+        attempt.setAccuracyPercent(calculateAccuracyPercent(answers, attemptQuestions));
         attempt = attemptRepository.save(attempt);
         int finalScore = (int) finalScoreLong;
-        int leaderboardScore = (int) leaderboardScoreLong;
+        int finalPoints = (int) finalPointsLong;
         int accuracyPercent = attempt.getAccuracyPercent() != null ? attempt.getAccuracyPercent() : 0;
 
         // 5. Вычисляем время прохождения
@@ -620,7 +628,8 @@ public class AttemptService {
                 attempt.getQuiz().getId(),
                 attempt.getUser().getId(),
                 attempt.getUser().getLogin(),
-                leaderboardScore,
+                finalScore,
+                (int) leaderboardPointsLong,
                 timeSpent,
                 accuracyPercent
         );
@@ -636,6 +645,7 @@ public class AttemptService {
         return new QuizResultDTO(
                 attemptId,
                 finalScore,
+                finalPoints,
                 correctAnswers,
                 totalQuestions,
                 position,
@@ -685,21 +695,47 @@ public class AttemptService {
         }
         UserQuizAttempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new IllegalArgumentException("Попытка не найдена"));
+        if (attempt.getBaseScore() != null) {
+            return attempt.getBaseScore().doubleValue();
+        }
         return attempt.getScore() != null ? attempt.getScore().doubleValue() : 0.0;
     }
 
     private Long getLeaderboardScore(UserQuizAttempt attempt) {
+        return attempt.getScore() != null ? attempt.getScore() : 0L;
+    }
+
+    private Long getAttemptPoints(UserQuizAttempt attempt) {
         if (attempt.getBaseScore() != null) {
             return attempt.getBaseScore();
         }
         return attempt.getScore() != null ? attempt.getScore() : 0L;
     }
 
-    private int calculateAccuracyPercent(int correctAnswers, int totalQuestions) {
+    private int calculateAccuracyPercent(List<UserAnswer> answers, List<AttemptQuestion> attemptQuestions) {
+        int totalQuestions = attemptQuestions != null ? attemptQuestions.size() : 0;
         if (totalQuestions <= 0) {
             return 0;
         }
-        return (int) Math.round((correctAnswers * 100.0) / totalQuestions);
+
+        Map<Long, Double> accuracyByQuestionId = answers.stream()
+                .filter(answer -> answer.getQuestion() != null && answer.getQuestion().getId() != null)
+                .collect(Collectors.toMap(
+                        answer -> answer.getQuestion().getId(),
+                        answer -> answer.getAccuracyRatio() != null
+                                ? Math.max(0.0, Math.min(1.0, answer.getAccuracyRatio()))
+                                : (Boolean.TRUE.equals(answer.getIsCorrect()) ? 1.0 : 0.0),
+                        (first, ignored) -> first
+                ));
+
+        double totalAccuracy = 0.0;
+        for (AttemptQuestion attemptQuestion : attemptQuestions) {
+            Question question = attemptQuestion.getQuestion();
+            if (question != null && question.getId() != null) {
+                totalAccuracy += accuracyByQuestionId.getOrDefault(question.getId(), 0.0);
+            }
+        }
+        return (int) Math.round((totalAccuracy * 100.0) / totalQuestions);
     }
 
     /**
@@ -984,13 +1020,22 @@ public class AttemptService {
                 bestAttemptsByUser.put(userId, attempt);
             } else {
                 // Сравниваем с текущей лучшей попыткой.
-                Long bestScore = getLeaderboardScore(bestAttempt);
-                Long currentScore = getLeaderboardScore(attempt);
+                Long bestPoints = getAttemptPoints(bestAttempt);
+                Long currentPoints = getAttemptPoints(attempt);
                 
-                if (currentScore > bestScore) {
-                    // Текущая попытка лучше по счёту.
+                if (currentPoints > bestPoints) {
+                    // Текущая попытка лучше по очкам.
                     bestAttemptsByUser.put(userId, attempt);
-                } else if (currentScore.equals(bestScore)) {
+                } else if (currentPoints.equals(bestPoints)) {
+                    Long bestScore = getLeaderboardScore(bestAttempt);
+                    Long currentScore = getLeaderboardScore(attempt);
+                    if (currentScore > bestScore) {
+                        bestAttemptsByUser.put(userId, attempt);
+                        continue;
+                    }
+                    if (currentScore < bestScore) {
+                        continue;
+                    }
                     int bestAccuracy = bestAttempt.getAccuracyPercent() != null ? bestAttempt.getAccuracyPercent() : 0;
                     int currentAccuracy = attempt.getAccuracyPercent() != null ? attempt.getAccuracyPercent() : 0;
                     if (currentAccuracy > bestAccuracy) {
@@ -1026,9 +1071,16 @@ public class AttemptService {
             }
         }
 
-        // Сортируем лучшие попытки: сначала по счёту, затем по времени.
+        // Сортируем лучшие попытки: сначала по очкам, затем по баллам, точности и времени.
         List<UserQuizAttempt> sortedBestAttempts = new ArrayList<>(bestAttemptsByUser.values());
         sortedBestAttempts.sort((a, b) -> {
+            Long pointsA = getAttemptPoints(a);
+            Long pointsB = getAttemptPoints(b);
+            int pointsCompare = pointsB.compareTo(pointsA);
+            if (pointsCompare != 0) {
+                return pointsCompare;
+            }
+
             Long scoreA = getLeaderboardScore(a);
             Long scoreB = getLeaderboardScore(b);
             

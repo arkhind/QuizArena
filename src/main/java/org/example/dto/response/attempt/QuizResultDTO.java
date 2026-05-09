@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public record QuizResultDTO(
   Long attemptId,
   Integer score,
+  Integer points,
   Integer correctAnswers,
   Integer totalQuestions,
   Integer position, // место в общем рейтинге

@@ -92,6 +92,39 @@
             width: 100%;
         }
 
+        #editQuizForm {
+            display: grid;
+            grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+            gap: 24px;
+            align-items: stretch;
+        }
+
+        .form-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 24px;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+            min-width: 0;
+        }
+
+        .form-card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 22px;
+            color: #0f172a;
+            font-size: 1.25rem;
+            font-weight: 800;
+        }
+
+        .form-card-title svg {
+            width: 22px;
+            height: 22px;
+            color: #4f46e5;
+            flex: 0 0 auto;
+        }
+
         .form-group {
             margin-bottom: 25px;
         }
@@ -185,29 +218,64 @@
         }
 
         .radio-group {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
         }
 
         .radio-option {
             display: flex;
             align-items: center;
             cursor: pointer;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px 18px;
+            gap: 14px;
+            min-height: 82px;
+            transition: border-color 0.2s, background 0.2s;
         }
 
         .radio-option input[type="radio"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            cursor: pointer;
-            accent-color: #667eea;
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .radio-option:has(input[type="radio"]:checked) {
+            border-color: #4f46e5;
+            background: #f8f7ff;
+        }
+
+        .radio-option svg {
+            width: 22px;
+            height: 22px;
+            color: #64748b;
+            flex: 0 0 auto;
+        }
+
+        .radio-option:has(input[type="radio"]:checked) svg,
+        .radio-option:has(input[type="radio"]:checked) label {
+            color: #4f46e5;
+        }
+
+        .radio-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
         }
 
         .radio-option label {
             margin: 0;
             cursor: pointer;
-            font-weight: normal;
+            font-weight: 800;
+            color: #0f172a;
+            font-size: 16px;
+        }
+
+        .radio-option small {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
         }
 
         .btn-small {
@@ -234,6 +302,7 @@
             margin-top: 35px;
             justify-content: center;
             flex-wrap: wrap;
+            grid-column: 1 / -1;
         }
 
         button {
@@ -293,12 +362,15 @@
             }
 
             .radio-group {
-                flex-direction: column;
-                gap: 15px;
+                grid-template-columns: 1fr;
+            }
+
+            #editQuizForm {
+                grid-template-columns: 1fr;
             }
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=6" onerror="this.onerror=null;this.href='../static/css/theme.css?v=6';">
+    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
 </head>
 <body>
 <div th:replace='~{fragments/sidebar :: sidebar}'></div>
@@ -315,160 +387,82 @@
                 <input type="hidden" id="quizId" th:value="${quizId}">
                 <input type="hidden" id="userId" th:value="${userId}">
 
-                <!-- Название квиза -->
-                <div class="form-group">
-                    <label>
-                        <span class="required">*</span> Название квиза:
-                    </label>
-                    <input type="text"
-                           id="quizName"
-                           name="name"
-                           th:value="${quizName}"
-                           required
-                           minlength="3"
-                           maxlength="100">
-                </div>
+                <section class="form-card">
+                    <h2 class="form-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        Основная информация
+                    </h2>
 
-                <div class="form-group">
-                    <label>
-                        <span class="required">*</span> Описание (промпт для ИИ):
-                    </label>
-                    <textarea id="quizDescription"
-                              name="description"
-                              th:text="${description}"
-                              required
-                              minlength="10"
-                              maxlength="500"></textarea>
-                </div>
-
-                <div class="form-group">
-                    <div class="file-upload-section" onclick="document.getElementById('quizMaterial').click()">
-                        <div class="file-upload-icon">📄</div>
-                        <span class="file-upload-label" id="fileLabel">
-                                Добавить новый материал (.pdf, .txt, .doc, .docx)
-                            </span>
-                        <small style="color: #999; display: block; margin-top: 10px;">
-                            Необязательно. Новый материал добавится к существующим
-                        </small>
-                        <div class="file-input-wrapper">
-                            <input type="file"
-                                   id="quizMaterial"
-                                   name="material"
-                                   accept=".pdf,.txt,.doc,.docx"
-                                   style="display: none;">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="number-inputs">
                     <div class="form-group">
-                        <label>
-                            <span class="required">*</span> Количество вопросов:
+                        <label for="quizName">
+                            <span class="required">*</span> Название квиза
                         </label>
-                        <input type="number"
-                               id="questionNumber"
-                               name="questionNumber"
-                               th:value="${quiz != null and quiz.questionNumber != null ? quiz.questionNumber : 10}"
-                               min="1"
-                               max="200"
-                               required>
-                        <small style="color: #666; display: block; margin-top: 5px;">
-                            Максимум 30 вопросов (из 200 доступных в базе данных)
-                        </small>
+                        <input type="text"
+                               id="quizName"
+                               name="name"
+                               th:value="${quizName}"
+                               required
+                               minlength="3"
+                               maxlength="100">
                     </div>
 
                     <div class="form-group">
-                        <label>
-                            <span class="required">*</span> Время на ответ (сек):
+                        <label for="timeLimit">
+                            <span class="required">*</span> Время на ответ (сек)
                         </label>
                         <input type="number"
                                id="timeLimit"
                                name="timeLimit"
                                th:value="${timeLimit}"
-                               min="10"
-                               max="300"
+                               min="1"
+                               inputmode="numeric"
+                               pattern="[1-9][0-9]*"
                                required>
                     </div>
-                </div>
+                </section>
 
-                <div class="form-group quiz-type-section">
-                    <label>
-                        <span class="required">*</span> Настройки квиза:
-                    </label>
+                <section class="form-card">
+                    <h2 class="form-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+                        Параметры квиза
+                    </h2>
 
                     <div class="type-category">
-                        <span class="type-category-label">1. Видимость:</span>
+                        <span class="type-category-label">1. Видимость</span>
                         <div class="radio-group">
                             <div class="radio-option">
-                                <input type="radio"
-                                       id="public"
-                                       name="visibility"
-                                       value="public"
-                                       th:checked="${isPublic == true}">
-                                <label for="public">Публичный</label>
+                                <input type="radio" id="public" name="visibility" value="public" th:checked="${isPublic == true}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 0 20"/><path d="M12 2a15.3 15.3 0 0 0 0 20"/></svg>
+                                <span class="radio-copy"><label for="public">Публичный</label><small>Доступен всем пользователям</small></span>
                             </div>
                             <div class="radio-option">
-                                <input type="radio"
-                                       id="private"
-                                       name="visibility"
-                                       value="private"
-                                       th:checked="${isPublic == false}">
-                                <label for="private">Приватный</label>
+                                <input type="radio" id="private" name="visibility" value="private" th:checked="${isPublic == false}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <span class="radio-copy"><label for="private">Приватный</label><small>Виден только вам</small></span>
                             </div>
                         </div>
                     </div>
 
                     <div class="type-category">
-                        <span class="type-category-label">2. Тип содержимого:</span>
+                        <span class="type-category-label">2. Набор вопросов</span>
                         <div class="radio-group">
                             <div class="radio-option">
-                                <input type="radio"
-                                       id="static"
-                                       name="contentType"
-                                       value="static"
-                                       th:checked="${isStatic == true}">
-                                <label for="static">Статичный</label>
+                                <input type="radio" id="static" name="questionSetType" value="static" th:checked="${isStatic == true}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                                <span class="radio-copy"><label for="static">Фиксированный</label><small>Один и тот же набор вопросов</small></span>
                             </div>
                             <div class="radio-option">
-                                <input type="radio"
-                                       id="updatable"
-                                       name="contentType"
-                                       value="updatable"
-                                       th:checked="${isStatic == false}">
-                                <label for="updatable">Обновляемый</label>
+                                <input type="radio" id="random" name="questionSetType" value="random" th:checked="${isStatic == false}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
+                                <span class="radio-copy"><label for="random">Случайный</label><small>Случайные вопросы из базы</small></span>
                             </div>
                         </div>
                     </div>
-
-                    <!-- defaultQuestionType-->
-                    <div class="type-category">
-                        <span class="type-category-label">3. Тип вопросов:</span>
-                        <div class="radio-group">
-                            <div class="radio-option">
-                                <input type="radio" id="editDefSingle" name="defaultQuestionType" value="SINGLE_CHOICE"
-                                       th:checked="${quiz.defaultQuestionType == null or quiz.defaultQuestionType.name() == 'SINGLE_CHOICE'}">
-                                <label for="editDefSingle">Одиночный выбор</label>
-                            </div>
-                            <div class="radio-option">
-                                <input type="radio" id="editDefMulti" name="defaultQuestionType" value="MULTIPLE_CHOICE"
-                                       th:checked="${quiz.defaultQuestionType != null and quiz.defaultQuestionType.name() == 'MULTIPLE_CHOICE'}">
-                                <label for="editDefMulti">Множественный выбор</label>
-                            </div>
-                            <div class="radio-option">
-                                <input type="radio" id="editHundredToOne" name="defaultQuestionType" value="HUNDRED_TO_ONE"
-                                       th:checked="${quiz.defaultQuestionType != null and quiz.defaultQuestionType.name() == 'HUNDRED_TO_ONE'}">
-                                <label for="editHundredToOne">100 к 1</label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                </section>
 
                 <div class="button-group">
                     <button type="button" class="cancel-btn" onclick="goBack()">
                         Отмена
-                    </button>
-                    <button type="button" class="delete-btn" onclick="deleteQuiz()">
-                        Удалить квиз
                     </button>
                     <button type="submit" class="submit-btn">
                         Сохранить изменения
@@ -541,6 +535,49 @@
         return null;
     }
 
+    function sanitizePositiveIntegerInput(input) {
+        input.value = input.value
+            .replace(/\D/g, '')
+            .replace(/^0+/, '');
+    }
+
+    function readPositiveInteger(inputId, label) {
+        const input = document.getElementById(inputId);
+        sanitizePositiveIntegerInput(input);
+        const value = Number(input.value);
+        if (!Number.isInteger(value) || value < 1) {
+            throw new Error(label + ' должно быть целым числом больше 0');
+        }
+        return value;
+    }
+
+    document.querySelectorAll('.radio-option').forEach(function(option) {
+        option.addEventListener('click', function() {
+            const input = option.querySelector('input[type="radio"]');
+            if (input) {
+                input.checked = true;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    });
+
+    document.querySelectorAll('#timeLimit').forEach(function(input) {
+        input.addEventListener('beforeinput', function(event) {
+            if (event.data && /\D/.test(event.data)) {
+                event.preventDefault();
+            }
+        });
+        input.addEventListener('input', function() {
+            sanitizePositiveIntegerInput(input);
+        });
+        input.addEventListener('paste', function(event) {
+            event.preventDefault();
+            const text = (event.clipboardData || window.clipboardData).getData('text');
+            input.value = text;
+            sanitizePositiveIntegerInput(input);
+        });
+    });
+
     /**
      * Обработка отправки формы редактирования квиза.
      * Собирает данные формы, валидирует их и отправляет на сервер через REST API.
@@ -560,17 +597,27 @@
             return;
         }
 
-        // Собираем данные формы в объект для отправки
+        let timeLimit;
+        const quizName = formData.get('name').trim();
+        if (quizName.length < 3) {
+            alert('Название квиза должно содержать минимум 3 символа');
+            return;
+        }
+
+        try {
+            timeLimit = readPositiveInteger('timeLimit', 'Время на ответ');
+        } catch (error) {
+            alert(error.message);
+            return;
+        }
+
         const quizData = {
             quizId: quizId,
             userId: userId,
-            name: formData.get('name').trim(),
-            prompt: formData.get('description').trim(), // description -> prompt для соответствия DTO
-            questionNumber: parseInt(formData.get('questionNumber')),
-            timeLimit: parseInt(formData.get('timeLimit')),
+            name: quizName,
+            timeLimit: timeLimit,
             isPrivate: formData.get('visibility') === 'private',
-            isStatic: formData.get('contentType') === 'static',
-            defaultQuestionType: formData.get('defaultQuestionType')
+            isStatic: formData.get('questionSetType') === 'static'
         };
 
         try {
@@ -611,12 +658,7 @@
                     errorText = `Ошибка ${response.status}: ${response.statusText}`;
                 }
                 
-                // Проверяем, является ли ошибка связанной с неэтичным промптом
-                if (errorText.includes('неэтичн') || errorText.includes('неэтичными')) {
-                    alert('Данные для создания квиза являются неэтичными');
-                } else {
-                    alert('Ошибка при обновлении квиза: ' + errorText);
-                }
+                alert('Ошибка при обновлении квиза: ' + errorText);
             }
         } catch (error) {
 
@@ -626,80 +668,7 @@
     }
 
 
-    async function deleteQuiz() {
-
-        if (!confirm('Вы уверены, что хотите удалить этот квиз? Это действие нельзя отменить.')) {
-            return;
-        }
-
-        try {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                alert('Вы не авторизованы');
-                return;
-            }
-
-
-            const response = await fetch('/api/quizzes/' + getQuizId(), {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({
-                    quizId: parseInt(getQuizId()),
-                    userId: parseInt(getCurrentUserId())
-                })
-            });
-
-            if (response.ok) {
-                alert('Квиз удален');
-                window.location.href = '/my-quizzes';
-            } else {
-                const error = await response.json().catch(() => ({}));
-                const errorMessage = error.message || error.error ||
-                                   `Ошибка ${response.status}: ${response.statusText}`;
-                alert('Ошибка при удалении квиза: ' + errorMessage);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            alert('Ошибка сети. Проверьте подключение к интернету.');
-        }
-    }
-
-    /**
-     * Обновление текста метки после выбора файла.
-     * Показывает имя загруженного файла вместо стандартного текста.
-     *
-     * @param {string} fileName - имя выбранного файла
-     */
-    function updateFileLabel(fileName) {
-        const label = document.getElementById('fileLabel');
-        label.textContent = 'Файл загружен: ' + fileName;
-    }
-    const fileInput = document.getElementById('quizMaterial');
-
-
-    /**
-     * Обработчик изменения файла через стандартный выбор.
-     * Срабатывает при клике на "Выбрать файл" в диалоге.
-     */
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            updateFileLabel(e.target.files[0].name);
-        } else {
-            // Если файл удален, возвращаем исходный текст
-            const label = document.getElementById('fileLabel');
-            label.textContent = 'Добавить новый материал (.pdf, .txt, .doc, .docx)';
-            label.style.color = '#666';
-            label.style.fontWeight = 'normal';
-        }
-    });
 </script>
 <script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>
-
-
-
-
