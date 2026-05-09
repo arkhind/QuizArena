@@ -76,8 +76,8 @@
         }
 
         .container {
-            max-width: 1000px;
-            margin: 0 auto;
+            max-width: none;
+            width: 100%;
         }
 
         .header {
@@ -110,7 +110,7 @@
         .search-box {
             display: flex;
             gap: 10px;
-            max-width: 500px;
+            max-width: 620px;
             margin: 0 auto;
         }
 
@@ -161,8 +161,8 @@
             background: #f8f9fa;
             border: 2px solid #e9ecef;
             border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
             cursor: pointer;
             transition: all 0.3s;
         }
@@ -226,7 +226,8 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
+    <link rel="stylesheet" href="/css/theme.css?v=8" onerror="this.onerror=null;this.href='../static/css/theme.css?v=8';">
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body data-active-nav="home">
 <div th:replace='~{fragments/sidebar :: sidebar}'></div>
@@ -246,30 +247,73 @@
         </section>
 
         <section class="public-quizzes">
-            <h2>Публичные Квизы</h2>
+            <div class="section-toolbar">
+                <h2>Публичные Квизы</h2>
+                <form class="sort-form" id="sortForm" method="get" action="/home">
+                    <input type="hidden" name="search" id="sortSearchInput" th:value="${search}">
+                    <input type="hidden" name="page" value="0">
+                    <input type="hidden" name="ascending" id="ascendingInput" th:value="${ascending}">
+                    <label class="sort-select-wrap">
+                        <i data-lucide="list-filter" class="sort-filter-icon"></i>
+                        <select class="sort-select" name="sortBy" onchange="submitSortForm()">
+                            <option value="created" th:selected="${sortBy == 'created'}">Дата создания</option>
+                            <option value="completions" th:selected="${sortBy == 'completions'}">Прохождения</option>
+                            <option value="questions" th:selected="${sortBy == 'questions'}">Вопросы</option>
+                        </select>
+                    </label>
+                    <button class="sort-direction-btn" type="button" onclick="toggleSortDirection()"
+                            th:title="${ascending ? 'По возрастанию' : 'По убыванию'}">
+                        <i th:attr="data-lucide=${ascending ? 'arrow-up-narrow-wide' : 'arrow-down-wide-narrow'}"></i>
+                    </button>
+                </form>
+            </div>
             <ul class="quiz-list" th:if="${quizzes != null and !quizzes.isEmpty()}">
                 <li class="quiz-item" th:each="quiz : ${quizzes}" th:onclick="'goToQuiz(' + ${quiz.id} + ')'">
-                    <div class="quiz-name" th:text="${quiz.name}">Название квиза</div>
-                    <div class="quiz-meta">
-                        <span th:text="'Автор: ' + ${quiz.author}">Автор</span>
-                        <span th:text="'Вопросов: ' + ${quiz.questionCount}">Вопросов</span>
-                        <span th:if="${quiz.timePerQuestion != null and quiz.timePerQuestion > 0}" 
-                              th:text="'Время: ' + ${quiz.timePerQuestion} + ' сек'">Время</span>
-                        <span th:if="${quiz.timePerQuestion == null or quiz.timePerQuestion == 0}">Время: не ограничено</span>
+                    <div class="quiz-card-main">
+                        <div class="quiz-name" th:text="${quiz.name}">Название квиза</div>
+                        <div class="quiz-meta">
+                            <span th:text="'Автор: ' + ${quiz.author}">Автор</span>
+                            <span th:text="'Вопросов: ' + ${quiz.questionCount}">Вопросов</span>
+                            <span th:if="${quiz.timePerQuestion != null and quiz.timePerQuestion > 0}" 
+                                  th:text="'Время: ' + ${quiz.timePerQuestion} + ' сек'">Время</span>
+                            <span th:if="${quiz.timePerQuestion == null or quiz.timePerQuestion == 0}">Время: не ограничено</span>
+                        </div>
+                    </div>
+                    <div class="quiz-attempts" aria-label="Количество прохождений">
+                        <i data-lucide="users" class="quiz-attempts-icon"></i>
+                        <span th:text="${quiz.completionCount != null ? quiz.completionCount : 0} + ' прохождений'">0 прохождений</span>
                     </div>
                 </li>
             </ul>
-            <div class="pagination" th:if="${totalPages > 1}">
-                <button class="page-btn" th:each="page : ${#numbers.sequence(1, totalPages)}"
-                        th:classappend="${page == currentPage + 1 ? 'active' : ''}"
-                        th:onclick="'goToPage(' + ${page - 1} + ')'"
-                        th:text="${page}">1</button>
+            <div class="pagination" th:if="${totalElements != null and totalElements > 0}">
+                <div class="pagination-summary"
+                     th:text="'Показано ' + ${shownFrom} + '–' + ${shownTo} + ' из ' + ${totalElements} + ' ' + ${pageItemLabel}">
+                    Показано 1–5 из 10 квизов
+                </div>
+                <div class="pagination-controls" th:if="${totalPages > 1}">
+                    <span class="page-btn disabled" th:if="${currentPage == 0}" aria-disabled="true">← Назад</span>
+                    <button class="page-btn" th:if="${currentPage > 0}"
+                            th:onclick="'goToPage(' + ${currentPage - 1} + ')'">← Назад</button>
+                    <button class="page-btn" th:each="page : ${#numbers.sequence(1, totalPages)}"
+                            th:classappend="${page == currentPage + 1 ? 'active' : ''}"
+                            th:onclick="'goToPage(' + ${page - 1} + ')'"
+                            th:text="${page}">1</button>
+                    <button class="page-btn" th:if="${currentPage + 1 < totalPages}"
+                            th:onclick="'goToPage(' + ${currentPage + 1} + ')'">Вперёд →</button>
+                    <span class="page-btn disabled" th:if="${currentPage + 1 >= totalPages}" aria-disabled="true">Вперёд →</span>
+                </div>
             </div>
         </section>
     </div>
 </div>
 
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+    });
+
     function goToProfile() {
         window.location.href = '/profile';
     }
@@ -280,12 +324,32 @@
 
     function performSearch() {
         const searchTerm = document.getElementById('searchInput').value;
-        window.location.href = '/home?search=' + encodeURIComponent(searchTerm);
+        const sortBy = document.querySelector('.sort-select').value;
+        const ascending = document.getElementById('ascendingInput').value;
+        window.location.href = '/home?search=' + encodeURIComponent(searchTerm)
+            + '&sortBy=' + encodeURIComponent(sortBy)
+            + '&ascending=' + encodeURIComponent(ascending);
     }
 
     function goToPage(page) {
         const searchTerm = document.getElementById('searchInput').value;
-        window.location.href = '/home?search=' + encodeURIComponent(searchTerm) + '&page=' + page;
+        const sortBy = document.querySelector('.sort-select').value;
+        const ascending = document.getElementById('ascendingInput').value;
+        window.location.href = '/home?search=' + encodeURIComponent(searchTerm)
+            + '&page=' + page
+            + '&sortBy=' + encodeURIComponent(sortBy)
+            + '&ascending=' + encodeURIComponent(ascending);
+    }
+
+    function toggleSortDirection() {
+        const input = document.getElementById('ascendingInput');
+        input.value = input.value === 'true' ? 'false' : 'true';
+        submitSortForm();
+    }
+
+    function submitSortForm() {
+        document.getElementById('sortSearchInput').value = document.getElementById('searchInput').value;
+        document.getElementById('sortForm').submit();
     }
 
     // Поиск по Enter
@@ -300,9 +364,3 @@
 <script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>
-
-
-
-
-
-

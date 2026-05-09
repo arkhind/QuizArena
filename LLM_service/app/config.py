@@ -18,7 +18,6 @@ class Settings(BaseSettings):
     )
     ethics_model_name: str = Field(default="gpt-4.1-mini", alias="ETHICS_MODEL")
     storage_dir: Path = Field(default=Path("storage"), alias="STORAGE_DIR")
-    max_upload_size_mb: int = Field(default=30, alias="MAX_UPLOAD_SIZE_MB")
     max_parallel_llm_calls: int = Field(
         default=3,
         validation_alias=AliasChoices("MAX_PARALLEL_LLM_CALLS", "MAX_PARALLEL_REQUESTS"),
@@ -26,7 +25,6 @@ class Settings(BaseSettings):
     )
     worker_count: int = Field(default=2, alias="WORKER_COUNT")
     request_timeout_seconds: int = Field(default=180, alias="REQUEST_TIMEOUT_SECONDS")
-    allow_non_pdf_files: bool = Field(default=False, alias="ALLOW_NON_PDF_FILES")
     enable_reasoning: bool = Field(default=False, alias="ENABLE_REASONING")
     reasoning_effort: str = Field(default="medium", alias="REASONING_EFFORT")
     force_json_response: bool = Field(default=True, alias="FORCE_JSON_RESPONSE")
@@ -37,10 +35,6 @@ class Settings(BaseSettings):
         extra="ignore",
         populate_by_name=True,
     )
-
-    @property
-    def max_upload_size_bytes(self) -> int:
-        return self.max_upload_size_mb * 1024 * 1024
 
     @property
     def resolved_storage_dir(self) -> Path:

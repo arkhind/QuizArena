@@ -6,8 +6,6 @@ import org.example.dto.ml.MlJobStateDTO;
 import org.example.dto.ml.MlQuestionDTO;
 import org.example.metrics.MetricsService;
 import org.example.model.QuestionType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -18,16 +16,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
 public class FastApiClient {
-    private static final Logger logger = LoggerFactory.getLogger(FastApiClient.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String DEFAULT_TOPIC = "\u0443\u0447\u0435\u0431\u043d\u044b\u0439 \u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b";
 
@@ -60,7 +53,7 @@ public class FastApiClient {
                 .build();
 
         long ethicsStart = System.nanoTime();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         metricsService.getFastApiEthicsTimer().record(System.nanoTime() - ethicsStart, TimeUnit.NANOSECONDS);
 
         if (response.statusCode() == 404) {
@@ -98,7 +91,7 @@ public class FastApiClient {
                 .build();
 
         long generateStart = System.nanoTime();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         metricsService.getFastApiGenerateTimer().record(System.nanoTime() - generateStart, TimeUnit.NANOSECONDS);
 
         handleGenerationError(response);
@@ -108,20 +101,18 @@ public class FastApiClient {
     public MlJobStateDTO startGenerationJob(
             String prompt,
             int numberOfQuestions,
-            QuestionType preferredQuestionType,
-            List<Path> materialFiles
+            QuestionType preferredQuestionType
     ) throws IOException, InterruptedException, UnethicalPromptException {
-        List<Path> files = materialFiles != null ? materialFiles : List.of();
-        logger.info("Sending quiz generation request to ML service with {} material file(s): {}", files.size(), files);
-        String boundary = "QuizArenaBoundary" + UUID.randomUUID();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(jobsGenerateUrl))
-                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
-                .POST(buildMultipartBody(boundary, prompt, numberOfQuestions, preferredQuestionType, files))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        buildGenerationFormBody(prompt, numberOfQuestions, preferredQuestionType),
+                        StandardCharsets.UTF_8))
                 .build();
 
         long generateStart = System.nanoTime();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         metricsService.getFastApiGenerateTimer().record(System.nanoTime() - generateStart, TimeUnit.NANOSECONDS);
 
         handleGenerationError(response);
@@ -132,14 +123,6 @@ public class FastApiClient {
         return job;
     }
 
-    public MlJobStateDTO startGenerationJob(
-            String prompt,
-            int numberOfQuestions,
-            QuestionType preferredQuestionType
-    ) throws IOException, InterruptedException, UnethicalPromptException {
-        return startGenerationJob(prompt, numberOfQuestions, preferredQuestionType, List.of());
-    }
-
     public MlJobStateDTO getGenerationJob(String mlJobId) throws IOException, InterruptedException {
         String encodedJobId = URLEncoder.encode(mlJobId, StandardCharsets.UTF_8);
         HttpRequest request = HttpRequest.newBuilder()
@@ -148,7 +131,7 @@ public class FastApiClient {
                 .build();
 
         long generateStart = System.nanoTime();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         metricsService.getFastApiGenerateTimer().record(System.nanoTime() - generateStart, TimeUnit.NANOSECONDS);
 
         if (response.statusCode() == 404) {
@@ -190,48 +173,6 @@ public class FastApiClient {
         return "topic=" + URLEncoder.encode(normalizedPrompt, StandardCharsets.UTF_8)
                 + "&number=" + numberOfQuestions
                 + "&question_types=" + URLEncoder.encode(questionTypes, StandardCharsets.UTF_8);
-    }
-
-    private HttpRequest.BodyPublisher buildMultipartBody(
-            String boundary,
-            String prompt,
-            int numberOfQuestions,
-            QuestionType preferredQuestionType,
-            List<Path> materialFiles
-    ) throws IOException {
-        List<byte[]> byteArrays = new ArrayList<>();
-        addFormField(byteArrays, boundary, "topic", normalizeTopic(prompt));
-        addFormField(byteArrays, boundary, "number", String.valueOf(numberOfQuestions));
-        addFormField(byteArrays, boundary, "question_types", mapQuestionType(preferredQuestionType));
-
-        for (Path file : materialFiles) {
-            if (file == null || !Files.isRegularFile(file)) {
-                continue;
-            }
-            String filename = file.getFileName().toString();
-            String contentType = Files.probeContentType(file);
-            if (contentType == null || contentType.isBlank()) {
-                contentType = "application/octet-stream";
-            }
-            byteArrays.add(("--" + boundary + "\r\n"
-                    + "Content-Disposition: form-data; name=\"files\"; filename=\"" + escapeMultipart(filename) + "\"\r\n"
-                    + "Content-Type: " + contentType + "\r\n\r\n").getBytes(StandardCharsets.UTF_8));
-            byteArrays.add(Files.readAllBytes(file));
-            byteArrays.add("\r\n".getBytes(StandardCharsets.UTF_8));
-        }
-
-        byteArrays.add(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
-        return HttpRequest.BodyPublishers.ofByteArrays(byteArrays);
-    }
-
-    private void addFormField(List<byte[]> byteArrays, String boundary, String name, String value) {
-        byteArrays.add(("--" + boundary + "\r\n"
-                + "Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n"
-                + value + "\r\n").getBytes(StandardCharsets.UTF_8));
-    }
-
-    private String escapeMultipart(String value) {
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private String normalizeTopic(String prompt) {

@@ -78,33 +78,18 @@ def _topic_hint(request: GenerationRequest) -> str:
     return topic if _has_meaningful_text(topic) else DEFAULT_TOPIC
 
 
-def build_user_prompt(request: GenerationRequest, has_files: bool) -> str:
+def build_user_prompt(request: GenerationRequest) -> str:
     distribution = _distribution(request)
     topic = _topic_hint(request)
-    has_topic_hint = topic != DEFAULT_TOPIC
     type_rules = "\n".join(
         f"- {question_type.value}: {QUESTION_TYPE_RULES[question_type]} (количество: {count})"
         for question_type, count in distribution.items()
     )
 
-    if has_files:
-        focus_rule = (
-            f"Пользовательское уточнение: {topic}. Используй его только как фокус внутри материала."
-            if has_topic_hint
-            else "Пользователь не дал содержательного уточнения. Опирайся на учебный материал из файла."
-        )
-        file_rule = (
-            "Файлы переданы. Сгенерируй квиз именно по содержанию учебного материала из файлов. "
-            f"{focus_rule} "
-            "Если файл содержит только короткое название темы, сгенерируй предметные вопросы по этой теме, "
-            "но добавь предупреждение в warnings, что исходный материал был очень коротким. "
-            "Никогда не превращай пользовательское уточнение, служебные инструкции или формат ответа в тему вопроса."
-        )
-    else:
-        file_rule = (
-            f"Файлы не переданы. Сгенерируй предметный учебный квиз по теме: {topic}. "
-            "Не создавай вопросы про генерацию квиза, промпты или инструкции."
-        )
+    file_rule = (
+        f"Файлы не переданы. Сгенерируй предметный учебный квиз по теме: {topic}. "
+        "Не создавай вопросы про генерацию квиза, промпты или инструкции."
+    )
 
     parts = [
         f"Тема/фокус: {topic}",

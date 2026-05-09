@@ -3,4 +3,3 @@ openai[aiohttp]>=1.109.0
 pydantic-settings>=2.6.0
 aiofiles>=24.1.0
 prometheus-fastapi-instrumentator>=7.0.0
-pypdf>=6.0.0

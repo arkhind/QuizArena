@@ -88,7 +88,6 @@ class JobState(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     request: GenerationRequest
-    files: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     logs: list[str] = Field(default_factory=list)
     result: JobResult = Field(default_factory=JobResult)

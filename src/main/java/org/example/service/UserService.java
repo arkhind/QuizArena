@@ -171,7 +171,8 @@ public class UserService {
                 timePerQuestionSeconds,
                 !quiz.isPrivate(),
                 quiz.isStatic(),
-                toLocalDateTime(quiz.getCreatedAt())
+                toLocalDateTime(quiz.getCreatedAt()),
+                attemptRepository.countCompletedAttemptsByQuizId(quiz.getId())
         );
     }
 

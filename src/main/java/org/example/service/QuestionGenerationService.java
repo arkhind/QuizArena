@@ -395,8 +395,9 @@ public class QuestionGenerationService {
             QuestionType type = mapMlType(mq.type(), request.preferredQuestionType());
             List<MlQuestionOptionDTO> options = mq.options() != null ? mq.options() : List.of();
             List<String> correctIds = mq.correct_answers() != null ? mq.correct_answers() : List.of();
+            String explanation = mq.explanation() != null ? mq.explanation().trim() : "";
 
-            if (!isValidMlQuestion(type, options, correctIds)) {
+            if (!isValidMlQuestion(type, options, correctIds) || hasEncodingDamage(mq.question(), explanation, options)) {
                 metricsService.recordValidationFailed();
                 continue;
             }
@@ -407,7 +408,6 @@ public class QuestionGenerationService {
             question.setType(type);
             question.setGenerationSetId(questionSet.getId());
 
-            String explanation = mq.explanation() != null ? mq.explanation().trim() : "";
             question.setExplanation(explanation.isEmpty() ? "Explanation is missing" : explanation);
 
             question = questionRepository.save(question);
@@ -460,6 +460,21 @@ public class QuestionGenerationService {
             return optionCount >= 4 && correctCount >= 2;
         }
         return false;
+    }
+
+    private boolean hasEncodingDamage(String question, String explanation, List<MlQuestionOptionDTO> options) {
+        if (containsReplacementCharacter(question) || containsReplacementCharacter(explanation)) {
+            return true;
+        }
+        if (options == null) {
+            return false;
+        }
+        return options.stream()
+                .anyMatch(option -> option != null && containsReplacementCharacter(option.text()));
+    }
+
+    private boolean containsReplacementCharacter(String value) {
+        return value != null && value.indexOf('\uFFFD') >= 0;
     }
 
     private void saveAnswerOptions(Question question, List<MlQuestionOptionDTO> options, List<String> correctIds) {
