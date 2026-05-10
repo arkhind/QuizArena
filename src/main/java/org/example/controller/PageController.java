@@ -31,12 +31,32 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
 @Controller
 public class PageController {
     private static final int PAGE_SIZE = 5;
+
+    public record LeaderboardRow(
+            Integer position,
+            String username,
+            Integer points,
+            Integer accuracyPercent,
+            String formattedTime,
+            boolean currentUser
+    ) {}
+
+    public record SessionResultRow(
+            Integer position,
+            String username,
+            Integer points,
+            Integer correctAnswers,
+            String formattedTime,
+            boolean currentUser
+    ) {}
 
     private final ApiController apiController;
     private final QuizService quizService;
@@ -165,6 +185,15 @@ public class PageController {
         tokenCookie.setPath("/");
         tokenCookie.setMaxAge(0);
         response.addCookie(tokenCookie);
+    }
+
+    private String getRequestTarget(HttpServletRequest request) {
+        String target = request.getRequestURI();
+        String queryString = request.getQueryString();
+        if (queryString != null && !queryString.isBlank()) {
+            target += "?" + queryString;
+        }
+        return target;
     }
 
     private Optional<org.example.model.Quiz> findAccessibleQuiz(Long quizId, Long userId) {
@@ -575,14 +604,16 @@ public class PageController {
     @GetMapping("/multiplayer/join")
     public String joinMultiplayerPage(@RequestParam(required = false) String sessionId, 
                                       HttpServletRequest request,
+                                      HttpServletResponse response,
                                       Model model) {
-        model.addAttribute("sessionId", sessionId);
-        Long userId = jwtService.extractUserIdFromRequest(request);
-        if (userId != null) {
-            model.addAttribute("userId", userId);
-        } else {
-            model.addAttribute("userId", 0L);
+        Long userId = resolveCurrentUserId(request);
+        if (userId == null || userRepository.findById(userId).isEmpty()) {
+            clearAuthAndRedirectToLogin(response);
+            return "redirect:/login?next=" + URLEncoder.encode(getRequestTarget(request), StandardCharsets.UTF_8);
         }
+
+        model.addAttribute("sessionId", sessionId);
+        model.addAttribute("userId", userId);
         return "multiplayer-join";
     }
 
@@ -637,10 +668,14 @@ public class PageController {
                                  HttpServletResponse response,
                                  Model model) {
         Long userId = resolveCurrentUserId(request);
-        if (userId == null || userRepository.findById(userId).isEmpty()) {
+        Optional<org.example.model.User> currentUserOpt = userId != null
+                ? userRepository.findById(userId)
+                : Optional.empty();
+        if (userId == null || currentUserOpt.isEmpty()) {
             clearAuthAndRedirectToLogin(response);
             return "redirect:/login?logout=1";
         }
+        String currentUsername = currentUserOpt.get().getLogin();
 
         UserQuizAttempt attempt = attemptRepository.findById(attemptId).orElse(null);
         if (attempt == null || attempt.getUser() == null || !userId.equals(attempt.getUser().getId())) {
@@ -659,9 +694,13 @@ public class PageController {
         QuizResultDTO result = apiController.finishQuizAttempt(attemptId);
 
         String quizName = "Квиз";
+        Integer quizQuestionCount = result.totalQuestions();
         try {
             QuizDetailsDTO quiz = quizService.getQuiz(quizId, userId);
             quizName = quiz.name();
+            if (quiz.questionNumber() != null && quiz.questionNumber() > 0) {
+                quizQuestionCount = quiz.questionNumber();
+            }
         } catch (Exception e) {
             quizName = "Квиз";
         }
@@ -686,29 +725,101 @@ public class PageController {
         int outperformedPercent = 0;
         if (leaderboardSize > 0 && result.position() != null && result.position() > 0) {
             if (leaderboardSize == 1) {
-                outperformedPercent = 100;
+                outperformedPercent = 0;
             } else {
                 outperformedPercent = Math.min(100,
                         Math.max(0, ((leaderboardSize - result.position()) * 100) / (leaderboardSize - 1)));
             }
         }
 
+        List<LeaderboardRow> leaderboardRows = new java.util.ArrayList<>();
+        if (leaderboard != null && leaderboard.entries() != null) {
+            for (LeaderboardEntry entry : leaderboard.entries()) {
+                boolean currentUser = userPositionMatches(leaderboard.userPosition(), entry.position());
+                long entryTimeSpent = entry.timeSpent() != null ? Math.max(0L, entry.timeSpent()) : 0L;
+                leaderboardRows.add(new LeaderboardRow(
+                        entry.position(),
+                        entry.username(),
+                        entry.points() != null ? entry.points() : 0,
+                        entry.accuracyPercent() != null ? entry.accuracyPercent() : 0,
+                        formatDurationHms(entryTimeSpent),
+                        currentUser
+                ));
+            }
+        }
+
+        boolean multiplayerAttempt = attempt.getSessionId() != null && !attempt.getSessionId().isBlank();
+        String sessionId = multiplayerAttempt ? attempt.getSessionId() : null;
+        List<SessionResultRow> sessionResultRows = new java.util.ArrayList<>();
+        Integer sessionPosition = null;
+        if (multiplayerAttempt) {
+            try {
+                MultiplayerResultsDTO sessionResults = apiController.getMultiplayerResults(sessionId);
+                if (sessionResults != null && sessionResults.results() != null) {
+                    for (PlayerResult resultRow : sessionResults.results()) {
+                        boolean currentUser = currentUsername != null && currentUsername.equals(resultRow.username());
+                        if (currentUser) {
+                            sessionPosition = resultRow.position();
+                        }
+                        long rowTimeSpent = resultRow.timeSpent() != null ? Math.max(0L, resultRow.timeSpent()) : 0L;
+                        sessionResultRows.add(new SessionResultRow(
+                                resultRow.position(),
+                                resultRow.username(),
+                                resultRow.points() != null ? resultRow.points() : 0,
+                                resultRow.score() != null ? resultRow.score() : 0,
+                                formatDurationHms(rowTimeSpent),
+                                currentUser
+                        ));
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        UserQuizAttempt finishedAttempt = attemptRepository.findById(attemptId).orElse(attempt);
+        Integer accuracyPercent = finishedAttempt.getAccuracyPercent() != null ? finishedAttempt.getAccuracyPercent() : 0;
+        if (leaderboard != null && leaderboard.entries() != null && leaderboard.userPosition() != null) {
+            for (LeaderboardEntry entry : leaderboard.entries()) {
+                if (userPositionMatches(leaderboard.userPosition(), entry.position()) && entry.accuracyPercent() != null) {
+                    accuracyPercent = entry.accuracyPercent();
+                    break;
+                }
+            }
+        }
+
         model.addAttribute("score", result.score());
         model.addAttribute("points", result.points());
         model.addAttribute("correctAnswers", result.correctAnswers());
-        model.addAttribute("totalQuestions", result.totalQuestions());
+        model.addAttribute("totalQuestions", quizQuestionCount);
         model.addAttribute("position", result.position());
+        model.addAttribute("accuracyPercent", accuracyPercent);
         model.addAttribute("timeSpentSeconds", timeSpentSeconds);
         model.addAttribute("formattedTimeSpent", formattedTimeSpent);
         model.addAttribute("quizId", quizId);
         model.addAttribute("quizName", quizName);
         model.addAttribute("leaderboard", leaderboard);
+        model.addAttribute("leaderboardRows", leaderboardRows);
+        model.addAttribute("multiplayerAttempt", multiplayerAttempt);
+        model.addAttribute("sessionId", sessionId);
+        model.addAttribute("sessionResultRows", sessionResultRows);
+        model.addAttribute("sessionPosition", sessionPosition);
+        model.addAttribute("sessionSize", sessionResultRows.size());
+        model.addAttribute("currentUsername", currentUsername);
         model.addAttribute("userPosition", leaderboard != null ? leaderboard.userPosition() : null);
         model.addAttribute("leaderboardSize", leaderboardSize);
         model.addAttribute("outperformedPercent", outperformedPercent);
         model.addAttribute("userId", userId);
         model.addAttribute("activeAttemptId", activeAttempt != null ? activeAttempt.getId() : null);
         return "quiz-results";
+    }
+
+    private boolean userPositionMatches(Integer userPosition, Integer entryPosition) {
+        return userPosition != null && entryPosition != null && entryPosition.equals(userPosition);
+    }
+
+    private String formatDurationHms(long seconds) {
+        long safeSeconds = Math.max(0L, seconds);
+        return String.format("%02d:%02d:%02d", safeSeconds / 3600, (safeSeconds % 3600) / 60, safeSeconds % 60);
     }
 
     @GetMapping("/quiz/{quizId}/attempt")
@@ -741,7 +852,9 @@ public class PageController {
             model.addAttribute("totalQuestions", attemptResponse.totalQuestions());
             model.addAttribute("quizName", attemptResponse.quizName());
             model.addAttribute("quizId", attemptResponse.quizId());
-            model.addAttribute("defaultTimeLimit", attemptResponse.timeRemaining());
+            model.addAttribute("defaultTimeLimit", attemptResponse.currentQuestion() != null
+                    ? attemptResponse.currentQuestion().timeLimit()
+                    : attemptResponse.timeRemaining());
             model.addAttribute("currentQuestionDeadlineEpochMs", attemptResponse.currentQuestionDeadlineEpochMs());
             if (sessionId != null) {
                 model.addAttribute("sessionId", sessionId);
@@ -753,7 +866,6 @@ public class PageController {
                 try {
                     Long completedAttemptId = Long.parseLong(attemptIdStr);
                     if (sessionId != null && !sessionId.isEmpty()) {
-                        // Для мультиплеера сначала завершаем попытку, затем ведем на экран результатов сессии
                         return "redirect:/quiz/attempt/" + completedAttemptId + "/finish";
                     }
                     return "redirect:/quiz/attempt/" + completedAttemptId + "/finish";
@@ -854,51 +966,12 @@ public class PageController {
             clearAuthAndRedirectToLogin(response);
             return "redirect:/login?logout=1";
         }
-        try {
-            MultiplayerResultsDTO results = apiController.getMultiplayerResults(sessionId);
-            org.example.model.MultiplayerSession sessionEntity = multiplayerSessionRepository.findBySessionId(sessionId)
-                    .orElse(null);
-            Long quizId = sessionEntity != null && sessionEntity.getQuiz() != null
-                    ? sessionEntity.getQuiz().getId()
-                    : null;
-            List<UserQuizAttempt> allAttempts = attemptRepository.findBySessionIdWithUser(sessionId);
-            List<UserQuizAttempt> completedAttempts = allAttempts.stream()
-                    .filter(UserQuizAttempt::isCompleted)
-                    .collect(java.util.stream.Collectors.toList());
-            List<UserQuizAttempt> notCompletedAttempts = allAttempts.stream()
-                    .filter(a -> !a.isCompleted() && a.getUser() != null)
-                    .collect(java.util.stream.Collectors.toList());
-            
-            boolean allCompleted = completedAttempts.size() >= 2;
-            int totalParticipants = allAttempts.size();
-            int completedCount = completedAttempts.size();
-            
-            List<String> notCompletedUsernames = notCompletedAttempts.stream()
-                    .filter(a -> a.getUser() != null && a.getUser().getLogin() != null)
-                    .map(a -> a.getUser().getLogin())
-                    .collect(java.util.stream.Collectors.toList());
-            
-            model.addAttribute("results", results);
-            model.addAttribute("sessionId", sessionId);
-            model.addAttribute("userId", userId);
-            model.addAttribute("quizId", quizId);
-            model.addAttribute("quizName", results.quizName());
-            model.addAttribute("allCompleted", allCompleted);
-            model.addAttribute("totalParticipants", totalParticipants);
-            model.addAttribute("completedCount", completedCount);
-            model.addAttribute("notCompletedUsernames", notCompletedUsernames);
-            return "multiplayer-results";
-        } catch (IllegalArgumentException e) {
-            System.err.println("PageController: Ошибка при получении результатов мультиплеера: " + e.getMessage());
-            e.printStackTrace();
-            model.addAttribute("errorMessage", "Сессия не найдена");
-            return "redirect:/home";
-        } catch (Exception e) {
-            System.err.println("PageController: Неожиданная ошибка при получении результатов мультиплеера: " + e.getMessage());
-            e.printStackTrace();
-            model.addAttribute("errorMessage", "Внутренняя ошибка сервера: " + e.getMessage());
-            return "redirect:/home";
-        }
+
+        return attemptRepository.findBySessionIdWithUser(sessionId).stream()
+                .filter(attempt -> attempt.getUser() != null && userId.equals(attempt.getUser().getId()))
+                .findFirst()
+                .map(attempt -> "redirect:/quiz/attempt/" + attempt.getId() + "/finish")
+                .orElse("redirect:/home");
     }
 
     @GetMapping("/quiz/{quizId}/leaderboard")

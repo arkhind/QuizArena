@@ -36,30 +36,38 @@ public class UserService {
     private final UserQuizAttemptRepository attemptRepository;
     private final QuestionRepository questionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LeaderboardService leaderboardService;
 
     @Autowired
     public UserService(UserRepository userRepository,
                       QuizRepository quizRepository,
                       UserQuizAttemptRepository attemptRepository,
                       QuestionRepository questionRepository,
-                      PasswordEncoder passwordEncoder) {
+                      PasswordEncoder passwordEncoder,
+                      LeaderboardService leaderboardService) {
         this.userRepository = userRepository;
         this.quizRepository = quizRepository;
         this.attemptRepository = attemptRepository;
         this.questionRepository = questionRepository;
         this.passwordEncoder = passwordEncoder;
+        this.leaderboardService = leaderboardService;
     }
 
     public UserProfileDTO updateUserProfile(UpdateProfileRequest request) {
         User user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
-        if (request.newUsername() != null && !request.newUsername().isEmpty()) {
-            if (userRepository.existsByLogin(request.newUsername()) && 
-                !request.newUsername().equals(user.getLogin())) {
+        boolean usernameChanged = false;
+        if (request.newUsername() != null && !request.newUsername().trim().isEmpty()) {
+            String newUsername = request.newUsername().trim();
+            if (userRepository.existsByLogin(newUsername) &&
+                !newUsername.equals(user.getLogin())) {
                 throw new IllegalArgumentException("Пользователь с таким логином уже существует");
             }
-            user.setLogin(request.newUsername());
+            if (!newUsername.equals(user.getLogin())) {
+                user.setLogin(newUsername);
+                usernameChanged = true;
+            }
         }
 
         if (request.newPassword() != null && !request.newPassword().isEmpty()) {
@@ -67,6 +75,9 @@ public class UserService {
         }
 
         user = userRepository.save(user);
+        if (usernameChanged) {
+            evictUserLeaderboardCaches(user.getId());
+        }
 
         long totalQuizzes = quizRepository.countByCreatedById(user.getId());
         long totalAttempts = attemptRepository.countByUserId(user.getId());
@@ -78,6 +89,12 @@ public class UserService {
                 (int) totalQuizzes,
                 (int) totalAttempts
         );
+    }
+
+    private void evictUserLeaderboardCaches(Long userId) {
+        for (Long quizId : attemptRepository.findCompletedQuizIdsByUserId(userId)) {
+            leaderboardService.evict(quizId);
+        }
     }
 
     public UserProfileDTO getUserProfile(Long userId) {

@@ -57,6 +57,10 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
 
     long countByUserId(Long userId);
 
+    @Query("SELECT DISTINCT u.quiz.id FROM UserQuizAttempt u WHERE u.user.id = :userId AND u.isCompleted = true " +
+           "AND u.quiz.id IS NOT NULL")
+    List<Long> findCompletedQuizIdsByUserId(@Param("userId") Long userId);
+    
     long countByIsCompletedFalse();
     
     List<UserQuizAttempt> findBySessionId(String sessionId);

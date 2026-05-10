@@ -8,6 +8,8 @@ import org.example.dto.response.generation.GenerationStatusResponse;
 import org.example.dto.common.LeaderboardEntry;
 import org.example.dto.common.QuizMaterial;
 import org.example.model.GenerationSet;
+import org.example.model.AnswerOption;
+import org.example.model.Question;
 import org.example.model.QuestionType;
 import org.example.model.Quiz;
 import org.example.model.User;
@@ -701,6 +703,16 @@ public class QuizService {
         User newCreator = userRepository.findById(newCreatorId)
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
+        if (originalQuiz.isPrivate()
+                && (originalQuiz.getCreatedBy() == null || !newCreatorId.equals(originalQuiz.getCreatedBy().getId()))) {
+            throw new SecurityException("Нет доступа к копированию приватного квиза");
+        }
+
+        List<Question> originalQuestions = questionRepository.findByQuizId(originalQuiz.getId());
+        if (originalQuestions.isEmpty()) {
+            throw new IllegalStateException("Квиз без вопросов нельзя скопировать");
+        }
+
         Quiz copiedQuiz = new Quiz();
         copiedQuiz.setName(originalQuiz.getName() + " (копия)");
         copiedQuiz.setPrompt(originalQuiz.getPrompt());
@@ -715,6 +727,29 @@ public class QuizService {
         copiedQuiz.setCreatedAt(Instant.now());
 
         copiedQuiz = quizRepository.save(copiedQuiz);
+
+        for (Question originalQuestion : originalQuestions) {
+            Question copiedQuestion = new Question();
+            copiedQuestion.setQuiz(copiedQuiz);
+            copiedQuestion.setText(originalQuestion.getText());
+            copiedQuestion.setType(originalQuestion.getType());
+            copiedQuestion.setExplanation(originalQuestion.getExplanation());
+            copiedQuestion.setImage(originalQuestion.getImage() != null
+                    ? java.util.Arrays.copyOf(originalQuestion.getImage(), originalQuestion.getImage().length)
+                    : null);
+            copiedQuestion.setGenerationSetId(null);
+            copiedQuestion = questionRepository.save(copiedQuestion);
+
+            List<AnswerOption> originalOptions = answerOptionRepository.findByQuestionId(originalQuestion.getId());
+            for (AnswerOption originalOption : originalOptions) {
+                AnswerOption copiedOption = new AnswerOption();
+                copiedOption.setQuestion(copiedQuestion);
+                copiedOption.setText(originalOption.getText());
+                copiedOption.setCorrect(originalOption.isCorrect());
+                copiedOption.setNominal(originalOption.getNominal());
+                answerOptionRepository.save(copiedOption);
+            }
+        }
 
         return new QuizResponseDTO(
                 copiedQuiz.getId(),
