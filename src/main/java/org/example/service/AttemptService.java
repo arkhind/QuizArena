@@ -531,8 +531,11 @@ public class AttemptService {
         if (attempt.getCurrentQuestionDeadlineAt() == null) {
             return getDefaultTimePerQuestionSeconds(attempt.getQuiz());
         }
-        long remaining = Duration.between(Instant.now(), attempt.getCurrentQuestionDeadlineAt()).getSeconds();
-        return (int) Math.max(0, remaining);
+        long remainingMillis = Duration.between(Instant.now(), attempt.getCurrentQuestionDeadlineAt()).toMillis();
+        if (remainingMillis <= 0) {
+            return 0;
+        }
+        return (int) Math.ceil(remainingMillis / 1000.0);
     }
 
     private int getDefaultTimePerQuestionSeconds(Quiz quiz) {
@@ -695,10 +698,10 @@ public class AttemptService {
         }
         UserQuizAttempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new IllegalArgumentException("Попытка не найдена"));
-        if (attempt.getBaseScore() != null) {
-            return attempt.getBaseScore().doubleValue();
+        if (attempt.getScore() != null) {
+            return attempt.getScore().doubleValue();
         }
-        return attempt.getScore() != null ? attempt.getScore().doubleValue() : 0.0;
+        return attempt.getBaseScore() != null ? attempt.getBaseScore().doubleValue() : 0.0;
     }
 
     private Long getLeaderboardScore(UserQuizAttempt attempt) {

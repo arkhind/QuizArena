@@ -276,6 +276,24 @@
         return null;
     }
 
+    function updateSidebarUserName(username) {
+        if (!username) {
+            return;
+        }
+
+        localStorage.setItem('username', username);
+
+        const nameEl = document.querySelector('[data-user-name]');
+        if (nameEl) {
+            nameEl.textContent = username;
+        }
+
+        const avatarEl = document.querySelector('[data-user-avatar]');
+        if (avatarEl) {
+            avatarEl.textContent = username.charAt(0).toUpperCase();
+        }
+    }
+
     // Обработчик отправки формы
     document.getElementById('editProfileForm').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -351,6 +369,7 @@
 
                 // Обновление текущего логина на странице
                 if (data.username) {
+                    updateSidebarUserName(data.username);
                     const currentUsernameSpan = document.querySelector('.current-value span');
                     if (currentUsernameSpan) {
                         currentUsernameSpan.textContent = data.username;

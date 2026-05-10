@@ -294,9 +294,13 @@
                         onclick="startMultiplayer(getQuizId())"
                         th:onclick="'startMultiplayer(' + ${quizzes[0].id} + ')'">Начать мультиплеер</button>
                 <button class="btn btn-secondary"
-                        th:if="${quizzes != null and !quizzes.isEmpty()}"
+                        th:if="${quizzes != null and !quizzes.isEmpty() and hasQuestions != null and hasQuestions}"
                         onclick="copyQuiz(getQuizId())"
                         th:onclick="'copyQuiz(' + ${quizzes[0].id} + ')'">Скопировать квиз</button>
+                <button class="btn btn-secondary"
+                        th:if="${quizzes != null and !quizzes.isEmpty() and (hasQuestions == null or !hasQuestions)}"
+                        disabled
+                        title="Квиз без вопросов нельзя скопировать">Скопировать квиз</button>
             </div>
         </div>
 
@@ -380,8 +384,47 @@
         form.submit();
     }
 
-    function copyQuiz(quizId) {
-        alert('Функция копирования квиза будет реализована позже');
+    async function copyQuiz(quizId) {
+        if (!quizId) {
+            alert('Не удалось определить квиз');
+            return;
+        }
+
+        const userId = localStorage.getItem('userId');
+        const token = localStorage.getItem('token');
+        if (!userId || !token) {
+            alert('Вы не авторизованы');
+            window.location.href = '/login';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/quizzes/' + encodeURIComponent(quizId) + '/copy?userId=' + encodeURIComponent(userId), {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text().catch(() => '');
+                alert(errorText || 'Не удалось скопировать квиз');
+                return;
+            }
+
+            const copiedQuiz = await response.json();
+            const copiedQuizId = copiedQuiz.id || copiedQuiz.quizId;
+            if (!copiedQuizId) {
+                alert('Квиз скопирован, но не удалось открыть страницу редактирования');
+                window.location.reload();
+                return;
+            }
+
+            window.location.href = '/quiz/' + copiedQuizId + '/edit';
+        } catch (error) {
+            console.error('copyQuiz failed', error);
+            alert('Ошибка сети при копировании квиза');
+        }
     }
 
     function startMultiplayer(quizId) {

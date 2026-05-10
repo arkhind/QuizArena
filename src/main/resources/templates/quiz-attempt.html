@@ -699,6 +699,14 @@
         let stakeTimeLeft = 60;
         const stakeTimerMs = 60000;
 
+        function readTimerSeconds(value, fallback) {
+            const parsed = parseInt(value, 10);
+            if (Number.isFinite(parsed) && parsed >= 0) {
+                return parsed;
+            }
+            return fallback;
+        }
+
         function renderLatexIn(element) {
             if (!element || !window.MathJax) {
                 return;
@@ -1449,7 +1457,7 @@
 
             const timeElement = document.getElementById('timeRemaining');
             if (timeElement) {
-                const defaultTime = parseInt(timeElement.dataset.defaultTime) || 60;
+                const defaultTime = readTimerSeconds(timeElement.dataset.defaultTime, 60);
                 timeRemaining = defaultTime;
                 timeElement.textContent = timeRemaining + ' сек';
                 
@@ -1465,6 +1473,9 @@
                 timeRemaining--;
                 if (timeRemaining <= 0) {
                     clearInterval(timerInterval);
+                    timerInterval = null;
+                    timeRemaining = 0;
+                    timeElement.textContent = '0 сек';
                     const remainingElement = document.getElementById('questionsRemaining');
                     if (remainingElement) {
                         questionsRemaining = parseInt(remainingElement.textContent) || 0;
@@ -1557,8 +1568,8 @@
             }
             
             if (timeElement) {
-                const defaultTime = parseInt(timeElement.dataset.defaultTime) || 60;
-                timeRemaining = defaultTime;
+                const defaultTime = readTimerSeconds(timeElement.dataset.defaultTime, 60);
+                timeRemaining = readTimerSeconds(timeElement.textContent, defaultTime);
                 timeElement.textContent = timeRemaining + ' сек';
                 startTimer();
             }
@@ -1569,6 +1580,7 @@
         });
 
         async function finishMultiplayerAttempt() {
+            const resultsUrl = `/quiz/attempt/${attemptId}/finish`;
             try {
                 const response = await fetch(`/api/attempts/${attemptId}/finish`, {
                     method: 'POST',
@@ -1579,15 +1591,15 @@
 
                 if (response.ok) {
                     setTimeout(() => {
-                        window.location.href = `/multiplayer/session/${sessionId}/results`;
+                        window.location.href = resultsUrl;
                     }, 1000);
                 } else {
                     console.error('Failed to finish attempt');
-                    window.location.href = `/multiplayer/session/${sessionId}/results`;
+                    window.location.href = resultsUrl;
                 }
             } catch (error) {
                 console.error('Error finishing attempt:', error);
-                window.location.href = `/multiplayer/session/${sessionId}/results`;
+                window.location.href = resultsUrl;
             }
         }
 

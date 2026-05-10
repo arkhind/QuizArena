@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -12,173 +12,428 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            color: #333;
-            display: flex;
-        }
-
-        .sidebar {
-            width: 250px;
-            background: white;
-            padding: 25px;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            height: 200px;
-            position: fixed;
-            left: 20px;
-            top: 20px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .nav-btn {
-            background: transparent;
-            color: #667eea;
-            border: 2px solid #667eea;
-            padding: 15px 25px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 18px;
-            width: 100%;
-            transition: all 0.3s;
-            margin-bottom: 15px;
-            text-align: center;
-            text-decoration: none;
-            display: block;
-        }
-
-        .nav-btn:hover {
-            background: #667eea;
-            color: white;
+            color: #1f2937;
         }
 
         .main-content {
-            flex: 1;
-            padding: 20px;
-            margin-left: 340px;
-            max-width: calc(100vw - 360px);
-        }
-
-        .container {
-            max-width: none;
             width: 100%;
         }
 
-        .header {
-            background: white;
-            border-radius: 10px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .header h1 {
-            color: #333;
-            font-size: 2.5em;
-            text-align: center;
-            margin: 0;
-        }
-
-        .content-section {
-            background: white;
-            border-radius: 10px;
-            padding: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        .score-display {
-            text-align: center;
-            padding: 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 15px;
-            color: white;
-            margin-bottom: 30px;
-        }
-
-        .score-value {
-            font-size: 4em;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .score-label {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
-
-        .results-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .result-item {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            border: 2px solid #e9ecef;
-            text-align: center;
-        }
-
-        .result-label {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 8px;
-        }
-
-        .result-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
-        }
-
-
-        .button-group {
+        .results-page {
             display: flex;
-            gap: 15px;
+            flex-direction: column;
+            gap: 14px;
+            width: 100%;
+        }
+
+        .result-title {
+            background: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.72);
+            border-radius: 8px;
+            box-shadow: 0 8px 22px rgba(31, 41, 55, 0.07);
+            padding: 16px 22px;
+            text-align: center;
+        }
+
+        .result-title h1 {
+            color: #2d2f36;
+            font-size: 26px;
+            line-height: 1.15;
+            font-weight: 800;
+        }
+
+        .results-panel {
+            background: #fff;
+            border: 1px solid rgba(229, 231, 235, 0.86);
+            border-radius: 8px;
+            box-shadow: 0 8px 22px rgba(31, 41, 55, 0.07);
+            padding: 22px;
+        }
+
+        .rank-hero {
+            min-height: 160px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #7c3aed 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
             justify-content: center;
-            margin-top: 30px;
-            flex-wrap: wrap;
+            text-align: center;
+            margin-bottom: 18px;
+            padding: 24px;
         }
 
-        button {
-            padding: 15px 40px;
-            border: none;
-            border-radius: 25px;
-            font-size: 16px;
-            cursor: pointer;
+        .rank-hero-inner {
+            display: grid;
+            grid-template-columns: auto auto;
+            gap: 16px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .rank-number {
+            font-size: 62px;
+            line-height: 0.9;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
+
+        .rank-copy {
+            text-align: left;
+        }
+
+        .rank-label {
+            font-size: 18px;
             font-weight: 500;
+            opacity: 0.9;
+            margin-bottom: 5px;
         }
 
-        .leaderboard-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .rank-position {
+            font-size: 25px;
+            line-height: 1.1;
+            font-weight: 800;
         }
 
-        .home-btn {
-            background: transparent;
+        .outperformed-pill {
+            grid-column: 1 / -1;
+            justify-self: center;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            padding: 7px 20px;
+            border-radius: 999px;
+            background: rgba(76, 29, 149, 0.34);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .outperformed-pill svg,
+        .action-btn svg,
+        .metric-icon svg {
+            width: 19px;
+            height: 19px;
+            flex: 0 0 auto;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .metric-card {
+            min-height: 96px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            align-items: center;
+            gap: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 2px 8px rgba(31, 41, 55, 0.04);
+        }
+
+        .metric-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+        }
+
+        .metric-icon.success {
+            color: #22c55e;
+            background: #dcfce7;
+        }
+
+        .metric-icon.info {
             color: #667eea;
-            border: 2px solid #667eea;
+            background: #eef2ff;
         }
 
-        @media (max-width: 900px) {
-            .sidebar {
-                position: relative;
-                width: 100%;
-                margin-bottom: 20px;
+        .metric-icon.time {
+            color: #7c3aed;
+            background: #f3e8ff;
+        }
+
+        .metric-icon.accuracy {
+            color: #f97316;
+            background: #ffedd5;
+        }
+
+        .metric-label {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.25;
+            margin-bottom: 4px;
+        }
+
+        .metric-value {
+            color: #27272a;
+            font-size: 24px;
+            line-height: 1.05;
+            font-weight: 800;
+        }
+
+        .metric-sub {
+            color: #374151;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .leaderboard-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(31, 41, 55, 0.04);
+        }
+
+        .top-tabs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 22px 16px;
+        }
+
+        .top-tab {
+            min-width: 150px;
+            min-height: 38px;
+            border: 1px solid #ddd6fe;
+            border-radius: 8px;
+            background: #fff;
+            color: #4338ca;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            padding: 8px 16px;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+
+        .top-tab.active {
+            background: #ede9fe;
+            border-color: #d8b4fe;
+            color: #5b21b6;
+        }
+
+        .top-panel[hidden] {
+            display: none;
+        }
+
+        .leaderboard-heading {
+            padding: 18px 22px 10px;
+        }
+
+        .leaderboard-heading h2 {
+            font-size: 22px;
+            line-height: 1.15;
+            color: #27272a;
+            margin-bottom: 4px;
+        }
+
+        .leaderboard-heading p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .leaderboard-scroll {
+            overflow-x: auto;
+        }
+
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 760px;
+        }
+
+        .leaderboard-table th {
+            height: 44px;
+            background: #fafafa;
+            color: #5b5685;
+            font-weight: 800;
+            text-align: left;
+            padding: 0 22px;
+            border-bottom: 1px solid #ececf2;
+        }
+
+        .leaderboard-table td {
+            height: 52px;
+            color: #1f2937;
+            font-size: 15px;
+            padding: 0 22px;
+            border-bottom: 1px solid #ececf2;
+        }
+
+        .leaderboard-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .leaderboard-table tbody tr.user-row {
+            background: #f0edff;
+        }
+
+        .place-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            color: #fff;
+            background: #a8b0c4;
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .place-badge.first {
+            background: #facc15;
+        }
+
+        .place-badge.second {
+            background: #a8b0c4;
+        }
+
+        .place-badge.third {
+            background: #c08457;
+        }
+
+        .player-cell {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+
+        .you-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 30px;
+            height: 22px;
+            padding: 0 8px;
+            border-radius: 999px;
+            background: #4f46e5;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .points-cell {
+            color: #4f46e5;
+            font-weight: 800;
+        }
+
+        .accuracy-cell {
+            color: #16a34a;
+            font-weight: 800;
+        }
+
+        .time-cell {
+            color: #374151;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6b7280;
+            padding: 42px 24px;
+        }
+
+        .actions-row {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-width: 210px;
+            min-height: 44px;
+            border-radius: 8px;
+            border: 1.5px solid transparent;
+            padding: 10px 18px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.12s ease, background 0.16s ease, color 0.16s ease, border 0.16s ease;
+        }
+
+        .action-btn.primary {
+            color: #fff;
+            background: linear-gradient(135deg, #667eea 0%, #7c3aed 100%);
+        }
+
+        .action-btn.secondary {
+            color: #667eea;
+            background: #fff;
+            border-color: #667eea;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        @media (max-width: 1180px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 760px) {
+            .results-panel {
+                padding: 14px;
             }
 
-            .main-content {
-                margin-left: 0;
-                max-width: 100%;
+            .result-title h1 {
+                font-size: 24px;
             }
 
-            .results-grid {
+            .rank-hero {
+                min-height: 180px;
+                padding: 20px 16px;
+            }
+
+            .rank-hero-inner {
                 grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .rank-copy {
+                text-align: center;
+            }
+
+            .rank-number {
+                font-size: 56px;
+            }
+
+            .outperformed-pill {
+                font-size: 16px;
+                padding: 10px 18px;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metric-card {
+                min-height: 88px;
+            }
+
+            .action-btn {
+                width: 100%;
+                min-width: 0;
             }
         }
     </style>
@@ -187,47 +442,211 @@
 <body>
 <div th:replace='~{fragments/sidebar :: sidebar}'></div>
 
-<div class="main-content">
-    <div class="container">
-        <header class="header">
+<main class="main-content">
+    <section class="results-page">
+        <header class="result-title">
             <h1 th:text="${quizName != null ? quizName : 'Результаты квиза'}">Результаты квиза</h1>
         </header>
 
-        <div class="content-section">
-            <div class="score-display">
-                <div class="score-value" th:text="${score != null ? score : 0}"></div>
-                <div class="score-label">Верных ответов</div>
-                <div class="position-badge" th:if="${position != null}">
-                    Место: <span th:text="${position}">-</span>
+        <div class="results-panel">
+            <section class="rank-hero">
+                <div class="rank-hero-inner">
+                    <div class="rank-number" th:text="${position != null and position > 0 ? position : '-'}">1</div>
+                    <div class="rank-copy">
+                        <div class="rank-label">Ваше место</div>
+                        <div class="rank-position">
+                            <span th:text="${position != null and position > 0 ? position : '-'}">1</span>
+                            <span> из </span>
+                            <span th:text="${leaderboardSize != null and leaderboardSize > 0 ? leaderboardSize : 0}">2</span>
+                        </div>
+                    </div>
+                    <div class="outperformed-pill">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                        <span th:text="'Вы обошли ' + ${outperformedPercent != null ? outperformedPercent : 0} + '% игроков'">Вы обошли 50% игроков</span>
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="results-grid">
-                <div class="result-item">
-                    <div class="result-label">Правильных ответов</div>
-                    <div class="result-value" th:text="${correctAnswers != null ? correctAnswers : 0}"></div>
-                    <div class="result-label" th:if="${totalQuestions != null}" th:text="'из ' + ${totalQuestions}">из </div>
-                </div>
-                <div class="result-item">
-                    <div class="result-label">Всего вопросов</div>
-                    <div class="result-value" th:text="${totalQuestions != null ? totalQuestions : 0}"></div>
-                </div>
-                <div class="result-item">
-                    <div class="result-label">Очки</div>
-                    <div class="result-value" th:text="${points != null ? points : 0}"></div>
-                </div>
-            </div>
+            <section class="metrics-grid" aria-label="Итоги прохождения">
+                <article class="metric-card">
+                    <span class="metric-icon success">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20 6 9 17l-5-5"/>
+                            <circle cx="12" cy="12" r="10"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="metric-label">Правильных ответов</div>
+                        <div class="metric-value" th:text="${correctAnswers != null ? correctAnswers : 0}">2</div>
+                        <div class="metric-sub" th:text="'из ' + ${totalQuestions != null ? totalQuestions : 0}">из 3</div>
+                    </div>
+                </article>
 
-            <div class="button-group">
-                <button class="leaderboard-btn" onclick="viewLeaderboard()">Таблица лидеров</button>
-                <button class="home-btn" onclick="goHome()">На главную</button>
+                <article class="metric-card">
+                    <span class="metric-icon info">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M9.09 9a3 3 0 1 1 5.82 1c0 2-3 2-3 4"/>
+                            <path d="M12 17h.01"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="metric-label">Всего вопросов</div>
+                        <div class="metric-value" th:text="${totalQuestions != null ? totalQuestions : 0}">3</div>
+                    </div>
+                </article>
+
+                <article class="metric-card">
+                    <span class="metric-icon time">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 6v6l4 2"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="metric-label">Время прохождения</div>
+                        <div class="metric-value" th:text="${formattedTimeSpent != null ? formattedTimeSpent : '00:00'}">00:11</div>
+                        <div class="metric-sub">мин:сек</div>
+                    </div>
+                </article>
+
+                <article class="metric-card">
+                    <span class="metric-icon accuracy">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M3 17l6-6 4 4 7-7"/>
+                            <path d="M14 8h6v6"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="metric-label">Точность</div>
+                        <div class="metric-value" th:text="${(accuracyPercent != null ? accuracyPercent : 0) + '%'}">66%</div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="leaderboard-card">
+                <div class="leaderboard-heading">
+                    <h2>Таблица лидеров</h2>
+                    <p th:text="${quizName != null ? quizName : ''}">Название квиза</p>
+                </div>
+
+                <div class="top-tabs" th:if="${multiplayerAttempt}">
+                    <button class="top-tab active" type="button" data-top-tab="session">Совместный режим</button>
+                    <button class="top-tab" type="button" data-top-tab="global">Общий топ</button>
+                </div>
+
+                <div class="top-panel" data-top-panel="session" th:if="${multiplayerAttempt}">
+                    <div class="leaderboard-scroll" id="sessionResultsTableWrap"
+                         th:style="${sessionResultRows == null or sessionResultRows.isEmpty()} ? 'display: none;' : ''">
+                        <table class="leaderboard-table">
+                            <thead>
+                            <tr>
+                                <th>Место</th>
+                                <th>Игрок</th>
+                                <th>Баллы</th>
+                                <th>Время</th>
+                            </tr>
+                            </thead>
+                            <tbody id="sessionResultsBody">
+                            <tr th:each="entry : ${sessionResultRows}"
+                                th:classappend="${entry.currentUser()} ? 'user-row' : ''">
+                                <td>
+                                    <span class="place-badge"
+                                          th:classappend="${entry.position() != null and entry.position() == 1} ? 'first' : (${entry.position() != null and entry.position() == 2} ? 'second' : (${entry.position() != null and entry.position() == 3} ? 'third' : ''))"
+                                          th:text="${entry.position()}">1</span>
+                                </td>
+                                <td>
+                                    <span class="player-cell">
+                                        <span th:text="${entry.username()}">игрок</span>
+                                        <span class="you-badge" th:if="${entry.currentUser()}">Вы</span>
+                                    </span>
+                                </td>
+                                <td class="points-cell" th:text="${entry.points()}">5</td>
+                                <td class="time-cell" th:text="${entry.formattedTime()}">00:01:58</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="empty-state" id="sessionResultsEmpty"
+                         th:style="${sessionResultRows != null and !sessionResultRows.isEmpty()} ? 'display: none;' : ''">
+                        <h3>Результаты сессии пока пусты</h3>
+                        <p>Дождитесь завершения участников</p>
+                    </div>
+                </div>
+
+                <div class="top-panel" data-top-panel="global" th:hidden="${multiplayerAttempt}">
+                    <div class="leaderboard-scroll" th:if="${leaderboardRows != null and !leaderboardRows.isEmpty()}">
+                        <table class="leaderboard-table">
+                            <thead>
+                            <tr>
+                                <th>Место</th>
+                                <th>Игрок</th>
+                                <th>Очки</th>
+                                <th>Точность</th>
+                                <th>Время</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="entry : ${leaderboardRows}"
+                                th:classappend="${entry.currentUser()} ? 'user-row' : ''">
+                                <td>
+                                    <span class="place-badge"
+                                          th:classappend="${entry.position() != null and entry.position() == 1} ? 'first' : (${entry.position() != null and entry.position() == 2} ? 'second' : (${entry.position() != null and entry.position() == 3} ? 'third' : ''))"
+                                          th:text="${entry.position()}">1</span>
+                                </td>
+                                <td>
+                                    <span class="player-cell">
+                                        <span th:text="${entry.username()}">игрок</span>
+                                        <span class="you-badge"
+                                              th:if="${entry.currentUser()}">Вы</span>
+                                    </span>
+                                </td>
+                                <td class="points-cell" th:text="${entry.points()}">5</td>
+                                <td class="accuracy-cell" th:text="${entry.accuracyPercent() + '%'}">100%</td>
+                                <td class="time-cell" th:text="${entry.formattedTime()}">00:01:58</td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="empty-state" th:if="${leaderboardRows == null or leaderboardRows.isEmpty()}">
+                        <h3>Таблица лидеров пуста</h3>
+                        <p>Ещё никто не прошёл этот квиз</p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="actions-row">
+                <button class="action-btn primary" type="button" onclick="retryQuiz()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                    </svg>
+                    <span>Пройти ещё раз</span>
+                </button>
+                <button class="action-btn secondary" type="button" onclick="returnToQuiz()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 14 4 9l5-5"/>
+                        <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
+                    </svg>
+                    <span>Вернуться к квизу</span>
+                </button>
             </div>
         </div>
-    </div>
-</div>
+    </section>
+</main>
 
 <script th:inline="javascript">
     const PAGE_QUIZ_ID = /*[[${quizId}]]*/ null;
+    const PAGE_SESSION_ID = /*[[${sessionId}]]*/ null;
+    const PAGE_IS_MULTIPLAYER = /*[[${multiplayerAttempt}]]*/ false;
+    const PAGE_CURRENT_USERNAME = /*[[${currentUsername}]]*/ null;
 
     function getQuizId() {
         if (PAGE_QUIZ_ID != null && PAGE_QUIZ_ID !== '') {
@@ -237,21 +656,112 @@
         return urlParams.get('quizId');
     }
 
-    function viewLeaderboard() {
+    function retryQuiz() {
         const quizId = getQuizId();
-        if (!quizId) {
-            window.location.href = '/quiz';
-            return;
-        }
-        window.location.href = '/quiz/' + quizId + '/leaderboard';
+        window.location.href = quizId ? '/quiz/' + quizId + '/attempt' : '/home';
     }
 
-    function goHome() {
-        window.location.href = '/home';
+    function returnToQuiz() {
+        const quizId = getQuizId();
+        window.location.href = quizId ? '/quiz/' + quizId : '/home';
+    }
+
+    document.querySelectorAll('[data-top-tab]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const target = button.getAttribute('data-top-tab');
+            document.querySelectorAll('[data-top-tab]').forEach(function (tab) {
+                tab.classList.toggle('active', tab === button);
+            });
+            document.querySelectorAll('[data-top-panel]').forEach(function (panel) {
+                panel.hidden = panel.getAttribute('data-top-panel') !== target;
+            });
+        });
+    });
+
+    function escapeHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function formatDurationHms(seconds) {
+        const safeSeconds = Math.max(0, Number(seconds || 0));
+        const hours = Math.floor(safeSeconds / 3600);
+        const minutes = Math.floor((safeSeconds % 3600) / 60);
+        const restSeconds = Math.floor(safeSeconds % 60);
+        return [hours, minutes, restSeconds]
+            .map(function (part) { return String(part).padStart(2, '0'); })
+            .join(':');
+    }
+
+    function placeClass(position) {
+        if (position === 1) return ' first';
+        if (position === 2) return ' second';
+        if (position === 3) return ' third';
+        return '';
+    }
+
+    function renderSessionResults(rows) {
+        const body = document.getElementById('sessionResultsBody');
+        const emptyState = document.getElementById('sessionResultsEmpty');
+        const tableWrap = document.getElementById('sessionResultsTableWrap');
+        if (!body) return;
+
+        if (!rows || rows.length === 0) {
+            body.innerHTML = '';
+            if (emptyState) emptyState.style.display = '';
+            if (tableWrap) tableWrap.style.display = 'none';
+            return;
+        }
+
+        if (emptyState) emptyState.style.display = 'none';
+        if (tableWrap) tableWrap.style.display = '';
+        body.innerHTML = rows.map(function (row) {
+            const position = Number(row.position || 0);
+            const username = row.username || 'игрок';
+            const isCurrentUser = PAGE_CURRENT_USERNAME && username === PAGE_CURRENT_USERNAME;
+            const points = row.points == null ? 0 : row.points;
+            const timeSpent = formatDurationHms(row.timeSpent);
+
+            return '' +
+                '<tr' + (isCurrentUser ? ' class="user-row"' : '') + '>' +
+                    '<td><span class="place-badge' + placeClass(position) + '">' + escapeHtml(position || '-') + '</span></td>' +
+                    '<td><span class="player-cell">' +
+                        '<span>' + escapeHtml(username) + '</span>' +
+                        (isCurrentUser ? '<span class="you-badge">Вы</span>' : '') +
+                    '</span></td>' +
+                    '<td class="points-cell">' + escapeHtml(points) + '</td>' +
+                    '<td class="time-cell">' + escapeHtml(timeSpent) + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    async function refreshSessionResults() {
+        if (!PAGE_IS_MULTIPLAYER || !PAGE_SESSION_ID) return;
+        try {
+            const response = await fetch('/api/multiplayer/sessions/' + encodeURIComponent(PAGE_SESSION_ID) + '/results', {
+                headers: {
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin',
+                cache: 'no-store'
+            });
+            if (!response.ok) return;
+            const payload = await response.json();
+            renderSessionResults(payload.results || []);
+        } catch (error) {
+            console.warn('Не удалось обновить результаты сессии', error);
+        }
+    }
+
+    if (PAGE_IS_MULTIPLAYER && PAGE_SESSION_ID) {
+        refreshSessionResults();
+        setInterval(refreshSessionResults, 2500);
     }
 </script>
 <script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>
-
-

@@ -107,6 +107,7 @@
         if (urlParams.get('logout') === '1') {
             localStorage.removeItem('token');
             localStorage.removeItem('userId');
+            localStorage.removeItem('username');
         }
     })();
 

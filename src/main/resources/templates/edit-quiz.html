@@ -233,6 +233,7 @@
             gap: 14px;
             min-height: 82px;
             transition: border-color 0.2s, background 0.2s;
+            min-width: 0;
         }
 
         .radio-option input[type="radio"] {
@@ -262,6 +263,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            min-width: 0;
         }
 
         .radio-option label {
@@ -270,12 +272,16 @@
             font-weight: 800;
             color: #0f172a;
             font-size: 16px;
+            line-height: 1.18;
+            overflow-wrap: anywhere;
         }
 
         .radio-option small {
             color: #64748b;
             font-size: 13px;
             font-weight: 700;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
         }
 
         .btn-small {
@@ -345,6 +351,26 @@
             background: #c82333;
         }
 
+        @media (max-width: 1280px) {
+            #editQuizForm {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .form-container {
+                padding: 24px;
+            }
+
+            .form-card {
+                padding: 18px;
+            }
+
+            .radio-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 900px) {
             .sidebar {
                 position: relative;
@@ -372,7 +398,7 @@
     </style>
     <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
 </head>
-<body>
+<body class="quiz-form-page" data-active-nav="my-quizzes">
 <div th:replace='~{fragments/sidebar :: sidebar}'></div>
 
 <div class="main-content">

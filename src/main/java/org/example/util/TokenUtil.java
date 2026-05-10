@@ -18,18 +18,35 @@ public final class TokenUtil {
     public static String extractToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            return authHeader.substring(7);
+            String token = normalizeToken(authHeader.substring(7));
+            if (token != null) {
+                return token;
+            }
         }
 
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
                 if ("authToken".equals(cookie.getName())) {
-                    return cookie.getValue();
+                    String token = normalizeToken(cookie.getValue());
+                    if (token != null) {
+                        return token;
+                    }
                 }
             }
         }
 
-        return request.getParameter("token");
+        return normalizeToken(request.getParameter("token"));
+    }
+
+    private static String normalizeToken(String token) {
+        if (token == null) {
+            return null;
+        }
+        String trimmed = token.trim();
+        if (trimmed.isEmpty() || "null".equalsIgnoreCase(trimmed) || "undefined".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
     }
 }

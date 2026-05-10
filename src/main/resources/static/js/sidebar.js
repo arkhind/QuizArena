@@ -2,6 +2,47 @@
  * Helper for the shared sidebar.
  */
 (function () {
+    function setSidebarUser(username) {
+        var displayName = username && username.trim().length > 0 ? username : 'Гость';
+        var avatar = document.querySelector('[data-user-avatar]');
+        var nameEl = document.querySelector('[data-user-name]');
+
+        if (avatar) {
+            var ch = displayName.charAt(0);
+            avatar.textContent = ch ? ch.toUpperCase() : '?';
+        }
+        if (nameEl) {
+            nameEl.textContent = displayName;
+        }
+    }
+
+    async function refreshUserName(userId) {
+        if (!userId) {
+            return;
+        }
+
+        try {
+            var headers = {};
+            var token = localStorage.getItem('token');
+            if (token) {
+                headers.Authorization = 'Bearer ' + token;
+            }
+            var response = await fetch('/api/users/' + encodeURIComponent(userId) + '/profile', { headers: headers });
+
+            if (!response.ok) {
+                return;
+            }
+
+            var profile = await response.json();
+            if (profile.username) {
+                localStorage.setItem('username', profile.username);
+                setSidebarUser(profile.username);
+            }
+        } catch (error) {
+            console.warn('Не удалось обновить имя пользователя в сайдбаре', error);
+        }
+    }
+
     function init() {
         var userId = localStorage.getItem('userId');
         var username = localStorage.getItem('username');
@@ -23,10 +64,6 @@
             }
         });
 
-        var displayName = username && username.trim().length > 0 ? username : 'Гость';
-        var avatar = document.querySelector('[data-user-avatar]');
-        var nameEl = document.querySelector('[data-user-name]');
-
         document.querySelectorAll('.user-card[data-nav="edit-profile"]').forEach(function (el) {
             el.setAttribute('aria-label', 'Профиль');
         });
@@ -39,13 +76,8 @@
             });
         });
 
-        if (avatar) {
-            var ch = displayName.charAt(0);
-            avatar.textContent = ch ? ch.toUpperCase() : '?';
-        }
-        if (nameEl) {
-            nameEl.textContent = displayName;
-        }
+        setSidebarUser(username);
+        refreshUserName(userId);
 
         var activeKey = document.body.getAttribute('data-active-nav');
         if (activeKey) {

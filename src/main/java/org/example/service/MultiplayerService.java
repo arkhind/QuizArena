@@ -529,7 +529,9 @@ public class MultiplayerService {
                     // Для незавершённых попыток attempt.score в БД ещё не проставлен
                     // (обновляется только на finish), поэтому тянем живой счёт из AttemptState,
                     // чтобы live-лидерборд учитывал баллы текущего матча и эффект «кота в мешке».
-                    long score = Math.round(attemptService.getCurrentScore(a.getId()));
+                    long score = a.isCompleted()
+                            ? getMultiplayerPoints(a)
+                            : Math.round(attemptService.getCurrentScore(a.getId()));
                     long timeSpent = 0L;
                     if (a.getStartTime() != null) {
                         Instant end = a.getFinishTime() != null ? a.getFinishTime() : Instant.now();
