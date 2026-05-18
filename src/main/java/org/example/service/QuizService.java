@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 public class QuizService {
     private static final String QUIZ_CACHE_KEY = "quiz:%d";
     private static final Duration QUIZ_CACHE_TTL = Duration.ofMinutes(30);
-    private static final int DEBUG_GENERATION_COUNT = 10;
+    private static final int FIXED_GENERATION_COUNT = 30;
     private static final String STATUS_READY = "READY";
     private static final String STATUS_FAILED = "FAILED";
 
@@ -144,7 +144,7 @@ public class QuizService {
 
         if (request.prompt() != null && !request.prompt().trim().isEmpty() && !hasFile) {
             try {
-                // Временно генерируем меньше вопросов для более стабильной отладки
+                // Генерируем фиксированное количество вопросов для заполнения базы
                 // questionNumber - это количество вопросов для сессии, а не для генерации
                 int questionCountForGeneration = resolveGenerationCount(request.questionNumber());
                 
@@ -166,7 +166,7 @@ public class QuizService {
                         request.prompt(),
                         request.materials(),
                         request.questionNumber(), // Количество вопросов для сессии
-                        questionCountForGeneration, // Временно генерируем 10 вопросов
+                        questionCountForGeneration, // Фиксированное количество вопросов для генерации
                         resolveDefaultQuestionType(quiz.getDefaultQuestionType())
                     );
                 
@@ -348,7 +348,7 @@ public class QuizService {
     }
 
     private int resolveGenerationCount(Integer requestedQuestionCount) {
-        return DEBUG_GENERATION_COUNT;
+        return FIXED_GENERATION_COUNT;
     }
 
     public boolean deleteQuiz(DeleteQuizRequest request) {
@@ -440,7 +440,7 @@ public class QuizService {
         // Если промпт изменился, перегенерируем вопросы
         if (promptChanged) {
             try {
-                // Временно генерируем меньше вопросов в базу данных при изменении промпта
+                // Генерируем фиксированное количество вопросов в базу данных при изменении промпта
                 // questionNumber - это количество вопросов для сессии, а не для генерации
                 int questionCountForGeneration = resolveGenerationCount(quiz.getQuestionNumber());
 
@@ -453,14 +453,14 @@ public class QuizService {
                 // Затем удаляем старые вопросы (каскадно удалятся и варианты ответов)
                 questionRepository.deleteByQuizId(request.quizId());
 
-                // Генерируем новые вопросы на основе нового промпта (временно 10 вопросов)
+                // Генерируем новые вопросы на основе нового промпта
                 org.example.dto.request.generation.QuestionGenerationRequest genRequest =
                         new org.example.dto.request.generation.QuestionGenerationRequest(
                                 request.quizId(),
                                 request.prompt(),
                                 null, // materials
                                 quiz.getQuestionNumber(), // Количество вопросов для сессии
-                                questionCountForGeneration, // Временно генерируем 10 вопросов
+                                questionCountForGeneration, // Фиксированное количество вопросов для генерации
                                 resolveDefaultQuestionType(quiz.getDefaultQuestionType())
                         );
                 questionGenerationService.generateQuizQuestionsKafka(genRequest);
