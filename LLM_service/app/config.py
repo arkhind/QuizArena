@@ -7,6 +7,9 @@ from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 class Settings(BaseSettings):
     app_name: str = Field(default="LLM Service", alias="APP_NAME")
     api_key: str = Field(default="", alias="OPENAI_API_KEY")
@@ -30,7 +33,7 @@ class Settings(BaseSettings):
     force_json_response: bool = Field(default=True, alias="FORCE_JSON_RESPONSE")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
         populate_by_name=True,
