@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Авторизация - QuizArena</title>
+    <title>Вход - QuizArena</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -71,10 +71,11 @@
             display: block;
         }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
 </head>
 <body>
 <div class="auth-box">
-    <h2>Авторизация</h2>
+    <h2>Вход</h2>
     <form id="loginForm">
         <div class="form-group">
             <input type="text" id="username" name="username" placeholder="Логин" required>
@@ -89,8 +90,26 @@
 </div>
 <script>
     function goToRegister() {
-        window.location.href = '/register';
+        const next = new URLSearchParams(window.location.search).get('next');
+        window.location.href = next ? '/register?next=' + encodeURIComponent(next) : '/register';
     }
+
+    function getSafeNextUrl() {
+        const next = new URLSearchParams(window.location.search).get('next');
+        if (!next || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) {
+            return '/home';
+        }
+        return next;
+    }
+
+    (function clearClientSessionIfNeeded() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('logout') === '1') {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userId');
+            localStorage.removeItem('username');
+        }
+    })();
 
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -120,8 +139,11 @@
                 if (data.userId) {
                     localStorage.setItem('userId', data.userId);
                 }
+                if (data.username) {
+                    localStorage.setItem('username', data.username);
+                }
 
-                window.location.href = '/home';
+                window.location.href = getSafeNextUrl();
             } else {
                 const error = await response.json();
                 errorMessage.textContent = error.message || 'Неверный логин или пароль';

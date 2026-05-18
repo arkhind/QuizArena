@@ -3,7 +3,6 @@ package org.example.model;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import java.time.Instant;
 
 /**
  * Модель для хранения ответов пользователей на вопросы квиза.
@@ -32,24 +31,18 @@ public class UserAnswer {
     @Column(name = "is_correct")
     private Boolean isCorrect; // null если не отвечен, false при таймауте
 
-    @Column(name = "answered_at")
-    private Instant answeredAt;
-
-    @Column(name = "time_spent_seconds")
-    private Integer timeSpentSeconds; // время, потраченное на ответ в секундах
+    @Column(name = "accuracy_ratio")
+    private Double accuracyRatio;
 
     public UserAnswer() {}
 
     public UserAnswer(Long id, UserQuizAttempt attempt, Question question, 
-                     AnswerOption selectedAnswer, Boolean isCorrect, 
-                     Instant answeredAt, Integer timeSpentSeconds) {
+                     AnswerOption selectedAnswer, Boolean isCorrect, Double accuracyRatio) {
         this.id = id;
         this.attempt = attempt;
         this.question = question;
         this.selectedAnswer = selectedAnswer;
         this.isCorrect = isCorrect;
-        this.answeredAt = answeredAt;
-        this.timeSpentSeconds = timeSpentSeconds;
+        this.accuracyRatio = accuracyRatio;
     }
 }
-

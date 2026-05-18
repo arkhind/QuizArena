@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -15,7 +15,27 @@
             font-family: 'Arial', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            color: #333;
+            padding: 0;
+            display: block;
+        }
+
+        .main-content {
+            flex: 1;
             padding: 20px;
+        }
+
+        .container {
+            max-width: none;
+            width: 100%;
+        }
+
+        .header {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -23,18 +43,55 @@
 
         .form-container {
             background: white;
-            border-radius: 15px;
+            border-radius: 10px;
             padding: 40px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            max-width: 700px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             width: 100%;
         }
 
-        h1 {
+        #createQuizForm {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+            gap: 24px;
+            align-items: stretch;
+        }
+
+        .form-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 24px;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+            min-width: 0;
+        }
+
+        .quiz-params-card {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            color: #0f172a;
+            font-size: 1.1rem;
+            font-weight: 800;
+        }
+
+        .form-card-title svg {
+            width: 22px;
+            height: 22px;
+            color: #4f46e5;
+            flex: 0 0 auto;
+        }
+
+        .header h1 {
             color: #333;
-            font-size: 2em;
-            margin-bottom: 30px;
+            font-size: 2.5em;
             text-align: center;
+            margin: 0;
         }
 
         .form-group {
@@ -79,73 +136,160 @@
             min-height: 120px;
         }
 
+        .prompt-wrap {
+            position: relative;
+        }
+
+        .prompt-counter {
+            position: absolute;
+            right: 12px;
+            bottom: 10px;
+            color: #8b95ad;
+            font-size: 12px;
+            pointer-events: none;
+        }
+
         .file-upload-section {
-            background: #f8f9fa;
-            border: 2px dashed #dee2e6;
+            background: linear-gradient(180deg, #fbfbff 0%, #fff 100%);
+            border: 2px dashed #6d5dfc;
             border-radius: 8px;
-            padding: 20px;
+            padding: 28px 20px;
             text-align: center;
             transition: all 0.3s;
             cursor: pointer;
         }
 
-        .file-upload-section:hover {
+        .file-upload-section:hover,
+        .file-upload-section.dragover {
             border-color: #667eea;
-            background: #f0f4ff;
+            background: #f7f5ff;
         }
 
         .file-upload-label {
-            display: block;
-            color: #666;
-            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: #0f172a;
+            margin-bottom: 0;
             cursor: pointer;
+            font-weight: 800;
         }
 
         .file-upload-icon {
-            font-size: 40px;
-            color: #667eea;
-            margin-bottom: 10px;
+            width: 42px;
+            height: 42px;
+            color: #4f46e5;
+            margin-bottom: 4px;
+        }
+
+        .file-upload-hint {
+            color: #7c86a3;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .file-upload-types {
+            color: #4f46e5;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .material-note {
+            margin-top: 10px;
+            color: #7c86a3;
+            font-size: 13px;
         }
 
         .quiz-type-section {
             margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
         }
 
         .type-category {
-            margin-bottom: 20px;
+            margin-bottom: 0;
         }
 
         .type-category-label {
             font-weight: bold;
             color: #555;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             display: block;
+            font-size: 14px;
         }
 
         .radio-group {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            flex-wrap: nowrap;
+        }
+
+        .question-type-group {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .radio-option {
             display: flex;
             align-items: center;
             cursor: pointer;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px 18px;
+            gap: 14px;
+            min-height: 82px;
+            transition: border-color 0.2s, background 0.2s;
+            min-width: 0;
         }
 
         .radio-option input[type="radio"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            cursor: pointer;
-            accent-color: #667eea;
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .radio-option:has(input[type="radio"]:checked) {
+            border-color: #4f46e5;
+            background: #f8f7ff;
+        }
+
+        .radio-option svg {
+            width: 22px;
+            height: 22px;
+            color: #64748b;
+            flex: 0 0 auto;
+        }
+
+        .radio-option:has(input[type="radio"]:checked) svg,
+        .radio-option:has(input[type="radio"]:checked) label {
+            color: #4f46e5;
+        }
+
+        .radio-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
         }
 
         .radio-option label {
             margin: 0;
             cursor: pointer;
-            font-weight: normal;
+            font-weight: 800;
+            color: #0f172a;
+            font-size: 16px;
+            line-height: 1.18;
+            overflow-wrap: anywhere;
+        }
+
+        .radio-option small {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
         }
 
         .number-inputs {
@@ -165,11 +309,38 @@
             }
         }
 
+        @media (max-width: 1280px) {
+            #createQuizForm {
+                grid-template-columns: 1fr;
+            }
+
+            .question-type-group {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 760px) {
+            .form-container {
+                padding: 24px;
+            }
+
+            .form-card {
+                padding: 18px;
+            }
+
+            .radio-group,
+            .question-type-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .button-group {
             display: flex;
             gap: 15px;
             margin-top: 35px;
             justify-content: center;
+            flex-wrap: wrap;
+            grid-column: 1 / -1;
         }
 
         button {
@@ -208,6 +379,7 @@
             font-size: 14px;
             margin-top: 5px;
             display: none;
+            grid-column: 1 / -1;
         }
 
         .error-message.show {
@@ -219,156 +391,288 @@
             font-size: 14px;
             margin-top: 10px;
         }
+
+        @media (max-width: 900px) {
+            .main-content {
+                margin-left: 0;
+                max-width: 100%;
+            }
+
+            #createQuizForm {
+                grid-template-columns: 1fr;
+            }
+
+            .radio-group {
+                grid-template-columns: 1fr;
+            }
+
+            .question-type-group {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
 </head>
-<body>
-<div class="form-container">
-    <h1>Создание квиза</h1>
+<body class="quiz-form-page" data-active-nav="create-quiz">
+<div th:replace='~{fragments/sidebar :: sidebar}'></div>
 
-    <form id="createQuizForm" onsubmit="handleSubmit(event)">
-        <!-- Название квиза -->
-        <div class="form-group">
-            <label>
-                <span class="required">*</span> Введите название:
-            </label>
-            <input type="text"
-                   id="quizName"
-                   name="name"
-                   required>
-        </div>
+<div class="main-content">
+    <div class="container">
+        <header class="header">
+            <h1>Создание квиза</h1>
+        </header>
 
-        <!-- Описание/Промт -->
-        <div class="form-group">
-            <label>
-                <span class="required">*</span> Описание (промт для ИИ):
-            </label>
-            <textarea id="quizPrompt"
-                      name="prompt"
-                      required></textarea>
-        </div>
+        <div class="form-container">
+            <form id="createQuizForm" onsubmit="handleSubmit(event)">
+                <input type="hidden" id="userId" th:value="${userId}">
+                <section class="form-card quiz-params-card">
+                    <h2 class="form-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        Основная информация
+                    </h2>
 
-        <!-- Загрузка файла -->
-        <div class="form-group">
-            <div class="file-upload-section" id="fileUploadSection">
-                <span class="file-upload-label" id="fileUploadLabel">
-                    Добавьте материал (.pdf, .txt, .doc, .docx)
-                </span>
-                <input type="file"
-                       id="quizMaterial"
-                       name="material"
-                       accept=".pdf,.txt,.doc,.docx"
-                       style="display: none;">
-            </div>
-            <div class="file-name" id="fileName" style="display: none;"></div>
-        </div>
-
-        <!-- Числовые параметры -->
-        <div class="number-inputs">
-            <div class="form-group">
-                <label>
-                    <span class="required">*</span> Количество вопросов:
-                </label>
-                <input type="number"
-                       id="questionNumber"
-                       name="questionNumber"
-                       value="10"
-                       min="1"
-                       required>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    <span class="required">*</span> Время на ответ (сек):
-                </label>
-                <input type="number"
-                       id="timeLimit"
-                       name="timeLimit"
-                       value="30"
-                       min="1"
-                       required>
-            </div>
-        </div>
-
-        <!-- Тип квиза -->
-        <div class="form-group quiz-type-section">
-            <label>
-                <span class="required">*</span> Выберите тип квиза:
-            </label>
-
-            <!-- Публичность -->
-            <div class="type-category">
-                <span class="type-category-label">1. Видимость:</span>
-                <div class="radio-group">
-                    <div class="radio-option">
-                        <input type="radio"
-                               id="public"
-                               name="visibility"
-                               value="public"
-                               checked>
-                        <label for="public">Публичный</label>
+                    <div class="form-group">
+                        <label for="quizName">
+                            <span class="required">*</span> Название квиза (не передается ИИ)
+                        </label>
+                        <input type="text"
+                               id="quizName"
+                               name="name"
+                               placeholder="Введите название квиза"
+                               required>
                     </div>
-                    <div class="radio-option">
-                        <input type="radio"
-                               id="private"
-                               name="visibility"
-                               value="private">
-                        <label for="private">Приватный</label>
+
+                    <div class="form-group">
+                        <label for="quizPrompt">
+                            <span class="required">*</span> Промпт для ИИ
+                        </label>
+                        <div class="prompt-wrap">
+                            <textarea id="quizPrompt"
+                                      name="prompt"
+                                      maxlength="2900"
+                                      placeholder="Опишите тему, цели и детали. Чем больше контекста, тем лучше ИИ сгенерирует вопросы."
+                                      required></textarea>
+                            <span class="prompt-counter" id="promptCounter">0/2900</span>
+                        </div>
                     </div>
+
+                    <div class="form-group">
+                        <div class="file-upload-section" id="fileUploadSection">
+                            <span class="file-upload-label" id="fileUploadLabel">
+                                <svg class="file-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8"/><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="m8 17 4-4 4 4"/></svg>
+                                <span>Добавьте материал</span>
+                                <span class="file-upload-hint">Перетащите файл сюда или нажмите для выбора</span>
+                                <span class="file-upload-types">.pdf, .txt, .doc, .docx</span>
+                            </span>
+                            <input type="file"
+                                   id="quizMaterial"
+                                   name="material"
+                                   accept=".pdf,.txt,.doc,.docx"
+                                   style="display: none;">
+                        </div>
+                        <div class="file-name" id="fileName" style="display: none;"></div>
+                        <div class="material-note">Материал поможет ИИ создать более точные и релевантные вопросы.</div>
+                    </div>
+                </section>
+
+                <section class="form-card">
+                    <h2 class="form-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+                        Параметры квиза
+                    </h2>
+
+                    <div class="number-inputs">
+                        <div class="form-group">
+                            <label for="questionNumber">
+                                <span class="required">*</span> Количество вопросов
+                            </label>
+                            <input type="number"
+                                   id="questionNumber"
+                                   name="questionNumber"
+                                   value="10"
+                                   min="1"
+                                   max="30"
+                                   inputmode="numeric"
+                                   pattern="[1-9][0-9]*"
+                                   required>
+                            <small style="color: #666; display: block; margin-top: 5px;">
+                                Максимум 30 вопросов
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="timeLimit">
+                                <span class="required">*</span> Время на ответ (сек)
+                            </label>
+                            <input type="number"
+                                   id="timeLimit"
+                                   name="timeLimit"
+                                   value="30"
+                                   min="1"
+                                   inputmode="numeric"
+                                   pattern="[1-9][0-9]*"
+                                   required>
+                        </div>
+                    </div>
+
+                    <div class="form-group quiz-type-section">
+                        <div class="type-category">
+                            <span class="type-category-label">1. Видимость</span>
+                            <div class="radio-group">
+                                <div class="radio-option">
+                                    <input type="radio" id="public" name="visibility" value="public" checked>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 0 20"/><path d="M12 2a15.3 15.3 0 0 0 0 20"/></svg>
+                                    <span class="radio-copy"><label for="public">Публичный</label><small>Доступен всем пользователям</small></span>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="private" name="visibility" value="private">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                    <span class="radio-copy"><label for="private">Приватный</label><small>Виден только вам</small></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="type-category">
+                            <span class="type-category-label">2. Набор вопросов</span>
+                            <div class="radio-group">
+                                <div class="radio-option">
+                                    <input type="radio" id="static" name="contentType" value="static" checked>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                                    <span class="radio-copy"><label for="static">Фиксированный</label><small>Один и тот же набор вопросов</small></span>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="updatable" name="contentType" value="updatable">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                                    <span class="radio-copy"><label for="updatable">Случайный</label><small>Случайные вопросы из базы</small></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="type-category">
+                            <span class="type-category-label">3. Тип вопросов</span>
+                            <div class="radio-group question-type-group">
+                                <div class="radio-option">
+                                    <input type="radio" id="defSingle" name="defaultQuestionType" value="SINGLE_CHOICE" checked>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+                                    <span class="radio-copy"><label for="defSingle">Один выбор</label><small>Один правильный ответ</small></span>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="defMulti" name="defaultQuestionType" value="MULTIPLE_CHOICE">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                    <span class="radio-copy"><label for="defMulti">Множественный выбор</label><small>Несколько правильных ответов</small></span>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="defHundredToOne" name="defaultQuestionType" value="HUNDRED_TO_ONE">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                    <span class="radio-copy"><label for="defHundredToOne">Популярный ответ</label><small>Угадайте ответ большинства</small></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="error-message" id="errorMessage"></div>
+
+                <div class="button-group">
+                    <button type="button" class="cancel-btn" onclick="goBack()">Отмена</button>
+                    <button type="submit" class="submit-btn">Создать квиз</button>
                 </div>
-            </div>
-
-            <!-- Статичность -->
-            <div class="type-category">
-                <span class="type-category-label">2. Тип содержимого:</span>
-                <div class="radio-group">
-                    <div class="radio-option">
-                        <input type="radio"
-                               id="static"
-                               name="contentType"
-                               value="static"
-                               checked>
-                        <label for="static">Статичный</label>
-                    </div>
-                    <div class="radio-option">
-                        <input type="radio"
-                               id="updatable"
-                               name="contentType"
-                               value="updatable">
-                        <label for="updatable">Обновляемый</label>
-                    </div>
-                </div>
-            </div>
+            </form>
         </div>
-
-        <div class="error-message" id="errorMessage"></div>
-
-        <!-- Кнопки -->
-        <div class="button-group">
-            <button type="button" class="cancel-btn" onclick="goBack()">
-                Отмена
-            </button>
-            <button type="submit" class="submit-btn">
-                Создать квиз
-            </button>
-        </div>
-    </form>
+    </div>
 </div>
 
-<script>
+<script th:inline="javascript">
+    const PAGE_USER_ID = /*[[${userId}]]*/ null;
+
     function getCurrentUserId() {
-        return localStorage.getItem('userId') || new URLSearchParams(window.location.search).get('userId') || '1';
+        const hiddenUserId = document.getElementById('userId')?.value;
+        return hiddenUserId || PAGE_USER_ID || localStorage.getItem('userId');
     }
 
     function goBack() {
-        const userId = getCurrentUserId();
-        window.location.href = '/my-quizzes' + (userId ? '?userId=' + userId : '');
+        window.location.href = '/my-quizzes';
     }
 
+    function sanitizePositiveIntegerInput(input) {
+        input.value = input.value
+            .replace(/\D/g, '')
+            .replace(/^0+/, '');
+    }
+
+    function readPositiveInteger(inputId, label) {
+        const input = document.getElementById(inputId);
+        sanitizePositiveIntegerInput(input);
+        const value = Number(input.value);
+        if (!Number.isInteger(value) || value < 1) {
+            throw new Error(label + ' должно быть целым числом больше 0');
+        }
+        return value;
+    }
+
+    document.querySelectorAll('#questionNumber, #timeLimit').forEach(function(input) {
+        input.addEventListener('beforeinput', function(event) {
+            if (event.data && /\D/.test(event.data)) {
+                event.preventDefault();
+            }
+        });
+        input.addEventListener('input', function() {
+            sanitizePositiveIntegerInput(input);
+        });
+        input.addEventListener('paste', function(event) {
+            event.preventDefault();
+            const text = (event.clipboardData || window.clipboardData).getData('text');
+            input.value = text;
+            sanitizePositiveIntegerInput(input);
+        });
+    });
 
     document.getElementById('fileUploadSection').addEventListener('click', function() {
         document.getElementById('quizMaterial').click();
     });
 
+    document.querySelectorAll('.radio-option').forEach(function(option) {
+        option.addEventListener('click', function() {
+            const input = option.querySelector('input[type="radio"]');
+            if (input) {
+                input.checked = true;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    });
+
+    const promptInput = document.getElementById('quizPrompt');
+    const promptCounter = document.getElementById('promptCounter');
+    if (promptInput && promptCounter) {
+        const updatePromptCounter = () => {
+            promptCounter.textContent = promptInput.value.length + '/2900';
+        };
+        promptInput.addEventListener('input', updatePromptCounter);
+        updatePromptCounter();
+    }
+
+    const uploadSection = document.getElementById('fileUploadSection');
+    if (uploadSection) {
+        ['dragenter', 'dragover'].forEach(function(eventName) {
+            uploadSection.addEventListener(eventName, function(event) {
+                event.preventDefault();
+                uploadSection.classList.add('dragover');
+            });
+        });
+        ['dragleave', 'drop'].forEach(function(eventName) {
+            uploadSection.addEventListener(eventName, function(event) {
+                event.preventDefault();
+                uploadSection.classList.remove('dragover');
+            });
+        });
+        uploadSection.addEventListener('drop', function(event) {
+            const files = event.dataTransfer && event.dataTransfer.files;
+            if (files && files.length > 0) {
+                document.getElementById('quizMaterial').files = files;
+                updateFileLabel(files[0].name);
+            }
+        });
+    }
 
     document.getElementById('quizMaterial').addEventListener('change', function(e) {
         if (e.target.files.length > 0) {
@@ -377,10 +681,9 @@
     });
 
     function updateFileLabel(fileName) {
-        const label = document.getElementById('fileUploadLabel');
         const fileNameDiv = document.getElementById('fileName');
-        label.textContent = 'Файл выбран: ' + fileName;
-        fileNameDiv.textContent = fileName;
+        fileNameDiv.textContent = 'Файл выбран: ' + fileName;
+        fileNameDiv.style.display = 'block';
     }
 
     async function handleSubmit(event) {
@@ -390,47 +693,100 @@
         const formData = new FormData(form);
         const errorMessage = document.getElementById('errorMessage');
         const fileInput = document.getElementById('quizMaterial');
+        const currentUserId = Number(getCurrentUserId());
 
+        if (!currentUserId || Number.isNaN(currentUserId)) {
+            errorMessage.textContent = 'Не удалось определить пользователя. Войдите в систему заново.';
+            errorMessage.classList.add('show');
+            return;
+        }
 
+        let questionNumber;
+        let timeLimit;
+        try {
+            questionNumber = readPositiveInteger('questionNumber', 'Количество вопросов');
+            timeLimit = readPositiveInteger('timeLimit', 'Время на ответ');
+        } catch (error) {
+            errorMessage.textContent = error.message;
+            errorMessage.classList.add('show');
+            return;
+        }
+
+        const hasMaterial = fileInput.files.length > 0 && fileInput.files[0].size > 0;
         const quizData = {
             name: formData.get('name'),
             prompt: formData.get('prompt'),
-            createdBy: parseInt(getCurrentUserId()),
-            hasMaterial: fileInput.files.length > 0 && fileInput.files[0].size > 0,
+            createdBy: currentUserId,
+            hasMaterial: hasMaterial,
             materials: [],
-            questionNumber: parseInt(formData.get('questionNumber')),
-            timeLimit: parseInt(formData.get('timeLimit')),
+            questionNumber: questionNumber,
+            timeLimit: timeLimit,
             isPrivate: formData.get('visibility') === 'private',
-            isStatic: formData.get('contentType') === 'static'
+            isStatic: formData.get('contentType') === 'static',
+            defaultQuestionType: formData.get('defaultQuestionType')
         };
 
-
         try {
-            const response = await fetch('/api/quizzes', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + localStorage.getItem('token')
-                },
-                body: JSON.stringify(quizData)
-            });
+            let response;
+            if (hasMaterial) {
+                const createFormData = new FormData();
+                createFormData.append('name', quizData.name);
+                createFormData.append('prompt', quizData.prompt);
+                createFormData.append('createdBy', String(quizData.createdBy));
+                createFormData.append('questionNumber', String(quizData.questionNumber));
+                createFormData.append('timeLimit', String(quizData.timeLimit));
+                createFormData.append('isPrivate', String(quizData.isPrivate));
+                createFormData.append('isStatic', String(quizData.isStatic));
+                createFormData.append('defaultQuestionType', quizData.defaultQuestionType);
+                createFormData.append('files', fileInput.files[0]);
 
-            if (response.ok) {
-                const result = await response.json();
-                alert('Квиз успешно создан!');
-                const userId = getCurrentUserId();
-                window.location.href = '/my-quizzes' + (userId ? '?userId=' + userId : '');
+                response = await fetch('/api/quizzes', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    },
+                    body: createFormData
+                });
             } else {
+                response = await fetch('/api/quizzes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    },
+                    body: JSON.stringify(quizData)
+                });
+            }
+
+            if (!response.ok) {
                 let errorText = 'Ошибка';
                 try {
-                    const error = await response.json();
-                    errorText = error.message || errorText;
+                    const error = await response.text();
+                    try {
+                        const errorJson = JSON.parse(error);
+                        errorText = errorJson.message || errorJson.error || errorText;
+                    } catch (e) {
+                        errorText = error;
+                    }
                 } catch (e) {
-                    errorText = 'Ошибка : ' + response.status;
+                    errorText = 'Ошибка: ' + response.status;
                 }
-                errorMessage.textContent = 'Ошибка при создании квиза: ' + errorText;
-                errorMessage.classList.add('show');
+                if (response.status === 400 && (errorText.includes('неэтичн') || errorText.includes('неэтичными'))) {
+                    alert('Данные для создания квиза являются неэтичными');
+                } else if (errorText.includes('неэтичн') || errorText.includes('неэтичными') || errorText.includes('UNETHICAL_PROMPT')) {
+                    alert('Данные для создания квиза являются неэтичными');
+                } else {
+                    errorMessage.textContent = 'Ошибка при создании квиза: ' + errorText;
+                    errorMessage.classList.add('show');
+                }
+                return;
             }
+
+            const result = await response.json();
+            const quizId = result.id ?? result.quizId;
+
+            alert('Квиз создан. Генерация вопросов запущена.');
+            window.location.href = '/quiz/' + quizId;
         } catch (error) {
             errorMessage.textContent = 'Ошибка сети.';
             errorMessage.classList.add('show');
@@ -438,5 +794,6 @@
         }
     }
 </script>
+<script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>

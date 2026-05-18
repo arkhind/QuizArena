@@ -19,6 +19,8 @@ public interface GenerationSetRepository extends JpaRepository<GenerationSet, Lo
      */
     Optional<GenerationSet> findByQuizId(Long quizId);
 
+    Optional<GenerationSet> findTopByQuizIdOrderByCreatedAtDesc(Long quizId);
+
     /**
      * Находит все наборы генерации с указанным статусом.
      */
@@ -28,5 +30,7 @@ public interface GenerationSetRepository extends JpaRepository<GenerationSet, Lo
      * Находит все наборы генерации для указанного квиза.
      */
     List<GenerationSet> findAllByQuizId(Long quizId);
-}
 
+    @Query("SELECT gs.quiz.id FROM GenerationSet gs WHERE gs.id = :generationSetId")
+    Optional<Long> findQuizIdById(@Param("generationSetId") Long generationSetId);
+}

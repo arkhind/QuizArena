@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -41,7 +41,7 @@
             border-radius: 25px;
             cursor: pointer;
             font-size: 18px;
-            width: 80%;
+            width: 100%;
             transition: all 0.3s;
             margin-bottom: 15px;
             text-align: center;
@@ -63,7 +63,7 @@
 
         .container {
             max-width: none;
-            width: 80%;
+            width: 100%;
         }
 
         .header {
@@ -90,6 +90,39 @@
             padding: 40px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             width: 100%;
+        }
+
+        #editQuizForm {
+            display: grid;
+            grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+            gap: 24px;
+            align-items: stretch;
+        }
+
+        .form-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 24px;
+            background: #fff;
+            box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+            min-width: 0;
+        }
+
+        .form-card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 22px;
+            color: #0f172a;
+            font-size: 1.25rem;
+            font-weight: 800;
+        }
+
+        .form-card-title svg {
+            width: 22px;
+            height: 22px;
+            color: #4f46e5;
+            flex: 0 0 auto;
         }
 
         .form-group {
@@ -185,29 +218,70 @@
         }
 
         .radio-group {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 14px;
         }
 
         .radio-option {
             display: flex;
             align-items: center;
             cursor: pointer;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px 18px;
+            gap: 14px;
+            min-height: 82px;
+            transition: border-color 0.2s, background 0.2s;
+            min-width: 0;
         }
 
         .radio-option input[type="radio"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            cursor: pointer;
-            accent-color: #667eea;
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .radio-option:has(input[type="radio"]:checked) {
+            border-color: #4f46e5;
+            background: #f8f7ff;
+        }
+
+        .radio-option svg {
+            width: 22px;
+            height: 22px;
+            color: #64748b;
+            flex: 0 0 auto;
+        }
+
+        .radio-option:has(input[type="radio"]:checked) svg,
+        .radio-option:has(input[type="radio"]:checked) label {
+            color: #4f46e5;
+        }
+
+        .radio-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
         }
 
         .radio-option label {
             margin: 0;
             cursor: pointer;
-            font-weight: normal;
+            font-weight: 800;
+            color: #0f172a;
+            font-size: 16px;
+            line-height: 1.18;
+            overflow-wrap: anywhere;
+        }
+
+        .radio-option small {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
         }
 
         .btn-small {
@@ -234,6 +308,7 @@
             margin-top: 35px;
             justify-content: center;
             flex-wrap: wrap;
+            grid-column: 1 / -1;
         }
 
         button {
@@ -276,6 +351,26 @@
             background: #c82333;
         }
 
+        @media (max-width: 1280px) {
+            #editQuizForm {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .form-container {
+                padding: 24px;
+            }
+
+            .form-card {
+                padding: 18px;
+            }
+
+            .radio-group {
+                grid-template-columns: 1fr;
+            }
+        }
+
         @media (max-width: 900px) {
             .sidebar {
                 position: relative;
@@ -293,337 +388,313 @@
             }
 
             .radio-group {
-                flex-direction: column;
-                gap: 15px;
+                grid-template-columns: 1fr;
+            }
+
+            #editQuizForm {
+                grid-template-columns: 1fr;
             }
         }
     </style>
+    <link rel="stylesheet" href="/css/theme.css?v=7" onerror="this.onerror=null;this.href='../static/css/theme.css?v=7';">
 </head>
-<body>
-    <div class="sidebar">
-        <a href="/my-quizzes" class="nav-btn" onclick="event.preventDefault(); goBack()">Назад</a>
-        <a href="/home" class="nav-btn">Главная</a>
-    </div>
+<body class="quiz-form-page" data-active-nav="my-quizzes">
+<div th:replace='~{fragments/sidebar :: sidebar}'></div>
 
-    <div class="main-content">
-        <div class="container">
-            <header class="header">
-                <h1 th:text="'Редактирование: ' + ${quizName}">Редактирование квиза</h1>
-            </header>
+<div class="main-content">
+    <div class="container">
+        <header class="header">
+            <h1 th:text="'Редактирование: ' + ${quizName}">Редактирование квиза</h1>
+        </header>
 
-            <div class="form-container">
-                <form id="editQuizForm" onsubmit="handleSubmit(event)">
-                    <!-- Скрытые поля для ID -->
-                    <input type="hidden" id="quizId" th:value="${quizId}">
-                    <input type="hidden" id="userId" th:value="${userId}">
+        <div class="form-container">
+            <form id="editQuizForm" onsubmit="handleSubmit(event)">
+                <!-- Скрытые поля для ID -->
+                <input type="hidden" id="quizId" th:value="${quizId}">
+                <input type="hidden" id="userId" th:value="${userId}">
 
-                    <!-- Название квиза -->
+                <section class="form-card">
+                    <h2 class="form-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        Основная информация
+                    </h2>
+
                     <div class="form-group">
-                        <label>
-                            <span class="required">*</span> Название квиза:
+                        <label for="quizName">
+                            <span class="required">*</span> Название квиза
                         </label>
-                        <input type="text" 
-                               id="quizName" 
-                               name="name" 
+                        <input type="text"
+                               id="quizName"
+                               name="name"
                                th:value="${quizName}"
-                               required 
+                               required
                                minlength="3"
                                maxlength="100">
                     </div>
 
                     <div class="form-group">
-                        <label>
-                            <span class="required">*</span> Описание (промт для ИИ):
+                        <label for="timeLimit">
+                            <span class="required">*</span> Время на ответ (сек)
                         </label>
-                        <textarea id="quizDescription" 
-                                  name="description"
-                                  th:text="${description}"
-                                  required
-                                  minlength="10"
-                                  maxlength="500"></textarea>
+                        <input type="number"
+                               id="timeLimit"
+                               name="timeLimit"
+                               th:value="${timeLimit}"
+                               min="1"
+                               inputmode="numeric"
+                               pattern="[1-9][0-9]*"
+                               required>
                     </div>
+                </section>
 
-                    <div class="form-group">
-                        <div class="file-upload-section" onclick="document.getElementById('quizMaterial').click()">
-                            <div class="file-upload-icon">📄</div>
-                            <span class="file-upload-label" id="fileLabel">
-                                Добавить новый материал (.pdf, .txt, .doc, .docx)
-                            </span>
-                            <small style="color: #999; display: block; margin-top: 10px;">
-                                Необязательно. Новый материал добавится к существующим
-                            </small>
-                            <div class="file-input-wrapper">
-                                <input type="file" 
-                                       id="quizMaterial" 
-                                       name="material"
-                                       accept=".pdf,.txt,.doc,.docx"
-                                       style="display: none;">
+                <section class="form-card">
+                    <h2 class="form-card-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7"/><path d="M4 10V3"/><path d="M12 21v-9"/><path d="M12 8V3"/><path d="M20 21v-5"/><path d="M20 12V3"/><path d="M2 14h4"/><path d="M10 8h4"/><path d="M18 16h4"/></svg>
+                        Параметры квиза
+                    </h2>
+
+                    <div class="type-category">
+                        <span class="type-category-label">1. Видимость</span>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="public" name="visibility" value="public" th:checked="${isPublic == true}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 0 20"/><path d="M12 2a15.3 15.3 0 0 0 0 20"/></svg>
+                                <span class="radio-copy"><label for="public">Публичный</label><small>Доступен всем пользователям</small></span>
+                            </div>
+                            <div class="radio-option">
+                                <input type="radio" id="private" name="visibility" value="private" th:checked="${isPublic == false}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                                <span class="radio-copy"><label for="private">Приватный</label><small>Виден только вам</small></span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="number-inputs">
-                        <div class="form-group">
-                            <label>
-                                <span class="required">*</span> Время на ответ (сек):
-                            </label>
-                            <input type="number" 
-                                   id="timeLimit" 
-                                   name="timeLimit"
-                                   th:value="${timeLimit}"
-                                   min="10" 
-                                   max="300" 
-                                   required>
-                        </div>
-                    </div>
-
-                    <div class="form-group quiz-type-section">
-                        <label>
-                            <span class="required">*</span> Настройки квиза:
-                        </label>
-
-                        <div class="type-category">
-                            <span class="type-category-label">1. Видимость:</span>
-                            <div class="radio-group">
-                                <div class="radio-option">
-                                    <input type="radio" 
-                                           id="public" 
-                                           name="visibility" 
-                                           value="public"
-                                           th:checked="${isPublic == true}">
-                                    <label for="public">Публичный</label>
-                                </div>
-                                <div class="radio-option">
-                                    <input type="radio" 
-                                           id="private" 
-                                           name="visibility" 
-                                           value="private"
-                                           th:checked="${isPublic == false}">
-                                    <label for="private">Приватный</label>
-                                </div>
+                    <div class="type-category">
+                        <span class="type-category-label">2. Набор вопросов</span>
+                        <div class="radio-group">
+                            <div class="radio-option">
+                                <input type="radio" id="static" name="questionSetType" value="static" th:checked="${isStatic == true}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                                <span class="radio-copy"><label for="static">Фиксированный</label><small>Один и тот же набор вопросов</small></span>
                             </div>
-                        </div>
-
-                        <div class="type-category">
-                            <span class="type-category-label">2. Тип содержимого:</span>
-                            <div class="radio-group">
-                                <div class="radio-option">
-                                    <input type="radio" 
-                                           id="static" 
-                                           name="contentType" 
-                                           value="static"
-                                           th:checked="${isStatic == true}">
-                                    <label for="static">Статичный</label>
-                                </div>
-                                <div class="radio-option">
-                                    <input type="radio" 
-                                           id="updatable" 
-                                           name="contentType" 
-                                           value="updatable"
-                                           th:checked="${isStatic == false}">
-                                    <label for="updatable">Обновляемый</label>
-                                </div>
+                            <div class="radio-option">
+                                <input type="radio" id="random" name="questionSetType" value="random" th:checked="${isStatic == false}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>
+                                <span class="radio-copy"><label for="random">Случайный</label><small>Случайные вопросы из базы</small></span>
                             </div>
                         </div>
                     </div>
+                </section>
 
-                    <div class="button-group">
-                        <button type="button" class="cancel-btn" onclick="goBack()">
-                            Отмена
-                        </button>
-                        <button type="button" class="delete-btn" onclick="deleteQuiz()">
-                            Удалить квиз
-                        </button>
-                        <button type="submit" class="submit-btn">
-                            Сохранить изменения
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <div class="button-group">
+                    <button type="button" class="cancel-btn" onclick="goBack()">
+                        Отмена
+                    </button>
+                    <button type="submit" class="submit-btn">
+                        Сохранить изменения
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    <script>
-        /**
-         * Возврат на страницу "Мои квизы".
-         * Получает userId из скрытого поля или localStorage.
-         */
-        function goBack() {
-            const userId = getCurrentUserId();
-            window.location.href = '/my-quizzes?userId=' + userId;
+<script th:inline="javascript">
+    const PAGE_USER_ID = /*[[${userId}]]*/ null;
+    const PAGE_QUIZ_ID = /*[[${quizId}]]*/ null;
+
+    /**
+     * Возврат на страницу "Мои квизы".
+     * Получает userId из скрытого поля или localStorage.
+     */
+    function goBack() {
+        const userId = getCurrentUserId();
+        window.location.href = '/my-quizzes';
+    }
+
+    /**
+     * Получение ID текущего пользователя.
+     * Сначала проверяет скрытое поле формы, затем localStorage, затем query параметры.
+     *
+     * @returns {string} ID пользователя
+     */
+    function getCurrentUserId() {
+        // Пробуем получить из скрытого поля формы
+        const formUserId = document.getElementById('userId')?.value;
+        if (formUserId) {
+            return formUserId;
         }
 
-        /**
-         * Получение ID текущего пользователя.
-         * Сначала проверяет скрытое поле формы, затем localStorage, затем query параметры.
-         * 
-         * @returns {string} ID пользователя
-         */
-        function getCurrentUserId() {
-            // Пробуем получить из скрытого поля формы
-            const formUserId = document.getElementById('userId')?.value;
-            if (formUserId) {
-                return formUserId;
-            }
-            
-            // Пробуем получить из localStorage
-            const storedUserId = localStorage.getItem('userId');
-            if (storedUserId) {
-                return storedUserId;
-            }
-            
-            // Пробуем получить из URL параметров
-            const urlParams = new URLSearchParams(window.location.search);
-            const urlUserId = urlParams.get('userId');
-            if (urlUserId) {
-                return urlUserId;
-            }
-            
-            // Дефолтное значение
-            return '1';
+        if (PAGE_USER_ID != null && PAGE_USER_ID !== '') {
+            return String(PAGE_USER_ID);
         }
 
-        /**
-         * Получение ID квиза из скрытого поля формы.
-         * 
-         * @returns {string} ID квиза
-         */
-        function getQuizId() {
-            return document.getElementById('quizId').value;
+        // Пробуем получить из localStorage только как fallback для превью
+        const storedUserId = localStorage.getItem('userId');
+        if (storedUserId) {
+            return storedUserId;
         }
 
-        /**
-         * Обработка отправки формы редактирования квиза.
-         * Собирает данные формы, валидирует их и отправляет на сервер через REST API.
-         * 
-         * @param {Event} event - событие отправки формы
-         */
-        async function handleSubmit(event) {
-            event.preventDefault(); // Предотвращаем стандартную отправку формы
-            
-            const form = document.getElementById('editQuizForm');
-            const formData = new FormData(form);
-            
-            // Собираем данные формы в объект для отправки
-            const quizData = {
-                quizId: parseInt(getQuizId()),
-                userId: parseInt(getCurrentUserId()),
-                name: formData.get('name').trim(),
-                description: formData.get('description').trim(),
-                timeLimit: parseInt(formData.get('timeLimit')),
-                isPrivate: formData.get('visibility') === 'private',
-                isStatic: formData.get('contentType') === 'static'
-            };
+        // Пробуем получить из URL параметров
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlUserId = urlParams.get('userId');
+        if (urlUserId) {
+            return urlUserId;
+        }
 
-            try {
-                // Получаем токен авторизации из localStorage
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    alert('Вы не авторизованы');
-                    window.location.href = '/login';
-                    return;
-                }
+        return null;
+    }
 
+    /**
+     * Получение ID квиза из скрытого поля формы.
+     *
+     * @returns {string} ID квиза
+     */
+    function getQuizId() {
+        const formQuizId = document.getElementById('quizId')?.value;
+        if (formQuizId) {
+            return formQuizId;
+        }
+        if (PAGE_QUIZ_ID != null && PAGE_QUIZ_ID !== '') {
+            return String(PAGE_QUIZ_ID);
+        }
+        return null;
+    }
 
-                const response = await fetch('/api/quizzes/' + getQuizId(), {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify(quizData)
-                });
+    function sanitizePositiveIntegerInput(input) {
+        input.value = input.value
+            .replace(/\D/g, '')
+            .replace(/^0+/, '');
+    }
 
+    function readPositiveInteger(inputId, label) {
+        const input = document.getElementById(inputId);
+        sanitizePositiveIntegerInput(input);
+        const value = Number(input.value);
+        if (!Number.isInteger(value) || value < 1) {
+            throw new Error(label + ' должно быть целым числом больше 0');
+        }
+        return value;
+    }
 
-                if (response.ok) {
-                    const result = await response.json();
-                    alert('Квиз успешно обновлен!');
-                    window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
-                } else {
-
-                    const error = await response.json().catch(() => ({}));
-                    const errorMessage = error.message || error.error || 
-                                       `Ошибка ${response.status}: ${response.statusText}`;
-                    alert('Ошибка при обновлении квиза: ' + errorMessage);
-                }
-            } catch (error) {
-
-                console.error('Error:', error);
-                alert('Ошибка сети');
+    document.querySelectorAll('.radio-option').forEach(function(option) {
+        option.addEventListener('click', function() {
+            const input = option.querySelector('input[type="radio"]');
+            if (input) {
+                input.checked = true;
+                input.dispatchEvent(new Event('change', { bubbles: true }));
             }
+        });
+    });
+
+    document.querySelectorAll('#timeLimit').forEach(function(input) {
+        input.addEventListener('beforeinput', function(event) {
+            if (event.data && /\D/.test(event.data)) {
+                event.preventDefault();
+            }
+        });
+        input.addEventListener('input', function() {
+            sanitizePositiveIntegerInput(input);
+        });
+        input.addEventListener('paste', function(event) {
+            event.preventDefault();
+            const text = (event.clipboardData || window.clipboardData).getData('text');
+            input.value = text;
+            sanitizePositiveIntegerInput(input);
+        });
+    });
+
+    /**
+     * Обработка отправки формы редактирования квиза.
+     * Собирает данные формы, валидирует их и отправляет на сервер через REST API.
+     *
+     * @param {Event} event - событие отправки формы
+     */
+    async function handleSubmit(event) {
+        event.preventDefault(); // Предотвращаем стандартную отправку формы
+
+        const form = document.getElementById('editQuizForm');
+        const formData = new FormData(form);
+        const quizId = Number(getQuizId());
+        const userId = Number(getCurrentUserId());
+
+        if (!quizId || Number.isNaN(quizId) || !userId || Number.isNaN(userId)) {
+            alert('Не удалось определить квиз или пользователя. Войдите в систему заново.');
+            return;
         }
 
+        let timeLimit;
+        const quizName = formData.get('name').trim();
+        if (quizName.length < 3) {
+            alert('Название квиза должно содержать минимум 3 символа');
+            return;
+        }
 
-        async function deleteQuiz() {
+        try {
+            timeLimit = readPositiveInteger('timeLimit', 'Время на ответ');
+        } catch (error) {
+            alert(error.message);
+            return;
+        }
 
-            if (!confirm('Вы уверены, что хотите удалить этот квиз? Это действие нельзя отменить.')) {
+        const quizData = {
+            quizId: quizId,
+            userId: userId,
+            name: quizName,
+            timeLimit: timeLimit,
+            isPrivate: formData.get('visibility') === 'private',
+            isStatic: formData.get('questionSetType') === 'static'
+        };
+
+        try {
+            // Получаем токен авторизации из localStorage
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('Вы не авторизованы');
+                window.location.href = '/login';
                 return;
             }
 
-            try {
-                const token = localStorage.getItem('token');
-                if (!token) {
-                    alert('Вы не авторизованы');
-                    return;
-                }
+
+            const response = await fetch('/api/quizzes/' + getQuizId(), {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify(quizData)
+            });
 
 
-                const response = await fetch('/api/quizzes/' + getQuizId() + '?userId=' + getCurrentUserId(), {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + token
-                    },
-                    body: JSON.stringify({
-                        quizId: parseInt(getQuizId()),
-                        userId: parseInt(getCurrentUserId())
-                    })
-                });
-
-                if (response.ok) {
-                    alert('Квиз удален');
-                    window.location.href = '/my-quizzes?userId=' + getCurrentUserId();
-                } else {
-                    const error = await response.json().catch(() => ({}));
-                    const errorMessage = error.message || error.error || 
-                                       `Ошибка ${response.status}: ${response.statusText}`;
-                    alert('Ошибка при удалении квиза: ' + errorMessage);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Ошибка сети. Проверьте подключение к интернету.');
-            }
-        }
-
-        /**
-         * Обновление текста метки после выбора файла.
-         * Показывает имя загруженного файла вместо стандартного текста.
-         * 
-         * @param {string} fileName - имя выбранного файла
-         */
-        function updateFileLabel(fileName) {
-            const label = document.getElementById('fileLabel');
-            label.textContent = 'Файл загружен: ' + fileName;
-        }
-        const fileInput = document.getElementById('quizMaterial');
-
-
-        /**
-         * Обработчик изменения файла через стандартный выбор.
-         * Срабатывает при клике на "Выбрать файл" в диалоге.
-         */
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                updateFileLabel(e.target.files[0].name);
+            if (response.ok) {
+                const result = await response.json();
+                alert('Квиз успешно обновлен!');
+                window.location.href = '/my-quizzes';
             } else {
-                // Если файл удален, возвращаем исходный текст
-                const label = document.getElementById('fileLabel');
-                label.textContent = 'Добавить новый материал (.pdf, .txt, .doc, .docx)';
-                label.style.color = '#666';
-                label.style.fontWeight = 'normal';
+                let errorText = '';
+                try {
+                    const error = await response.text();
+                    try {
+                        const errorJson = JSON.parse(error);
+                        errorText = errorJson.message || errorJson.error || `Ошибка ${response.status}: ${response.statusText}`;
+                    } catch (e) {
+                        errorText = error || `Ошибка ${response.status}: ${response.statusText}`;
+                    }
+                } catch (e) {
+                    errorText = `Ошибка ${response.status}: ${response.statusText}`;
+                }
+                
+                alert('Ошибка при обновлении квиза: ' + errorText);
             }
-        });
-    </script>
+        } catch (error) {
+
+            console.error('Error:', error);
+            alert('Ошибка сети');
+        }
+    }
+
+
+</script>
+<script src="/js/sidebar.js?v=5" onerror="this.onerror=null;this.src='../static/js/sidebar.js?v=5';"></script>
 </body>
 </html>
-

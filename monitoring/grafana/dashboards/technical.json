@@ -1,0 +1,213 @@
+{
+  "title": "Technical",
+  "uid": "quizarena-technical",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "JVM Heap Used (USE — Utilization)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [
+        { "expr": "sum(jvm_memory_used_bytes{area=\"heap\", application=\"quizarena\"})", "legendFormat": "heap used" },
+        { "expr": "sum(jvm_memory_max_bytes{area=\"heap\", application=\"quizarena\"})", "legendFormat": "heap max" },
+        { "expr": "sum(jvm_memory_committed_bytes{area=\"heap\", application=\"quizarena\"})", "legendFormat": "heap committed" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "CPU Usage (USE — Utilization)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 } },
+      "targets": [
+        { "expr": "process_cpu_usage{application=\"quizarena\"} * 100", "legendFormat": "process cpu %" },
+        { "expr": "system_cpu_usage{application=\"quizarena\"} * 100", "legendFormat": "system cpu %" },
+        { "expr": "system_load_average_1m{application=\"quizarena\"}", "legendFormat": "system load avg 1m" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "HTTP Request Rate (RED — Rate)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        { "expr": "sum(rate(http_server_requests_seconds_count{application=\"quizarena\"}[1m]))", "legendFormat": "total req/s" },
+        { "expr": "sum(rate(http_server_requests_seconds_count{application=\"quizarena\", outcome=\"SUCCESS\"}[1m]))", "legendFormat": "2xx req/s" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "HTTP Error Rate (RED — Errors)",
+      "type": "timeseries",
+      "gridPos": { "x": 8, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "reqps" } },
+      "targets": [
+        { "expr": "sum(rate(http_server_requests_seconds_count{application=\"quizarena\", status=~\"5..\"}[1m]))", "legendFormat": "5xx errors/s" },
+        { "expr": "sum(rate(http_server_requests_seconds_count{application=\"quizarena\", status=~\"4..\"}[1m]))", "legendFormat": "4xx errors/s" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "HTTP Avg Latency by URI (RED — Duration)",
+      "type": "timeseries",
+      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "targets": [
+        { "expr": "sum(rate(http_server_requests_seconds_sum{application=\"quizarena\"}[1m])) by (uri) / sum(rate(http_server_requests_seconds_count{application=\"quizarena\"}[1m])) by (uri) * 1000", "legendFormat": "{{uri}}" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "DB Connection Pool (USE — Utilization / Saturation)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "hikaricp_connections_active{application=\"quizarena\"}", "legendFormat": "active (utilization)" },
+        { "expr": "hikaricp_connections_idle{application=\"quizarena\"}", "legendFormat": "idle" },
+        { "expr": "hikaricp_connections_max{application=\"quizarena\"}", "legendFormat": "max" },
+        { "expr": "hikaricp_connections_pending{application=\"quizarena\"}", "legendFormat": "pending (saturation)" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "DB Connection Timeouts (USE — Errors)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 16, "w": 6, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(hikaricp_connections_timeout_total{application=\"quizarena\"}[1m])", "legendFormat": "timeout/s" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "DB Acquire Latency avg (RED — Duration)",
+      "type": "timeseries",
+      "gridPos": { "x": 18, "y": 16, "w": 6, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "targets": [
+        { "expr": "rate(hikaricp_connections_acquire_seconds_sum{application=\"quizarena\"}[1m]) / rate(hikaricp_connections_acquire_seconds_count{application=\"quizarena\"}[1m]) * 1000", "legendFormat": "avg acquire ms" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "JVM Threads (USE — Utilization / Saturation)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "jvm_threads_live_threads{application=\"quizarena\"}", "legendFormat": "live" },
+        { "expr": "jvm_threads_daemon_threads{application=\"quizarena\"}", "legendFormat": "daemon" },
+        { "expr": "jvm_threads_peak_threads{application=\"quizarena\"}", "legendFormat": "peak (saturation)" }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Thread Pool Executor (USE — Utilization / Saturation)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "executor_active_threads{application=\"quizarena\"}", "legendFormat": "active (utilization)" },
+        { "expr": "executor_pool_size_threads{application=\"quizarena\"}", "legendFormat": "pool size" },
+        { "expr": "executor_pool_max_threads{application=\"quizarena\"}", "legendFormat": "max" },
+        { "expr": "executor_queued_tasks{application=\"quizarena\"}", "legendFormat": "queued (saturation)" },
+        { "expr": "executor_queue_remaining_tasks{application=\"quizarena\"}", "legendFormat": "queue remaining" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Redis Latency avg (RED — Duration)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "targets": [
+        { "expr": "sum(rate(lettuce_command_completion_seconds_sum{application=\"quizarena\"}[1m])) / sum(rate(lettuce_command_completion_seconds_count{application=\"quizarena\"}[1m])) * 1000", "legendFormat": "completion avg ms" },
+        { "expr": "sum(rate(lettuce_command_firstresponse_seconds_sum{application=\"quizarena\"}[1m])) / sum(rate(lettuce_command_firstresponse_seconds_count{application=\"quizarena\"}[1m])) * 1000", "legendFormat": "first response avg ms" }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Kafka Listener Avg Duration (RED — Duration)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "ms" } },
+      "targets": [
+        { "expr": "rate(spring_kafka_listener_seconds_sum{application=\"quizarena\"}[1m]) / rate(spring_kafka_listener_seconds_count{application=\"quizarena\"}[1m]) * 1000", "legendFormat": "listener avg ms" },
+        { "expr": "spring_kafka_listener_seconds_max{application=\"quizarena\"} * 1000", "legendFormat": "listener max ms" }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "JVM GC Overhead (USE — Saturation)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 40, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "percent" } },
+      "targets": [
+        { "expr": "jvm_gc_overhead_percent{application=\"quizarena\"} * 100", "legendFormat": "gc overhead %" }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "JVM GC Pause Time (USE — Saturation)",
+      "type": "timeseries",
+      "gridPos": { "x": 8, "y": 40, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "rate(jvm_gc_pause_seconds_sum{application=\"quizarena\"}[1m])", "legendFormat": "{{cause}}" }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Disk Usage (USE — Utilization)",
+      "type": "timeseries",
+      "gridPos": { "x": 16, "y": 40, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "bytes" } },
+      "targets": [
+        { "expr": "disk_total_bytes{application=\"quizarena\"} - disk_free_bytes{application=\"quizarena\"}", "legendFormat": "used" },
+        { "expr": "disk_free_bytes{application=\"quizarena\"}", "legendFormat": "free" }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Log Events Rate — Errors / Warnings",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 48, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "rate(logback_events_total{application=\"quizarena\", level=\"error\"}[1m])", "legendFormat": "error/s" },
+        { "expr": "rate(logback_events_total{application=\"quizarena\", level=\"warn\"}[1m])", "legendFormat": "warn/s" }
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Tomcat Sessions (USE — Utilization / Saturation)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 48, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "expr": "tomcat_sessions_active_current_sessions{application=\"quizarena\"}", "legendFormat": "active sessions" },
+        { "expr": "tomcat_sessions_active_max_sessions{application=\"quizarena\"}", "legendFormat": "max sessions (saturation)" },
+        { "expr": "rate(tomcat_sessions_created_sessions_total{application=\"quizarena\"}[1m])", "legendFormat": "created/s" },
+        { "expr": "rate(tomcat_sessions_expired_sessions_total{application=\"quizarena\"}[1m])", "legendFormat": "expired/s" }
+      ]
+    }
+  ]
+}

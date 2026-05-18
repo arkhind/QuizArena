@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<body>
+<aside class="sidebar" th:fragment="sidebar">
+    <a href="/home" class="brand">
+        <span class="brand-text">QuizArena</span>
+    </a>
+    <nav class="sidebar-nav">
+        <a href="/home" class="nav-btn" data-nav="home">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5L12 4l9 7.5"/><path d="M5 10v10h14V10"/></svg></span>
+            <span>Главная</span>
+        </a>
+        <a href="#" class="nav-btn" data-nav="my-quizzes">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span>
+            <span>Мои квизы</span>
+        </a>
+        <a href="#" class="nav-btn" data-nav="history">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+            <span>История</span>
+        </a>
+        <a href="#" class="nav-btn" data-nav="create-quiz">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg></span>
+            <span>Создать квиз</span>
+        </a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="#" class="user-card" data-nav="edit-profile" aria-label="Профиль">
+            <span class="user-avatar" data-user-avatar>?</span>
+            <span class="user-name" data-user-name>Гость</span>
+        </a>
+        <a href="/logout" class="logout-btn" data-nav="logout">
+            <span class="nav-ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></span>
+            <span>Выйти</span>
+        </a>
+    </div>
+</aside>
+</body>
+</html>

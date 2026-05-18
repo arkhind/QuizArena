@@ -1,0 +1,1373 @@
+﻿
+
+:root {
+    --bg-page: #F5F3FF;
+    --bg-card: #FFFFFF;
+    --bg-soft: #F9FAFB;
+    --bg-hover: #F3F4F6;
+    --bg-muted: #F4F4F8;
+
+    --text-primary: #111827;
+    --text-secondary: #4B5563;
+    --text-muted: #6B7280;
+
+    --primary: #7C3AED;
+    --primary-hover: #6D28D9;
+    --primary-soft: #EDE9FE;
+    --primary-soft-2: #DDD6FE;
+
+    --success: #10B981;
+    --success-hover: #059669;
+    --success-soft: #D1FAE5;
+
+    --danger: #EF4444;
+    --danger-hover: #DC2626;
+    --danger-soft: #FEE2E2;
+
+    --warning: #F59E0B;
+    --warning-soft: #FEF3C7;
+
+    --border: #E5E7EB;
+    --border-soft: #F1F2F4;
+
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+    --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.06);
+    --shadow-lg: 0 12px 28px rgba(16, 24, 40, 0.08);
+
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-pill: 999px;
+
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+        "Segoe UI Emoji", sans-serif;
+}
+
+html, body {
+    font-family: var(--font-sans) !important;
+    color: var(--text-primary);
+}
+
+html body,
+body[data-active-nav],
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    background-color: #667eea !important;
+    background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.auth-box {
+    background: var(--bg-card) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-lg) !important;
+    border: 1px solid var(--border-soft) !important;
+}
+
+/* -------- Sidebar -------- */
+body .sidebar,
+body > aside.sidebar,
+body > .sidebar {
+    background: var(--bg-card) !important;
+    box-shadow: var(--shadow-md) !important;
+    border-radius: var(--radius-lg) !important;
+    border: 1px solid var(--border-soft) !important;
+    padding: 18px 14px !important;
+    width: 240px !important;
+    height: calc(100vh - 48px) !important;
+    min-height: calc(100vh - 48px) !important;
+    max-height: calc(100vh - 48px) !important;
+    position: fixed !important;
+    left: 24px !important;
+    top: 24px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+}
+
+/* Логотип в шапке сайдбара */
+.sidebar .brand,
+.brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 6px 8px 14px !important;
+    margin-bottom: 8px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border-soft) !important;
+    border-radius: 0 !important;
+    text-decoration: none !important;
+    color: var(--primary-hover) !important;
+    font-weight: 700 !important;
+    font-size: 1.2rem !important;
+    letter-spacing: 0.2px !important;
+    background: transparent !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.brand:hover { color: var(--primary) !important; }
+.brand-mark {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 8px !important;
+    background: linear-gradient(135deg, var(--primary) 0%, #8B5CF6 100%) !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
+    flex: 0 0 auto !important;
+}
+
+
+/* Контейнер для пунктов меню */
+.sidebar .sidebar-nav,
+.sidebar-nav {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+}
+
+/* Низ сайдбара — профиль пользователя */
+.sidebar .sidebar-footer,
+.sidebar-footer {
+    margin-top: auto !important;
+    padding-top: 12px !important;
+    border-top: 1px solid var(--border-soft) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+    flex: 0 0 auto !important;
+}
+
+.sidebar .user-card,
+a.user-card {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 8px 10px !important;
+    border-radius: var(--radius-sm) !important;
+    background: var(--bg-soft) !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    color: var(--text-primary) !important;
+    transition: background 0.15s ease;
+    border: 1px solid var(--border-soft) !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.user-card:hover { background: var(--primary-soft) !important; }
+.user-avatar {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, #8B5CF6 100%);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
+}
+.user-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-section {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    border-bottom: none !important;
+}
+
+/* -------- Nav buttons (текстовые ссылки в сайдбаре) -------- */
+.sidebar .nav-btn,
+.sidebar a.nav-btn,
+.sidebar button.nav-btn,
+body .sidebar .nav-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    background: transparent !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid transparent !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    padding: 10px 12px !important;
+    font-size: 15px !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+    margin: 0 !important;
+    text-decoration: none !important;
+    width: 100% !important;
+    height: auto !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    line-height: 1.3 !important;
+}
+
+.sidebar .nav-btn:hover,
+.sidebar a.nav-btn:hover,
+.sidebar button.nav-btn:hover {
+    background: var(--primary-soft) !important;
+    color: var(--primary) !important;
+    transform: none !important;
+}
+
+.sidebar .nav-btn.active,
+.sidebar .nav-btn[aria-current="page"] {
+    background: var(--primary-soft) !important;
+    color: var(--primary-hover) !important;
+    border-color: var(--primary-soft-2) !important;
+}
+
+/* Иконка перед пунктом меню */
+.nav-btn .nav-ico {
+    flex: 0 0 auto;
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+    opacity: 0.85;
+}
+.nav-btn:hover .nav-ico,
+.nav-btn.active .nav-ico { opacity: 1; }
+
+/* -------- Main content: подгоняем под более широкий sidebar -------- */
+/* :has() — чтобы не задевать страницы без сайдбара (quiz.html и т.п.) */
+body:has(.sidebar) .main-content {
+    margin-left: 286px !important;
+    max-width: calc(100% - 286px) !important;
+    padding: 24px !important;
+}
+
+/* -------- Primary buttons (filled) -------- */
+button.profile-btn,
+button.search-btn,
+.create-btn,
+button.create-quiz-btn,
+button.submit-btn,
+.submit-btn,
+button.modal-btn-primary,
+.cat-btn-primary,
+.profile-btn,
+.search-btn,
+.create-quiz-btn,
+.modal-btn-primary {
+    background: var(--primary) !important;
+    background-image: none !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600 !important;
+    box-shadow: var(--shadow-sm) !important;
+    padding: 10px 18px !important;
+    font-size: 15px !important;
+    transition: background 0.15s ease, transform 0.05s ease !important;
+    width: auto !important;
+}
+
+.profile-btn:hover,
+.search-btn:hover,
+.create-btn:hover,
+.create-quiz-btn:hover,
+.submit-btn:hover,
+.modal-btn-primary:hover,
+.cat-btn-primary:hover {
+    background: var(--primary-hover) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Логин / регистрация — главная кнопка формы */
+.auth-box button[type="submit"] {
+    background: var(--primary) !important;
+    background-image: none !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600 !important;
+    padding: 12px 16px !important;
+}
+.auth-box button[type="submit"]:hover {
+    background: var(--primary-hover) !important;
+    transform: none !important;
+}
+.auth-box .register-btn {
+    background: transparent !important;
+    color: var(--primary) !important;
+    border: 1.5px solid var(--primary-soft-2) !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 500 !important;
+}
+.auth-box .register-btn:hover {
+    background: var(--primary-soft) !important;
+}
+
+/* -------- Logout / cancel / danger -------- */
+.sidebar .logout-btn,
+.sidebar-footer .logout-btn,
+button.logout-btn,
+.logout-btn {
+    background: transparent !important;
+    background-image: none !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid transparent !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 500 !important;
+    padding: 10px 12px !important;
+    font-size: 15px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    line-height: 1.3 !important;
+}
+.logout-btn:hover {
+    background: var(--primary-soft) !important;
+    color: var(--primary) !important;
+    border-color: transparent !important;
+    transform: none !important;
+}
+
+.cancel-btn,
+.modal-btn-secondary {
+    background: var(--bg-soft) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 500 !important;
+}
+.cancel-btn:hover,
+.modal-btn-secondary:hover {
+    background: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+.modal-btn-danger,
+.quiz-btn.delete {
+    background: var(--danger) !important;
+    color: #fff !important;
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600 !important;
+    border: none !important;
+}
+.modal-btn-danger:hover,
+.quiz-btn.delete:hover {
+    background: var(--danger-hover) !important;
+}
+
+/* Кнопки действий в списке квизов: «Редактировать», «Удалить» */
+.quiz-actions .quiz-btn {
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600 !important;
+    padding: 8px 14px !important;
+    border: none !important;
+}
+.quiz-actions .quiz-btn:not(.delete) {
+    background: var(--success-soft) !important;
+    color: var(--success-hover) !important;
+}
+.quiz-actions .quiz-btn:not(.delete):hover {
+    background: var(--success) !important;
+    color: #fff !important;
+}
+
+/* -------- Pagination -------- */
+.pagination {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin-top: 18px !important;
+}
+
+.pagination-summary {
+    color: #5B55C8 !important;
+    font-weight: 800 !important;
+    font-size: 14px !important;
+    text-align: center !important;
+}
+
+.pagination-controls {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+
+.page-btn {
+    min-width: 36px !important;
+    height: 36px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    background: #fff !important;
+    color: #6D28D9 !important;
+    border: 1px solid #DDD6FE !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 0 12px !important;
+    font-weight: 800 !important;
+    font-size: 13px !important;
+    text-decoration: none !important;
+    box-shadow: var(--shadow-sm) !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.05s ease !important;
+}
+
+.page-btn:hover {
+    border-color: #A78BFA !important;
+    color: #5B21B6 !important;
+    background: #F5F3FF !important;
+    transform: translateY(-1px) !important;
+}
+
+.page-btn.active {
+    background: #7C3AED !important;
+    color: #fff !important;
+    border-color: #7C3AED !important;
+}
+
+.page-btn.disabled,
+.page-btn[aria-disabled="true"] {
+    color: rgba(255, 255, 255, 0.58) !important;
+    background: rgba(139, 92, 246, 0.38) !important;
+    border-color: rgba(139, 92, 246, 0.38) !important;
+    cursor: default !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+}
+
+@media (max-width: 520px) {
+    .pagination-summary {
+        font-size: 13px !important;
+    }
+
+    .pagination-controls {
+        gap: 8px !important;
+    }
+
+    .page-btn {
+        min-width: 34px !important;
+        height: 34px !important;
+        padding: 0 10px !important;
+        font-size: 12px !important;
+    }
+}
+
+/* -------- Cards / sections -------- */
+.header,
+.content-section,
+.quizzes-section-main,
+.profile-section-main,
+.search-section,
+.public-quizzes,
+.attempts-section,
+.form-container,
+.leaderboard-section,
+.results-section,
+.history-section {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-soft) !important;
+    box-shadow: var(--shadow-sm) !important;
+    border-radius: var(--radius-lg) !important;
+}
+
+.header {
+    padding: 20px 24px !important;
+}
+
+/* Домашняя страница: убираем просвет между верхней карточкой и поиском */
+body[data-active-nav="home"] .header {
+    margin-bottom: 0 !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+body[data-active-nav="home"] .search-section {
+    margin-top: 0 !important;
+    border-top: none !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+}
+.header h1 {
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    font-size: 1.9rem !important;
+}
+.header h2 {
+    color: var(--text-muted) !important;
+    font-weight: 500 !important;
+    font-size: 1rem !important;
+}
+.quiz-info {
+    color: var(--text-muted) !important;
+    font-size: 0.95rem !important;
+}
+
+/* -------- Quiz list item (на главной и в «Мои квизы») -------- */
+.quiz-list {
+    list-style: none !important;
+    padding: 0 !important;
+    display: grid;
+    gap: 12px;
+}
+.quiz-item {
+    background: var(--bg-soft) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 18px !important;
+}
+.quiz-item:hover {
+    background: var(--primary-soft) !important;
+    border-color: var(--primary-soft-2) !important;
+}
+.quiz-name {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+}
+.quiz-card-main,
+.quiz-info {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+}
+.quiz-meta {
+    color: var(--text-muted) !important;
+    font-size: 0.9rem !important;
+    flex-wrap: wrap !important;
+}
+.quiz-attempts {
+    flex: 0 0 auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 7px !important;
+    padding: 7px 11px !important;
+    border-radius: var(--radius-sm) !important;
+    background: var(--primary-soft) !important;
+    color: var(--primary-hover) !important;
+    border: 1px solid var(--primary-soft-2) !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+}
+.quiz-attempts-icon,
+.quiz-attempts svg {
+    width: 17px !important;
+    height: 17px !important;
+    stroke-width: 2.4 !important;
+}
+
+@media (max-width: 768px) {
+    .quiz-item {
+        align-items: flex-start !important;
+        flex-direction: column !important;
+    }
+
+    .quiz-attempts {
+        align-self: flex-start !important;
+    }
+}
+
+/* -------- Profile menu items -------- */
+.profile-menu-item {
+    background: var(--bg-soft) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--text-primary) !important;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease !important;
+}
+.profile-menu-item:hover {
+    background: var(--primary-soft) !important;
+    border-color: var(--primary-soft-2) !important;
+    color: var(--primary-hover) !important;
+    transform: none !important;
+}
+
+/* -------- Inputs / textarea / select -------- */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+textarea,
+select {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 10px 14px !important;
+    background: #fff !important;
+    color: var(--text-primary) !important;
+    font-size: 15px !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+textarea:focus,
+select:focus {
+    outline: none !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px var(--primary-soft) !important;
+}
+
+.sort-form {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 0 0 auto !important;
+}
+
+.section-toolbar {
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr !important;
+    align-items: center !important;
+    gap: 16px !important;
+    margin-bottom: 20px !important;
+}
+
+.section-toolbar h2 {
+    grid-column: 2 !important;
+    margin: 0 !important;
+}
+
+.section-toolbar .sort-form {
+    grid-column: 3 !important;
+    justify-self: end !important;
+}
+
+.sort-select-wrap {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.sort-filter-icon {
+    position: absolute !important;
+    left: 13px !important;
+    width: 18px !important;
+    height: 18px !important;
+    color: var(--primary) !important;
+    pointer-events: none !important;
+    z-index: 1 !important;
+}
+
+.sort-select {
+    height: 44px !important;
+    min-width: 210px !important;
+    padding: 0 42px 0 42px !important;
+    border: 1px solid var(--primary-soft-2) !important;
+    border-radius: var(--radius-sm) !important;
+    background: #fff !important;
+    color: #37308A !important;
+    font-weight: 800 !important;
+    box-shadow: var(--shadow-sm) !important;
+    cursor: pointer !important;
+}
+
+.sort-direction-btn {
+    width: 44px !important;
+    height: 44px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: 1px solid var(--primary-soft-2) !important;
+    border-radius: var(--radius-sm) !important;
+    background: #fff !important;
+    color: var(--primary) !important;
+    box-shadow: var(--shadow-sm) !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.05s ease !important;
+}
+
+.sort-direction-btn svg {
+    width: 20px !important;
+    height: 20px !important;
+    stroke-width: 2.5 !important;
+}
+
+.sort-direction-btn:hover,
+.sort-select:hover {
+    border-color: #A78BFA !important;
+    background: #F5F3FF !important;
+}
+
+.sort-direction-btn:hover {
+    color: var(--primary-hover) !important;
+    transform: translateY(-1px) !important;
+}
+
+@media (max-width: 760px) {
+    .search-box {
+        flex-wrap: wrap !important;
+    }
+
+    .search-input {
+        min-width: 220px !important;
+    }
+
+    .sort-form {
+        width: 100% !important;
+    }
+
+    .sort-select-wrap {
+        flex: 1 1 auto !important;
+    }
+
+    .sort-select {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    .section-toolbar {
+        grid-template-columns: 1fr !important;
+        justify-items: center !important;
+    }
+
+    .section-toolbar h2,
+    .section-toolbar .sort-form {
+        grid-column: 1 !important;
+    }
+}
+
+/* -------- Радио / чекбоксы -------- */
+input[type="radio"],
+input[type="checkbox"] {
+    accent-color: var(--primary);
+}
+
+/* -------- Option item в прохождении квиза -------- */
+.option-item {
+    background: var(--bg-soft) !important;
+    border: 1.5px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+.option-item:hover {
+    background: var(--primary-soft) !important;
+    border-color: var(--primary-soft-2) !important;
+}
+.option-item.correct-answer {
+    background: var(--success-soft) !important;
+    border-color: var(--success) !important;
+}
+.option-item.selected-wrong {
+    background: var(--danger-soft) !important;
+    border-color: var(--danger) !important;
+}
+
+/* -------- Question field -------- */
+.question-field {
+    background: var(--bg-soft) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+}
+.question-text {
+    color: var(--text-primary) !important;
+}
+
+/* -------- Progress info row (квиз) -------- */
+.progress-info {
+    background: var(--bg-soft) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+/* -------- Modal (подтверждение удаления и т.п.) -------- */
+.modal {
+    background: var(--bg-card) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-lg) !important;
+    border: 1px solid var(--border-soft) !important;
+}
+.modal-overlay {
+    background: rgba(17, 24, 39, 0.45) !important;
+}
+.modal-title {
+    color: var(--text-primary) !important;
+}
+
+/* -------- Tables (история, лидерборд, результаты) -------- */
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+.attempts-table,
+.leaderboard-table,
+.results-table {
+    background: var(--bg-card) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden !important;
+}
+.attempts-table th,
+.leaderboard-table th,
+.results-table th {
+    background: var(--bg-soft) !important;
+    color: var(--text-secondary) !important;
+    font-weight: 600 !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+.attempts-table td,
+.leaderboard-table td,
+.results-table td {
+    border-bottom: 1px solid var(--border-soft) !important;
+    color: var(--text-primary) !important;
+}
+.attempts-table tr:hover td,
+.leaderboard-table tr:hover td {
+    background: var(--bg-soft) !important;
+}
+
+/* -------- File upload zone (создание квиза) -------- */
+.file-upload-section {
+    background: var(--bg-soft) !important;
+    border: 2px dashed var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.file-upload-section:hover {
+    border-color: var(--primary) !important;
+    background: var(--primary-soft) !important;
+}
+.file-upload-label {
+    color: var(--text-secondary) !important;
+}
+
+/* -------- Error / status messages -------- */
+.error-message {
+    background: var(--danger-soft) !important;
+    color: var(--danger-hover) !important;
+    border: 1px solid var(--danger-soft) !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+/* -------- Тэги / бэйджи статуса (Публичный / Приватный) -------- */
+.badge,
+.tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.badge.public,
+.tag.public {
+    background: var(--success-soft) !important;
+    color: var(--success-hover) !important;
+}
+.badge.private,
+.tag.private {
+    background: var(--bg-hover) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* -------- Универсальная защита от слишком вытянутых текстов -------- */
+.quiz-name,
+.question-text,
+.modal-title,
+.modal-message,
+h1, h2, h3 {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+/* -------- Compact sidebar for narrow screens -------- */
+@media (max-width: 1500px) {
+    body.quiz-form-page .sidebar,
+    body.quiz-form-page > aside.sidebar,
+    body.quiz-form-page > .sidebar {
+        position: fixed !important;
+        left: 10px !important;
+        top: 10px !important;
+        width: 64px !important;
+        height: calc(100vh - 20px) !important;
+        min-height: calc(100vh - 20px) !important;
+        max-height: calc(100vh - 20px) !important;
+        padding: 10px 8px !important;
+        margin: 0 !important;
+        border-radius: var(--radius-md) !important;
+        overflow: visible !important;
+        gap: 6px !important;
+        z-index: 20 !important;
+    }
+
+    body.quiz-form-page:has(.sidebar) .main-content {
+        margin-left: 84px !important;
+        max-width: calc(100% - 84px) !important;
+        padding: 10px 10px 20px !important;
+    }
+
+    body.quiz-form-page .sidebar .brand,
+    body.quiz-form-page .brand {
+        justify-content: center !important;
+        padding: 6px 0 12px !important;
+        margin-bottom: 4px !important;
+        min-height: 44px !important;
+        flex: 0 0 auto !important;
+        position: relative !important;
+    }
+
+    body.quiz-form-page .sidebar .brand::before,
+    body.quiz-form-page .brand::before {
+        content: "Q";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary) 0%, #8B5CF6 100%);
+        color: #fff;
+        font-weight: 800;
+        font-size: 1.05rem;
+        box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
+    }
+
+    body.quiz-form-page .sidebar .brand-text,
+    body.quiz-form-page .sidebar .user-name,
+    body.quiz-form-page .sidebar .nav-btn span:not(.nav-ico),
+    body.quiz-form-page .sidebar .logout-btn span:not(.nav-ico),
+    body.quiz-form-page .sidebar-footer .logout-btn span:not(.nav-ico) {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+    }
+
+    body.quiz-form-page .sidebar .sidebar-nav,
+    body.quiz-form-page .sidebar-nav {
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        flex: 0 0 auto !important;
+        width: 100% !important;
+    }
+
+    body.quiz-form-page .sidebar .nav-btn,
+    body.quiz-form-page .sidebar a.nav-btn,
+    body.quiz-form-page .sidebar button.nav-btn,
+    body.quiz-form-page .sidebar .logout-btn,
+    body.quiz-form-page .sidebar-footer .logout-btn,
+    body.quiz-form-page .sidebar .user-card,
+    body.quiz-form-page a.user-card {
+        width: 46px !important;
+        height: 46px !important;
+        min-width: 46px !important;
+        min-height: 46px !important;
+        flex: 0 0 46px !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 0 !important;
+        border-radius: var(--radius-sm) !important;
+        gap: 0 !important;
+        position: relative !important;
+        font-size: 0 !important;
+        line-height: 1 !important;
+    }
+
+    body.quiz-form-page .sidebar .nav-btn:hover span:not(.nav-ico),
+    body.quiz-form-page .sidebar .nav-btn:focus-visible span:not(.nav-ico),
+    body.quiz-form-page .sidebar .brand:hover .brand-text,
+    body.quiz-form-page .sidebar .brand:focus-visible .brand-text,
+    body.quiz-form-page .sidebar .logout-btn:hover span:not(.nav-ico),
+    body.quiz-form-page .sidebar .logout-btn:focus-visible span:not(.nav-ico),
+    body.quiz-form-page .sidebar-footer .logout-btn:hover span:not(.nav-ico),
+    body.quiz-form-page .sidebar-footer .logout-btn:focus-visible span:not(.nav-ico) {
+        position: absolute !important;
+        left: calc(100% + 10px) !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: max-content !important;
+        max-width: 220px !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 7px 10px !important;
+        overflow: visible !important;
+        clip: auto !important;
+        white-space: nowrap !important;
+        border: 1px solid var(--border-soft) !important;
+        border-radius: 8px !important;
+        background: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        box-shadow: var(--shadow-md) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+        z-index: 1000 !important;
+        pointer-events: none !important;
+    }
+
+    body.quiz-form-page .sidebar .nav-btn .nav-ico,
+    body.quiz-form-page .sidebar .nav-btn .nav-ico svg {
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    body.quiz-form-page .sidebar .sidebar-footer,
+    body.quiz-form-page .sidebar-footer {
+        margin-top: auto !important;
+        padding-top: 10px !important;
+        align-items: center !important;
+        flex: 0 0 auto !important;
+        width: 100% !important;
+    }
+
+    body.quiz-form-page .sidebar .user-card::after,
+    body.quiz-form-page a.user-card::after {
+        content: attr(aria-label);
+        position: absolute;
+        left: calc(100% + 10px);
+        top: 50%;
+        transform: translateY(-50%);
+        width: max-content;
+        max-width: 220px;
+        padding: 7px 10px;
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        box-shadow: var(--shadow-md);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.2;
+        z-index: 1000;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    body.quiz-form-page .sidebar .user-card:hover::after,
+    body.quiz-form-page .sidebar .user-card:focus-visible::after,
+    body.quiz-form-page a.user-card:hover::after,
+    body.quiz-form-page a.user-card:focus-visible::after {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    body.quiz-form-page .sidebar .user-avatar {
+        width: 34px !important;
+        height: 34px !important;
+    }
+}
+
+@media (max-width: 900px) {
+    body .sidebar,
+    body > aside.sidebar,
+    body > .sidebar {
+        position: fixed !important;
+        left: 10px !important;
+        top: 10px !important;
+        width: 64px !important;
+        height: calc(100vh - 20px) !important;
+        min-height: calc(100vh - 20px) !important;
+        max-height: calc(100vh - 20px) !important;
+        padding: 10px 8px !important;
+        margin: 0 !important;
+        border-radius: var(--radius-md) !important;
+        overflow: visible !important;
+        gap: 6px !important;
+        z-index: 20 !important;
+    }
+
+    body:has(.sidebar) .main-content {
+        margin-left: 84px !important;
+        max-width: calc(100% - 84px) !important;
+        padding: 10px 10px 20px !important;
+    }
+
+    .sidebar .brand,
+    .brand {
+        justify-content: center !important;
+        padding: 6px 0 12px !important;
+        margin-bottom: 4px !important;
+        min-height: 44px !important;
+        flex: 0 0 auto !important;
+        position: relative !important;
+    }
+
+    .sidebar .brand::before,
+    .brand::before {
+        content: "Q";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary) 0%, #8B5CF6 100%);
+        color: #fff;
+        font-weight: 800;
+        font-size: 1.05rem;
+        box-shadow: 0 2px 6px rgba(124, 58, 237, 0.35);
+    }
+
+    .sidebar .brand-text,
+    .sidebar .user-name,
+    .sidebar .nav-btn span:not(.nav-ico) {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+    }
+
+    .sidebar .sidebar-nav,
+    .sidebar-nav {
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        flex: 0 0 auto !important;
+        width: 100% !important;
+    }
+
+    .sidebar .nav-btn,
+    .sidebar a.nav-btn,
+    .sidebar button.nav-btn,
+    body .sidebar .nav-btn {
+        width: 46px !important;
+        height: 46px !important;
+        min-width: 46px !important;
+        min-height: 46px !important;
+        flex: 0 0 46px !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 0 !important;
+        border-radius: var(--radius-sm) !important;
+        gap: 0 !important;
+        position: relative !important;
+    }
+
+    .sidebar .nav-btn:hover span:not(.nav-ico),
+    .sidebar .nav-btn:focus-visible span:not(.nav-ico),
+    .sidebar .brand:hover .brand-text,
+    .sidebar .brand:focus-visible .brand-text {
+        position: absolute !important;
+        left: calc(100% + 10px) !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: max-content !important;
+        max-width: 220px !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 7px 10px !important;
+        overflow: visible !important;
+        clip: auto !important;
+        white-space: nowrap !important;
+        border: 1px solid var(--border-soft) !important;
+        border-radius: 8px !important;
+        background: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        box-shadow: var(--shadow-md) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+        z-index: 1000 !important;
+        pointer-events: none !important;
+    }
+
+    .sidebar .logout-btn,
+    .sidebar-footer .logout-btn,
+    button.logout-btn,
+    .logout-btn {
+        width: 46px !important;
+        height: 46px !important;
+        min-width: 46px !important;
+        min-height: 46px !important;
+        flex: 0 0 46px !important;
+        padding: 0 !important;
+        border-radius: var(--radius-sm) !important;
+        font-size: 0 !important;
+        line-height: 1 !important;
+        position: relative !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .sidebar .logout-btn span:not(.nav-ico),
+    .sidebar-footer .logout-btn span:not(.nav-ico) {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        padding: 0 !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+        border: 0 !important;
+    }
+
+    .sidebar .logout-btn:hover span:not(.nav-ico),
+    .sidebar .logout-btn:focus-visible span:not(.nav-ico),
+    .sidebar-footer .logout-btn:hover span:not(.nav-ico),
+    .sidebar-footer .logout-btn:focus-visible span:not(.nav-ico) {
+        position: absolute !important;
+        left: calc(100% + 10px) !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: max-content !important;
+        max-width: 220px !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 7px 10px !important;
+        overflow: visible !important;
+        clip: auto !important;
+        white-space: nowrap !important;
+        border: 1px solid var(--border-soft) !important;
+        border-radius: 8px !important;
+        background: var(--bg-card) !important;
+        color: var(--text-primary) !important;
+        box-shadow: var(--shadow-md) !important;
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+        z-index: 1000 !important;
+        pointer-events: none !important;
+    }
+    .sidebar .nav-btn .nav-ico {
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    .sidebar .nav-btn .nav-ico svg {
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    .sidebar .sidebar-footer,
+    .sidebar-footer {
+        margin-top: auto !important;
+        padding-top: 10px !important;
+        align-items: center !important;
+        flex: 0 0 auto !important;
+        width: 100% !important;
+    }
+
+    .sidebar .user-card,
+    a.user-card {
+        width: 46px !important;
+        height: 46px !important;
+        min-width: 46px !important;
+        min-height: 46px !important;
+        flex: 0 0 46px !important;
+        padding: 0 !important;
+        justify-content: center !important;
+        gap: 0 !important;
+        position: relative !important;
+    }
+
+    .sidebar .user-card::after,
+    a.user-card::after {
+        content: attr(aria-label);
+        position: absolute;
+        left: calc(100% + 10px);
+        top: 50%;
+        transform: translateY(-50%);
+        width: max-content;
+        max-width: 220px;
+        padding: 7px 10px;
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+        background: var(--bg-card);
+        color: var(--text-primary);
+        box-shadow: var(--shadow-md);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.2;
+        z-index: 1000;
+        pointer-events: none;
+        opacity: 0;
+        visibility: hidden;
+    }
+
+    .sidebar .user-card:hover::after,
+    .sidebar .user-card:focus-visible::after,
+    a.user-card:hover::after,
+    a.user-card:focus-visible::after {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .sidebar .user-avatar {
+        width: 34px !important;
+        height: 34px !important;
+    }
+}
+
+@media (max-width: 520px) {
+    body .sidebar,
+    body > aside.sidebar,
+    body > .sidebar {
+        left: 6px !important;
+        top: 6px !important;
+        width: 58px !important;
+        height: calc(100vh - 12px) !important;
+        min-height: calc(100vh - 12px) !important;
+        max-height: calc(100vh - 12px) !important;
+        padding: 8px 6px !important;
+    }
+
+    body:has(.sidebar) .main-content {
+        margin-left: 70px !important;
+        max-width: calc(100% - 70px) !important;
+        padding: 8px 8px 18px !important;
+    }
+
+    .sidebar .nav-btn,
+    .sidebar a.nav-btn,
+    .sidebar button.nav-btn,
+    body .sidebar .nav-btn,
+    .sidebar .user-card,
+    a.user-card,
+    .sidebar .logout-btn,
+    .sidebar-footer .logout-btn {
+        width: 42px !important;
+        height: 42px !important;
+        min-width: 42px !important;
+        min-height: 42px !important;
+        flex-basis: 42px !important;
+    }
+}
+
+/* -------- Скроллбар -------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-page); }
+::-webkit-scrollbar-thumb {
+    background: var(--primary-soft-2);
+    border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }

@@ -4,21 +4,26 @@ import org.example.dto.request.multiplayer.*;
 import org.example.dto.response.multiplayer.MultiplayerResultsDTO;
 import org.example.dto.response.multiplayer.MultiplayerSessionDTO;
 import org.example.dto.response.multiplayer.ParticipantsDTO;
+import org.example.service.JwtService;
 import org.example.service.MultiplayerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/multiplayer")
 public class MultiplayerController {
 
     private final MultiplayerService multiplayerService;
+    private final JwtService jwtService;
 
     @Autowired
-    public MultiplayerController(MultiplayerService multiplayerService) {
+    public MultiplayerController(MultiplayerService multiplayerService, JwtService jwtService) {
         this.multiplayerService = multiplayerService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/sessions")
@@ -42,12 +47,14 @@ public class MultiplayerController {
     }
 
     @PostMapping("/sessions/join")
-    public ResponseEntity<Boolean> joinSession(@RequestBody JoinMultiplayerRequest request) {
+    public ResponseEntity<?> joinSession(@RequestBody JoinMultiplayerRequest request) {
         try {
             boolean joined = multiplayerService.joinMultiplayerSession(request);
             return ResponseEntity.ok(joined);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Неверные параметры запроса"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Не удалось присоединиться к сессии"));
         }
     }
 
@@ -62,14 +69,19 @@ public class MultiplayerController {
     }
 
     @PostMapping("/sessions/start")
-    public ResponseEntity<Boolean> startSession(@RequestBody StartMultiplayerRequest request) {
+    public ResponseEntity<?> startSession(@RequestBody StartMultiplayerRequest request) {
         try {
             boolean started = multiplayerService.startMultiplayerSession(request);
             return ResponseEntity.ok(started);
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            return ResponseEntity.badRequest().build();
+        } catch (IllegalStateException e) {
+            if (e.getMessage() != null && e.getMessage().contains("Недостаточно участников")) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Нельзя начать мультиплеер одному. Нужно минимум 2 участника."));
+            }
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Не удалось запустить сессию"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Неверные параметры запроса"));
         } catch (SecurityException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Только хост может запустить сессию"));
         }
     }
 
@@ -92,6 +104,52 @@ public class MultiplayerController {
             return ResponseEntity.notFound().build();
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+    }
+
+    @GetMapping("/sessions/{sessionId}/progress")
+    public ResponseEntity<Map<String, Object>> getProgress(@PathVariable String sessionId,
+                                                           @RequestParam(required = false) Long questionId,
+                                                           @RequestParam(required = false) Long userId,
+                                                           jakarta.servlet.http.HttpServletRequest request) {
+        try {
+            // Если userId не передан в параметрах, пытаемся извлечь из токена
+            Long currentUserId = userId;
+            if (currentUserId == null) {
+                currentUserId = jwtService.extractUserIdFromRequest(request);
+            }
+            
+            Map<String, Object> progress = multiplayerService.getSessionProgress(
+                    sessionId, questionId, currentUserId);
+            return ResponseEntity.ok(progress);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/sessions/{sessionId}/live-leaderboard")
+    public ResponseEntity<?> getLiveLeaderboard(@PathVariable String sessionId) {
+        try {
+            var leaderboard = multiplayerService.getSessionLiveLeaderboard(sessionId);
+            return ResponseEntity.ok(leaderboard);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/sessions/{sessionId}/leave")
+    public ResponseEntity<?> leaveSession(@PathVariable String sessionId, @RequestParam Long userId) {
+        System.out.println("MultiplayerController.leaveSession: sessionId=" + sessionId + ", userId=" + userId);
+        try {
+            boolean left = multiplayerService.leaveMultiplayerSession(sessionId, userId);
+            System.out.println("MultiplayerController.leaveSession: результат удаления: " + left);
+            return ResponseEntity.ok(left);
+        } catch (IllegalArgumentException e) {
+            System.err.println("MultiplayerController.leaveSession: IllegalArgumentException: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Неверные параметры"));
+        } catch (IllegalStateException e) {
+            System.err.println("MultiplayerController.leaveSession: IllegalStateException: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage() != null ? e.getMessage() : "Нельзя покинуть сессию"));
         }
     }
 }

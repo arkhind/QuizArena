@@ -8,7 +8,9 @@ public record QuizDTO(
   String author,
   Integer questionCount,
   Integer timeLimit,
+  Integer timePerQuestion,
   Boolean isPublic,
   Boolean isStatic,
-  LocalDateTime createdAt
+  LocalDateTime createdAt,
+  Long completionCount
 ) {}

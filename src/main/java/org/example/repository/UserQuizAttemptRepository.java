@@ -4,6 +4,7 @@ import org.example.model.UserQuizAttempt;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -23,8 +24,17 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
      * @return страница с попытками
      */
     @Query("SELECT u FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
-           "ORDER BY u.score DESC NULLS LAST, u.finishTime ASC")
+           "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
+           "ORDER BY COALESCE(u.baseScore, u.score) DESC NULLS LAST, u.score DESC NULLS LAST, u.finishTime ASC")
     Page<UserQuizAttempt> findCompletedByQuizIdOrderByScoreDesc(@Param("quizId") Long quizId, Pageable pageable);
+
+    @Query("SELECT COUNT(DISTINCT u.user.id) FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
+           "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL")
+    long countCompletedUsersByQuizId(@Param("quizId") Long quizId);
+
+    @Query("SELECT COUNT(u) FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
+           "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL")
+    long countCompletedAttemptsByQuizId(@Param("quizId") Long quizId);
 
     /**
      * Находит ID квиза по ID попытки прохождения.
@@ -39,11 +49,36 @@ public interface UserQuizAttemptRepository extends JpaRepository<UserQuizAttempt
      * Находит лучший результат каждого пользователя по квизу (только лучший результат для каждого пользователя).
      */
     @Query("SELECT u FROM UserQuizAttempt u WHERE u.quiz.id = :quizId AND u.isCompleted = true " +
-           "AND u.score = (SELECT MAX(u2.score) FROM UserQuizAttempt u2 WHERE u2.quiz.id = :quizId " +
-           "AND u2.user.id = u.user.id AND u2.isCompleted = true) " +
-           "ORDER BY u.score DESC NULLS LAST, u.finishTime ASC")
+           "AND u.startTime IS NOT NULL AND u.finishTime IS NOT NULL " +
+           "AND COALESCE(u.baseScore, u.score) = (SELECT MAX(COALESCE(u2.baseScore, u2.score)) FROM UserQuizAttempt u2 WHERE u2.quiz.id = :quizId " +
+           "AND u2.user.id = u.user.id AND u2.isCompleted = true AND u2.startTime IS NOT NULL AND u2.finishTime IS NOT NULL) " +
+           "ORDER BY COALESCE(u.baseScore, u.score) DESC NULLS LAST, u.score DESC NULLS LAST, u.finishTime ASC")
     Page<UserQuizAttempt> findBestAttemptsByQuizId(@Param("quizId") Long quizId, Pageable pageable);
 
     long countByUserId(Long userId);
-}
 
+    @Query("SELECT DISTINCT u.quiz.id FROM UserQuizAttempt u WHERE u.user.id = :userId AND u.isCompleted = true " +
+           "AND u.quiz.id IS NOT NULL")
+    List<Long> findCompletedQuizIdsByUserId(@Param("userId") Long userId);
+    
+    long countByIsCompletedFalse();
+    
+    List<UserQuizAttempt> findBySessionId(String sessionId);
+    
+    @Query("SELECT u FROM UserQuizAttempt u JOIN FETCH u.user WHERE u.sessionId = :sessionId")
+    List<UserQuizAttempt> findBySessionIdWithUser(@Param("sessionId") String sessionId);
+    
+    UserQuizAttempt findByUserIdAndQuizIdAndSessionId(Long userId, Long quizId, String sessionId);
+
+    UserQuizAttempt findTopByUserIdAndQuizIdAndSessionIdOrderByIdDesc(Long userId, Long quizId, String sessionId);
+
+    UserQuizAttempt findTopByUserIdAndQuizIdAndSessionIdIsNullAndIsCompletedFalseOrderByIdDesc(Long userId, Long quizId);
+    
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM user_quiz_attempts WHERE user_id = :userId AND quiz_id = :quizId AND session_id = :sessionId", nativeQuery = true)
+    int deleteByUserIdAndQuizIdAndSessionId(@Param("userId") Long userId, @Param("quizId") Long quizId, @Param("sessionId") String sessionId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "DELETE FROM user_quiz_attempts WHERE session_id = :sessionId", nativeQuery = true)
+    int deleteBySessionId(@Param("sessionId") String sessionId);
+}

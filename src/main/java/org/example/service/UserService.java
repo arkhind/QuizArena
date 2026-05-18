@@ -36,37 +36,48 @@ public class UserService {
     private final UserQuizAttemptRepository attemptRepository;
     private final QuestionRepository questionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LeaderboardService leaderboardService;
 
     @Autowired
     public UserService(UserRepository userRepository,
                       QuizRepository quizRepository,
                       UserQuizAttemptRepository attemptRepository,
                       QuestionRepository questionRepository,
-                      PasswordEncoder passwordEncoder) {
+                      PasswordEncoder passwordEncoder,
+                      LeaderboardService leaderboardService) {
         this.userRepository = userRepository;
         this.quizRepository = quizRepository;
         this.attemptRepository = attemptRepository;
         this.questionRepository = questionRepository;
         this.passwordEncoder = passwordEncoder;
+        this.leaderboardService = leaderboardService;
     }
 
     public UserProfileDTO updateUserProfile(UpdateProfileRequest request) {
         User user = userRepository.findById(request.userId())
                 .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
-        if (request.newUsername() != null && !request.newUsername().isEmpty()) {
-            if (userRepository.existsByLogin(request.newUsername()) && 
-                !request.newUsername().equals(user.getLogin())) {
+        boolean usernameChanged = false;
+        if (request.newUsername() != null && !request.newUsername().trim().isEmpty()) {
+            String newUsername = request.newUsername().trim();
+            if (userRepository.existsByLogin(newUsername) &&
+                !newUsername.equals(user.getLogin())) {
                 throw new IllegalArgumentException("Пользователь с таким логином уже существует");
             }
-            user.setLogin(request.newUsername());
+            if (!newUsername.equals(user.getLogin())) {
+                user.setLogin(newUsername);
+                usernameChanged = true;
+            }
         }
 
         if (request.newPassword() != null && !request.newPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(request.newPassword()));
+            user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         }
 
         user = userRepository.save(user);
+        if (usernameChanged) {
+            evictUserLeaderboardCaches(user.getId());
+        }
 
         long totalQuizzes = quizRepository.countByCreatedById(user.getId());
         long totalAttempts = attemptRepository.countByUserId(user.getId());
@@ -78,6 +89,12 @@ public class UserService {
                 (int) totalQuizzes,
                 (int) totalAttempts
         );
+    }
+
+    private void evictUserLeaderboardCaches(Long userId) {
+        for (Long quizId : attemptRepository.findCompletedQuizIdsByUserId(userId)) {
+            leaderboardService.evict(quizId);
+        }
     }
 
     public UserProfileDTO getUserProfile(Long userId) {
@@ -106,6 +123,7 @@ public class UserService {
 
         List<AttemptSummary> summaries = attempts.stream()
                 .filter(UserQuizAttempt::isCompleted)
+                .filter(a -> a.getStartTime() != null && a.getFinishTime() != null)
                 .map(attempt -> new AttemptSummary(
                         attempt.getId(),
                         attempt.getQuiz().getName(),
@@ -117,11 +135,13 @@ public class UserService {
         long totalAttempts = attemptRepository.countByUserId(userId);
         double avgScore = attempts.stream()
                 .filter(a -> a.getScore() != null && a.isCompleted())
+                .filter(a -> a.getStartTime() != null && a.getFinishTime() != null)
                 .mapToLong(a -> a.getScore())
                 .average()
                 .orElse(0.0);
         long bestScore = attempts.stream()
                 .filter(a -> a.getScore() != null && a.isCompleted())
+                .filter(a -> a.getStartTime() != null && a.getFinishTime() != null)
                 .mapToLong(a -> a.getScore())
                 .max()
                 .orElse(0L);
@@ -146,21 +166,30 @@ public class UserService {
     }
 
     private QuizDTO toQuizDTO(org.example.model.Quiz quiz) {
-        // Считаем реальное количество вопросов в БД
-        int actualQuestionCount = (int) questionRepository.countByQuizId(quiz.getId());
-        // Если вопросов еще нет, но есть запланированное количество, показываем его
-        // Иначе показываем реальное количество
-        int questionCount = actualQuestionCount > 0 ? actualQuestionCount : 
-                           (quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0);
+        int questionCount = quiz.getQuestionNumber() != null ? quiz.getQuestionNumber() : 0;
+        
+        // Вычисляем общее время на весь квиз в секундах (время на вопрос * количество вопросов)
+        Integer totalTimeSeconds = null;
+        Integer timePerQuestionSeconds = null;
+        if (quiz.getTimePerQuestion() != null && quiz.getTimePerQuestion().getSeconds() > 0) {
+            long secondsPerQuestion = quiz.getTimePerQuestion().getSeconds();
+            timePerQuestionSeconds = (int) secondsPerQuestion;
+            if (questionCount > 0) {
+                totalTimeSeconds = (int) (secondsPerQuestion * questionCount);
+            }
+        }
+        
         return new QuizDTO(
                 quiz.getId(),
                 quiz.getName(),
                 quiz.getCreatedBy().getLogin(),
                 questionCount,
-                quiz.getTimePerQuestion() != null ? (int) quiz.getTimePerQuestion().getSeconds() : null,
+                totalTimeSeconds,
+                timePerQuestionSeconds,
                 !quiz.isPrivate(),
                 quiz.isStatic(),
-                toLocalDateTime(quiz.getCreatedAt())
+                toLocalDateTime(quiz.getCreatedAt()),
+                attemptRepository.countCompletedAttemptsByQuizId(quiz.getId())
         );
     }
 
@@ -168,4 +197,3 @@ public class UserService {
         return instant != null ? LocalDateTime.ofInstant(instant, ZoneId.systemDefault()) : null;
     }
 }
-

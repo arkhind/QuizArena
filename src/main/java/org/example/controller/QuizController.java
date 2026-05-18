@@ -3,8 +3,9 @@ package org.example.controller;
 import org.example.dto.request.quiz.*;
 import org.example.dto.response.quiz.*;
 import org.example.service.FileStorageService;
+import org.example.service.JwtService;
 import org.example.service.QuizService;
-import org.example.util.TokenUtil;
+import org.example.service.UnethicalPromptException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,17 +22,18 @@ public class QuizController {
 
     private final QuizService quizService;
     private final FileStorageService fileStorageService;
+    private final JwtService jwtService;
 
     @Autowired
-    public QuizController(QuizService quizService, FileStorageService fileStorageService) {
+    public QuizController(QuizService quizService, FileStorageService fileStorageService, JwtService jwtService) {
         this.quizService = quizService;
         this.fileStorageService = fileStorageService;
+        this.jwtService = jwtService;
     }
 
-    @PostMapping
+    @PostMapping(consumes = "application/json")
     public ResponseEntity<?> createQuiz(@RequestBody CreateQuizRequest request) {
         try {
-            // Валидация входных данных
             if (request.name() == null || request.name().trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("Название квиза не может быть пустым");
             }
@@ -41,12 +43,96 @@ public class QuizController {
             
             QuizResponseDTO response = quizService.createQuiz(request);
             return ResponseEntity.ok(response);
+        } catch (UnethicalPromptException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Данные квиза являются неэтичными");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
+            // Проверяем, не является ли это ошибкой этичности, обернутой в другое исключение
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                if (cause instanceof UnethicalPromptException) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Данные квиза являются неэтичными");
+                }
+                cause = cause.getCause();
+            }
+
+            // Проверяем сообщение об ошибке на наличие упоминания об этичности
+            String errorMessage = e.getMessage();
+            if (errorMessage != null && (errorMessage.contains("неэтичн") || errorMessage.contains("UNETHICAL_PROMPT") || errorMessage.contains("неэтичными"))) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Данные квиза являются неэтичными");
+            }
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Внутренняя ошибка сервера");
+                    .body("Внутренняя ошибка сервера: " + e.getMessage());
         }
+    }
+
+    @PostMapping(consumes = "multipart/form-data")
+    public ResponseEntity<?> createQuizWithMaterials(
+            @RequestParam("name") String name,
+            @RequestParam("prompt") String prompt,
+            @RequestParam("createdBy") Long createdBy,
+            @RequestParam("questionNumber") Integer questionNumber,
+            @RequestParam("timeLimit") Integer timeLimit,
+            @RequestParam("isPrivate") Boolean isPrivate,
+            @RequestParam("isStatic") Boolean isStatic,
+            @RequestParam(value = "defaultQuestionType", required = false) org.example.model.QuestionType defaultQuestionType,
+            @RequestParam(value = "files", required = false) MultipartFile[] files) {
+        try {
+            boolean hasFiles = files != null && files.length > 0;
+            CreateQuizRequest request = new CreateQuizRequest(
+                    name,
+                    prompt,
+                    createdBy,
+                    hasFiles,
+                    List.of(),
+                    questionNumber,
+                    timeLimit,
+                    isPrivate,
+                    isStatic,
+                    defaultQuestionType
+            );
+
+            ResponseEntity<?> validationError = validateCreateQuizRequest(request);
+            if (validationError != null) {
+                return validationError;
+            }
+
+            QuizResponseDTO response = quizService.createQuiz(request);
+            if (hasFiles) {
+                List<String> fileUrls = fileStorageService.saveQuizMaterials(files, response.quizId());
+                if (!fileUrls.isEmpty()) {
+                    quizService.updateQuizMaterialUrl(response.quizId(), fileUrls.get(0));
+                    quizService.regenerateWithMaterialFiles(response.quizId(), fileUrls);
+                }
+            }
+            return ResponseEntity.ok(response);
+        } catch (UnethicalPromptException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Данные квиза являются неэтичными");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Ошибка при сохранении файлов: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Внутренняя ошибка сервера: " + e.getMessage());
+        }
+    }
+
+    private ResponseEntity<?> validateCreateQuizRequest(CreateQuizRequest request) {
+        if (request.name() == null || request.name().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Название квиза не может быть пустым");
+        }
+        if (request.createdBy() == null || request.createdBy() <= 0) {
+            return ResponseEntity.badRequest().body("Некорректный ID создателя");
+        }
+        return null;
     }
 
     @PostMapping("/{quizId}/materials")
@@ -69,6 +155,7 @@ public class QuizController {
             if (!fileUrls.isEmpty()) {
                 quizService.updateQuizMaterialUrl(quizId, fileUrls.get(0));
             }
+            quizService.regenerateWithMaterialFiles(quizId, fileUrls);
 
             return ResponseEntity.ok(fileUrls);
         } catch (IllegalArgumentException e) {
@@ -96,7 +183,7 @@ public class QuizController {
             }
             
             // Извлекаем userId из токена для проверки доступа к приватным квизам
-            Long userId = TokenUtil.extractUserIdFromRequest(request);
+            Long userId = jwtService.extractUserIdFromRequest(request);
             QuizDetailsDTO quiz = quizService.getQuiz(quizId, userId);
             return ResponseEntity.ok(quiz);
         } catch (IllegalArgumentException e) {
@@ -104,6 +191,25 @@ public class QuizController {
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("Доступ запрещен");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Внутренняя ошибка сервера");
+        }
+    }
+
+    @GetMapping("/{quizId}/generation-status")
+    public ResponseEntity<?> getGenerationStatus(@PathVariable Long quizId, HttpServletRequest request) {
+        try {
+            if (quizId == null || quizId <= 0) {
+                return ResponseEntity.badRequest().body("Некорректный ID квиза");
+            }
+            Long userId = jwtService.extractUserIdFromRequest(request);
+            quizService.getQuiz(quizId, userId);
+            return ResponseEntity.ok(quizService.getGenerationStatus(quizId));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Доступ запрещен");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Внутренняя ошибка сервера");
@@ -137,7 +243,7 @@ public class QuizController {
     }
 
     @PutMapping("/{quizId}")
-    public ResponseEntity<QuizResponseDTO> updateQuiz(
+    public ResponseEntity<?> updateQuiz(
             @PathVariable Long quizId,
             @RequestBody UpdateQuizRequest request) {
         try {
@@ -146,14 +252,25 @@ public class QuizController {
                     quizId,
                     request.userId(),
                     request.name(),
-                    request.prompt()
+                    null,
+                    null,
+                    request.timeLimit(),
+                    request.isPrivate(),
+                    request.isStatic(),
+                    null
             );
             QuizResponseDTO response = quizService.updateQuiz(updatedRequest);
             return ResponseEntity.ok(response);
+        } catch (UnethicalPromptException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Данные квиза являются неэтичными");
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Ошибка при обновлении квиза: " + e.getMessage());
         }
     }
 
@@ -199,6 +316,10 @@ public class QuizController {
             
             QuizResponseDTO response = quizService.copyQuiz(quizId, userId);
             return ResponseEntity.ok(response);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         } catch (Exception e) {
@@ -226,4 +347,3 @@ public class QuizController {
         }
     }
 }
-
