@@ -302,7 +302,10 @@ public class AttemptService {
 
         Instant answeredAt = Instant.now();
         boolean timedOut = isTimedOut(attempt, questionId, answeredAt);
-        List<Long> selectedIds = timedOut ? List.of() : request.getEffectiveSelectedIds();
+        boolean keepTimeoutSelection = timedOut && Boolean.TRUE.equals(request.autoSubmitOnTimeout());
+        List<Long> selectedIds = timedOut && !keepTimeoutSelection
+                ? List.of()
+                : request.getEffectiveSelectedIds();
         Boolean isCorrect;
         Long correctAnswerId;
         int scoreEarned = 0;
@@ -842,13 +845,11 @@ public class AttemptService {
             throw new IllegalStateException("У вопроса ID " + question.getId() + " нет вариантов ответов");
         }
 
-        // «100 к 1»: детерминированная перетасовка, чтобы порядок был стабильным в рамках попытки
-        // и правильные ответы не шли подряд слишком предсказуемо.
-        if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
-            long shuffleSeed = attemptId * 1000003L + (question.getId() != null ? question.getId() : 0L);
-            options = new ArrayList<>(options);
-            Collections.shuffle(options, new Random(shuffleSeed));
-        }
+        // Детерминированная перетасовка: порядок стабилен в рамках попытки,
+        // но не повторяет порядок, который вернула модель или БД.
+        long shuffleSeed = attemptId * 1000003L + (question.getId() != null ? question.getId() : 0L);
+        options = new ArrayList<>(options);
+        Collections.shuffle(options, new Random(shuffleSeed));
 
         List<AnswerOption> dtoOptions = new ArrayList<>();
         for (org.example.model.AnswerOption opt : options) {

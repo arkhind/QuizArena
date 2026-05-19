@@ -7,7 +7,8 @@ public record SubmitAnswerRequest(
   Long attemptId,
   Long questionId,
   @JsonAlias("answerId") Long selectedAnswerId,
-  List<Long> selectedAnswerIds
+  List<Long> selectedAnswerIds,
+  Boolean autoSubmitOnTimeout
 ) {
   /**
    * Returns the list of selected answer IDs.
