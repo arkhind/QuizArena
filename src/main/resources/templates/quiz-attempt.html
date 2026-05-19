@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="UTF-8">
@@ -891,7 +891,7 @@
 
         let currentQuestionId = null;
 
-        async function submitAnswer(event, answerId = null) {
+        async function submitAnswer(event, answerId = null, autoSubmitOnTimeout = false) {
             if (event) {
                 event.preventDefault();
             }
@@ -922,12 +922,12 @@
             if (isMultiple) {
                 const checked = form ? form.querySelectorAll('input[name="answer"]:checked') : [];
                 selectedAnswerIds = Array.from(checked).map(function (el) { return parseInt(el.value, 10); });
-            } else if (!selectedAnswer && event) {
+            } else if (!selectedAnswer) {
                 const formData = new FormData(form);
                 selectedAnswer = formData.get('answer');
             }
 
-            const isTimeout = answerId === null && !event;
+            const isTimeout = autoSubmitOnTimeout || (answerId === null && !event);
 
             if (!isTimeout) {
                 const hasSelection = isMultiple ? selectedAnswerIds.length > 0 : !!selectedAnswer;
@@ -952,9 +952,12 @@
                 questionId: currentQuestionId ? parseInt(currentQuestionId, 10) : null
             };
             if (isMultiple) {
-                payload.selectedAnswerIds = isTimeout ? null : selectedAnswerIds;
+                payload.selectedAnswerIds = selectedAnswerIds;
             } else {
                 payload.selectedAnswerId = selectedAnswer ? parseInt(selectedAnswer, 10) : null;
+            }
+            if (isTimeout) {
+                payload.autoSubmitOnTimeout = true;
             }
 
             try {
@@ -1468,6 +1471,9 @@
         function startTimer() {
             const timeElement = document.getElementById('timeRemaining');
             if (!timeElement || !timeRemaining) return;
+            const isCatOverlayOpen =
+              !document.getElementById('catInBagOverlay')?.classList.contains('cat-overlay-hidden');
+            if (isCatOverlayOpen) return;
 
             timerInterval = setInterval(() => {
                 timeRemaining--;
@@ -1484,7 +1490,7 @@
                       !document.getElementById('catInBagOverlay')?.classList.contains('cat-overlay-hidden');
 
                     if (!isCatOverlayOpen) {
-                        submitAnswer(null, null);
+                        submitAnswer(null, null, true);
                     }
                 } else {
                     timeElement.textContent = timeRemaining + ' сек';
