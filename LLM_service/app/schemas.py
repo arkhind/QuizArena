@@ -48,6 +48,9 @@ class GenerationRequest(BaseModel):
 class QuestionOption(BaseModel):
     id: str
     text: str
+    nominal: float | None = None
+    popularity: float | None = None
+    popularity_score: float | None = None
 
 
 class QuestionItem(BaseModel):

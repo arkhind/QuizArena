@@ -3,6 +3,7 @@ package org.example.service;
 import org.example.model.Question;
 import org.example.model.AnswerOption;
 import org.example.model.QuestionType;
+import org.example.util.QuestionTextSanitizer;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -123,7 +124,7 @@ public class QuestionParser {
             }
             
             Question question = new Question();
-            question.setText(questionText);
+            question.setText(QuestionTextSanitizer.sanitize(questionText));
             question.setType(QuestionType.MULTIPLE_CHOICE);
             pq.question = question;
             

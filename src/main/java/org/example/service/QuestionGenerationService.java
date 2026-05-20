@@ -18,6 +18,7 @@ import org.example.repository.AnswerOptionRepository;
 import org.example.repository.GenerationSetRepository;
 import org.example.repository.QuestionRepository;
 import org.example.repository.QuizRepository;
+import org.example.util.QuestionTextSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -54,6 +56,18 @@ public class QuestionGenerationService {
     private static final String MESSAGE_RETRIES_EXHAUSTED = "ML-сервис не успел завершить генерацию. Квиз не будет создан автоматически, попробуйте запустить создание позже.";
     private static final int DEFAULT_GENERATION_QUESTION_COUNT = 10;
     private static final int MAX_ML_GENERATION_QUESTION_COUNT = 50;
+    private static final List<BigDecimal> HUNDRED_TO_ONE_CORRECT_NOMINALS = List.of(
+            new BigDecimal("1"),
+            new BigDecimal("1.5"),
+            new BigDecimal("2"),
+            new BigDecimal("2.5"),
+            new BigDecimal("3")
+    );
+    private static final List<BigDecimal> HUNDRED_TO_ONE_INCORRECT_NOMINALS = List.of(
+            new BigDecimal("0"),
+            new BigDecimal("-1"),
+            new BigDecimal("-2")
+    );
 
     private final GenerationSetRepository generationSetRepository;
     private final QuizRepository quizRepository;
@@ -404,7 +418,7 @@ public class QuestionGenerationService {
 
             Question question = new Question();
             question.setQuiz(quiz);
-            question.setText(mq.question().trim());
+            question.setText(QuestionTextSanitizer.sanitize(mq.question()));
             question.setType(type);
             question.setGenerationSetId(questionSet.getId());
 
@@ -451,7 +465,10 @@ public class QuestionGenerationService {
         long wrongCount = optionCount - correctCount;
 
         if (type == QuestionType.HUNDRED_TO_ONE) {
-            return optionCount == 8 && correctCount == 5 && wrongCount == 3;
+            return optionCount == 8
+                    && correctCount == 5
+                    && wrongCount == 3
+                    && hasExpectedHundredToOneNominals(options, correctIds);
         }
         if (type == QuestionType.SINGLE_CHOICE) {
             return optionCount >= 3 && optionCount <= 6 && correctCount == 1;
@@ -495,8 +512,56 @@ public class QuestionGenerationService {
                 }
             }
             ao.setCorrect(isCorrect);
+            if (question.getType() == QuestionType.HUNDRED_TO_ONE) {
+                ao.setNominal(resolveNominal(opt));
+            }
             answerOptionRepository.save(ao);
         }
+    }
+
+    private boolean hasExpectedHundredToOneNominals(List<MlQuestionOptionDTO> options, List<String> correctIds) {
+        List<BigDecimal> remainingCorrectNominals = new ArrayList<>(HUNDRED_TO_ONE_CORRECT_NOMINALS);
+        List<BigDecimal> remainingIncorrectNominals = new ArrayList<>(HUNDRED_TO_ONE_INCORRECT_NOMINALS);
+
+        for (MlQuestionOptionDTO option : options) {
+            if (option == null || option.text() == null || option.text().trim().isEmpty()) {
+                continue;
+            }
+
+            BigDecimal nominal = resolveNominal(option);
+            if (nominal == null || option.id() == null) {
+                return false;
+            }
+
+            boolean isCorrect = correctIds.stream()
+                    .anyMatch(id -> id != null && id.equalsIgnoreCase(option.id()));
+            List<BigDecimal> expectedNominals = isCorrect ? remainingCorrectNominals : remainingIncorrectNominals;
+            if (!removeNominal(expectedNominals, nominal)) {
+                return false;
+            }
+        }
+
+        return remainingCorrectNominals.isEmpty() && remainingIncorrectNominals.isEmpty();
+    }
+
+    private boolean removeNominal(List<BigDecimal> expectedNominals, BigDecimal nominal) {
+        for (int i = 0; i < expectedNominals.size(); i++) {
+            if (expectedNominals.get(i).compareTo(nominal) == 0) {
+                expectedNominals.remove(i);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private BigDecimal resolveNominal(MlQuestionOptionDTO opt) {
+        if (opt.nominal() != null) {
+            return opt.nominal();
+        }
+        if (opt.popularity() != null) {
+            return opt.popularity();
+        }
+        return opt.popularity_score();
     }
 
     private void markGenerationSetFailed(GenerationSet generationSet) {

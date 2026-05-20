@@ -11,6 +11,7 @@ import org.example.dto.response.quiz.QuestionDTO;
 import org.example.model.*;
 import org.example.repository.*;
 import org.example.metrics.MetricsService;
+import org.example.util.QuestionTextSanitizer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -883,7 +884,7 @@ public class AttemptService {
 
         return new QuestionDTO(
                 question.getId(),
-                question.getText(),
+                QuestionTextSanitizer.sanitize(question.getText()),
                 dtoOptions,
                 question.getType(),
                 timeLimit,
@@ -934,46 +935,12 @@ public class AttemptService {
             throw new IllegalStateException("У вопроса ID " + question.getId() + " нет вариантов ответов");
         }
 
-        java.util.List<Long> correctIds = options.stream()
-                .filter(org.example.model.AnswerOption::isCorrect)
-                .map(org.example.model.AnswerOption::getId)
-                .toList();
-        java.util.List<Long> incorrectIds = options.stream()
-                .filter(o -> !o.isCorrect())
-                .map(org.example.model.AnswerOption::getId)
-                .toList();
-
-        java.util.List<BigDecimal> correctPool = new java.util.ArrayList<>(
-                java.util.List.of(
-                        new BigDecimal("1"),
-                        new BigDecimal("1.5"),
-                        new BigDecimal("2"),
-                        new BigDecimal("2.5"),
-                        new BigDecimal("3")
-                )
-        );
-        java.util.List<BigDecimal> incorrectPool = new java.util.ArrayList<>(
-                java.util.List.of(
-                        new BigDecimal("0"),
-                        new BigDecimal("-1"),
-                        new BigDecimal("-2")
-                )
-        );
-
-        long seed = attemptId * 1000003L + (question.getId() != null ? question.getId() : 0L);
-        Random rnd = new Random(seed);
-        Collections.shuffle(correctPool, rnd);
-        Collections.shuffle(incorrectPool, rnd);
-
         java.util.Map<Long, BigDecimal> mapping = new java.util.HashMap<>();
-
-        for (int i = 0; i < correctIds.size(); i++) {
-            BigDecimal nominal = correctPool.get(i % correctPool.size());
-            mapping.put(correctIds.get(i), nominal);
-        }
-        for (int i = 0; i < incorrectIds.size(); i++) {
-            BigDecimal nominal = incorrectPool.get(i % incorrectPool.size());
-            mapping.put(incorrectIds.get(i), nominal);
+        for (org.example.model.AnswerOption option : options) {
+            if (option.getNominal() == null) {
+                throw new IllegalStateException("У вопроса ID " + question.getId() + " нет номиналов для 100к1");
+            }
+            mapping.put(option.getId(), option.getNominal());
         }
 
         st.hundredToOneNominalsByQuestionId.put(question.getId(), mapping);
