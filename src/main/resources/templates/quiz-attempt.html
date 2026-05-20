@@ -697,6 +697,7 @@
         let catLeaderboardHadSuccessfulLoad = false;
         let stakeTimerInterval = null;
         let stakeTimeLeft = 60;
+        let answerSubmitting = false;
         const stakeTimerMs = 60000;
 
         function readTimerSeconds(value, fallback) {
@@ -891,9 +892,38 @@
 
         let currentQuestionId = null;
 
+        function getCheckedAnswerInputs(form) {
+            if (!form) {
+                return [];
+            }
+            return Array.from(form.querySelectorAll('input[name="answer"]:checked'))
+                .filter(function (input) {
+                    return input && !input.disabled && input.value;
+                });
+        }
+
+        function getSelectedAnswerIds(form) {
+            return getCheckedAnswerInputs(form)
+                .map(function (input) { return parseInt(input.value, 10); })
+                .filter(function (id) { return Number.isFinite(id); });
+        }
+
+        function getSelectedAnswerId(form, explicitAnswerId) {
+            if (explicitAnswerId !== null && explicitAnswerId !== undefined && explicitAnswerId !== '') {
+                const parsedExplicitId = parseInt(explicitAnswerId, 10);
+                return Number.isFinite(parsedExplicitId) ? parsedExplicitId : null;
+            }
+            const selectedIds = getSelectedAnswerIds(form);
+            return selectedIds.length > 0 ? selectedIds[0] : null;
+        }
+
         async function submitAnswer(event, answerId = null, autoSubmitOnTimeout = false) {
             if (event) {
                 event.preventDefault();
+            }
+
+            if (answerSubmitting) {
+                return;
             }
 
             const currentAttemptId = getAttemptId();
@@ -916,21 +946,13 @@
             const questionType = (form && form.dataset.questionType) ? form.dataset.questionType : 'SINGLE_CHOICE';
             const isMultiple = questionType === 'MULTIPLE_CHOICE';
 
-            let selectedAnswer = answerId;
-            let selectedAnswerIds = [];
-
-            if (isMultiple) {
-                const checked = form ? form.querySelectorAll('input[name="answer"]:checked') : [];
-                selectedAnswerIds = Array.from(checked).map(function (el) { return parseInt(el.value, 10); });
-            } else if (!selectedAnswer) {
-                const formData = new FormData(form);
-                selectedAnswer = formData.get('answer');
-            }
+            const selectedAnswerIds = getSelectedAnswerIds(form);
+            const selectedAnswer = getSelectedAnswerId(form, answerId);
 
             const isTimeout = autoSubmitOnTimeout || (answerId === null && !event);
 
             if (!isTimeout) {
-                const hasSelection = isMultiple ? selectedAnswerIds.length > 0 : !!selectedAnswer;
+                const hasSelection = isMultiple ? selectedAnswerIds.length > 0 : selectedAnswer !== null;
                 if (!hasSelection) {
                     showError('Пожалуйста, выберите хотя бы один вариант ответа перед отправкой.');
                     return;
@@ -954,10 +976,16 @@
             if (isMultiple) {
                 payload.selectedAnswerIds = selectedAnswerIds;
             } else {
-                payload.selectedAnswerId = selectedAnswer ? parseInt(selectedAnswer, 10) : null;
+                payload.selectedAnswerId = selectedAnswer;
             }
             if (isTimeout) {
                 payload.autoSubmitOnTimeout = true;
+            }
+
+            answerSubmitting = true;
+            const submitButton = document.getElementById('submitButton');
+            if (submitButton) {
+                submitButton.disabled = true;
             }
 
             try {
@@ -980,9 +1008,8 @@
                         timerInterval = null;
                     }
 
-                    const submitButton = document.getElementById('submitButton');
-
                     if (submitButton) {
+                        submitButton.disabled = false;
                         if (result.nextQuestion) {
                             submitButton.textContent = 'Следующий вопрос';
                             submitButton.onclick = function(e) {
@@ -1030,6 +1057,10 @@
                         }
                     }
                 } else {
+                    answerSubmitting = false;
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
                     let backendMessage = 'Не удалось отправить ответ';
                     try {
                         const error = await response.json();
@@ -1043,6 +1074,10 @@
                     alert('Ошибка: ' + backendMessage);
                 }
             } catch (error) {
+                answerSubmitting = false;
+                if (submitButton) {
+                    submitButton.disabled = false;
+                }
                 console.error('Error:', error);
                 alert('Ошибка сети');
             }
@@ -1090,6 +1125,8 @@
         }
 
         function resetAnswerState() {
+            answerSubmitting = false;
+
             document.querySelectorAll('.option-item').forEach(item => {
                 item.classList.remove('correct-answer', 'selected-wrong');
             });
