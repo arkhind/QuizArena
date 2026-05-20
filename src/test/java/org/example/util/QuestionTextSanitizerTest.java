@@ -20,4 +20,12 @@ class QuestionTextSanitizerTest {
                 QuestionTextSanitizer.sanitize("Что означает термин «100 к 1» (в контексте игры)?")
         );
     }
+
+    @Test
+    void removesNullBytesBeforeDatabaseSave() {
+        assertEquals(
+                "Формула \\(x^2\\) верна",
+                QuestionTextSanitizer.removeUnsupportedControlCharacters("Формула \u0000\\(x^2\\) верна")
+        );
+    }
 }

@@ -401,15 +401,25 @@ public class QuestionGenerationService {
 
         for (int i = 0; i < mlQuestions.size() && generatedQuestions.size() < questionCount; i++) {
             MlQuestionDTO mq = mlQuestions.get(i);
-            if (mq == null || mq.question() == null || mq.question().trim().isEmpty()) {
+            if (mq == null || mq.question() == null || sanitizeDbText(mq.question()).isEmpty()) {
                 metricsService.recordValidationFailed();
                 continue;
             }
 
             QuestionType type = mapMlType(mq.type(), request.preferredQuestionType());
+            if (!matchesPreferredQuestionType(type, request.preferredQuestionType())) {
+                metricsService.recordValidationFailed();
+                logger.warn(
+                        "Skipping ML question with unexpected type. expected={}, actual={}, questionSetId={}",
+                        request.preferredQuestionType(),
+                        mq.type(),
+                        questionSet.getId()
+                );
+                continue;
+            }
             List<MlQuestionOptionDTO> options = mq.options() != null ? mq.options() : List.of();
             List<String> correctIds = mq.correct_answers() != null ? mq.correct_answers() : List.of();
-            String explanation = mq.explanation() != null ? mq.explanation().trim() : "";
+            String explanation = sanitizeDbText(mq.explanation());
 
             if (!isValidMlQuestion(type, options, correctIds) || hasEncodingDamage(mq.question(), explanation, options)) {
                 metricsService.recordValidationFailed();
@@ -479,6 +489,10 @@ public class QuestionGenerationService {
         return false;
     }
 
+    private boolean matchesPreferredQuestionType(QuestionType actual, QuestionType preferred) {
+        return preferred == null || actual == preferred;
+    }
+
     private boolean hasEncodingDamage(String question, String explanation, List<MlQuestionOptionDTO> options) {
         if (containsReplacementCharacter(question) || containsReplacementCharacter(explanation)) {
             return true;
@@ -496,12 +510,13 @@ public class QuestionGenerationService {
 
     private void saveAnswerOptions(Question question, List<MlQuestionOptionDTO> options, List<String> correctIds) {
         for (MlQuestionOptionDTO opt : options) {
-            if (opt == null || opt.text() == null || opt.text().trim().isEmpty()) {
+            String optionText = opt != null ? sanitizeDbText(opt.text()) : "";
+            if (optionText.isEmpty()) {
                 continue;
             }
             AnswerOption ao = new AnswerOption();
             ao.setQuestion(question);
-            ao.setText(opt.text().trim());
+            ao.setText(optionText);
             boolean isCorrect = false;
             if (opt.id() != null) {
                 for (String cid : correctIds) {
@@ -562,6 +577,11 @@ public class QuestionGenerationService {
             return opt.popularity();
         }
         return opt.popularity_score();
+    }
+
+    private String sanitizeDbText(String value) {
+        String sanitized = QuestionTextSanitizer.removeUnsupportedControlCharacters(value);
+        return sanitized != null ? sanitized.trim() : "";
     }
 
     private void markGenerationSetFailed(GenerationSet generationSet) {

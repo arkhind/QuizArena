@@ -21,7 +21,7 @@ public final class QuestionTextSanitizer {
             return null;
         }
 
-        String sanitized = text.trim();
+        String sanitized = removeUnsupportedControlCharacters(text).trim();
         String previous;
         do {
             previous = sanitized;
@@ -30,5 +30,20 @@ public final class QuestionTextSanitizer {
         } while (!sanitized.equals(previous));
 
         return sanitized.isEmpty() ? text.trim() : sanitized;
+    }
+
+    public static String removeUnsupportedControlCharacters(String text) {
+        if (text == null) {
+            return null;
+        }
+
+        StringBuilder cleaned = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch == '\n' || ch == '\r' || ch == '\t' || !Character.isISOControl(ch)) {
+                cleaned.append(ch);
+            }
+        }
+        return cleaned.toString();
     }
 }
